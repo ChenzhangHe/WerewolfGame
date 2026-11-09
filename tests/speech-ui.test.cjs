@@ -117,12 +117,13 @@ test('initial history and enabling voice never auto-read existing dialogue', () 
   r.deliver(JSON.parse(JSON.stringify(events))); assert.equal(r.spoken.length, 0);
 });
 
-test('only newly appended player speech is read, once per visible event', () => {
+test('new public referee announcements and player speech are read in order, once per event', () => {
   const r = rig(), events = [narration('Dawn.')]; r.deliver(events); r.toggle();
   const updated = [...events, narration('Speaking order.'), speech('A new claim.', 2)];
-  r.deliver(updated); assert.equal(r.spoken.length, 1); assert.equal(r.spoken[0].text, 'A new claim.');
+  r.deliver(updated); assert.equal(r.spoken.length, 1); assert.equal(r.spoken[0].text, 'Speaking order.');
   r.deliver(JSON.parse(JSON.stringify(updated))); assert.equal(r.spoken.length, 1);
-  r.end(); r.deliver(updated); assert.equal(r.spoken.length, 1);
+  r.end(); assert.equal(r.spoken.length, 2); assert.equal(r.spoken[1].text, 'A new claim.');
+  r.end(); r.deliver(updated); assert.equal(r.spoken.length, 2);
 });
 
 test('manual past-speech control does not enable automatic narration', () => {
@@ -217,6 +218,20 @@ test('a throwing cancel API disables audio with bounded error handling, not recu
   assert.equal(cancellations, 2, 'One failed cancellation plus one guarded cleanup cancellation.');
   assert.equal(r.state.autoSpeech, false); assert.equal(r.ui.speechPlayer.enabled, false);
   assert.equal(r.state.speechHandlingError, false); assert.equal(r.spoken.length, 1);
+});
+
+test('public referee playback is labeled as referee even when the event names a player', () => {
+  const r = rig(); r.deliver([{...narration('Seat 3 self-explodes.'),kind:'explosion',seat:3}]);
+  const button = r.buttons()[0]; button.click();
+  assert.equal(r.spoken.length,1); assert.equal(r.spoken[0].text,'Seat 3 self-explodes.');
+  assert.match(button.attributes['aria-label'], /referee/);
+  assert.doesNotMatch(button.attributes['aria-label'], /Player 3/);
+  assert.equal(r.elements.get('speech-status').textContent,'readingNow:referee');
+});
+test('private referee deliveries are not voiced or given play controls', () => {
+  const r = rig(); r.state.mode='omniscient'; r.deliver([]); r.toggle();
+  r.deliver([{...narration('PRIVATE_SEER_RESULT'),kind:'investigation',audience:'private',seat:4}]);
+  assert.equal(r.spoken.length,0); assert.equal(r.buttons().length,0);
 });
 
 process.stdout.write(`${passed} speech UI integration tests passed.\n`);

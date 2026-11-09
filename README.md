@@ -157,7 +157,7 @@ These markers follow the selected replay checkpoint; private nomination choices
 are not shown before publication.
 
 Use **Voice off / 朗读：关** above the transcript to enable automatic reading of
-new player speech. Each speech also has **Read aloud / 朗读** for manual playback.
+new player speech and public referee announcements. Each voiced record also has **Read aloud / 朗读** for manual playback.
 The game language chooses English or Chinese independently of the UI language.
 Playback uses only local system voices reported by the browser; no additional
 API key is needed. Install the corresponding system voice if none is available.

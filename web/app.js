@@ -180,7 +180,7 @@ function createSpeechPlayer({ synth, Utterance, onState = () => {} } = {}) {
       demoCopy: 'These players are smoke-test scripts, not a measure of AI capability.',
       mixedDemoTitle: 'Includes scripted players', mixedDemoCopy: 'Some seats use demonstration scripts. Treat this as a mixed test, not a controlled AI comparison.',
       play: 'Play', pause: 'Pause', perspective: 'Perspective', mystery: 'Mystery', omniscient: 'Omniscient',
-      follow: 'Follow a player', village: 'The village', speaking: 'Speaking', speakingNow: 'Speaking', voiceOn: 'Voice on', voiceOff: 'Voice off', readSpeech: 'Read aloud', stopReading: 'Stop reading', readingNow: 'Reading {name}', voiceHint: 'Read new speech with a local voice in the game language. Use Read aloud on a past speech to hear it.', voiceMissing: 'No local voice is available for this game language. Install a system voice and try again.', voiceFailed: 'Speech playback is unavailable. Try again in a supported browser.', voiceBacklog: 'Voice playback fell behind and was stopped. Select a speech to read or enable voice again.', candidate: 'Running', withdrawn: 'Withdrawn', nominated: 'Ran', elected: 'Elected', currentSpeaker: '{name} is speaking', closeDetails: 'Close details', details: 'Game details', sheriff: 'Sheriff',
+      follow: 'Follow a player', village: 'The village', speaking: 'Speaking', speakingNow: 'Speaking', voiceOn: 'Voice on', voiceOff: 'Voice off', readSpeech: 'Read aloud', stopReading: 'Stop reading', readingNow: 'Reading {name}', voiceHint: 'Read new player speech and public referee announcements with a local voice. Past records can be read individually.', voiceMissing: 'No local voice is available for this game language. Install a system voice and try again.', voiceFailed: 'Speech playback is unavailable. Try again in a supported browser.', voiceBacklog: 'Voice playback fell behind and was stopped. Select a speech to read or enable voice again.', candidate: 'Running', withdrawn: 'Withdrawn', nominated: 'Ran', elected: 'Elected', currentSpeaker: '{name} is speaking', closeDetails: 'Close details', details: 'Game details', sheriff: 'Sheriff',
       eliminated: 'Eliminated', alive: 'alive', hiddenRole: 'Unknown role', transcript: 'The conversation',
       autoScroll: 'Follow latest ↓', autoScrollOff: 'Follow latest', waitingTitle: 'Before the first whisper',
       waitingCopy: 'Start the game to watch the village come alive.', transcriptNote: 'Claims are not confirmed roles.',
@@ -241,7 +241,7 @@ function createSpeechPlayer({ synth, Utterance, onState = () => {} } = {}) {
       demoCopy: '当前玩家由测试脚本驱动，演示结果不代表 AI 能力。',
       mixedDemoTitle: '包含脚本玩家', mixedDemoCopy: '部分席位使用演示脚本。本局属于混合测试，不能视为受控的 AI 能力对比。',
       play: '开始', pause: '暂停', perspective: '观战视角', mystery: '悬疑视角', omniscient: '全知视角',
-      follow: '跟随玩家', village: '村庄席位', speaking: '当前发言', speakingNow: '发言中', voiceOn: '朗读：开', voiceOff: '朗读：关', readSpeech: '朗读', stopReading: '停止朗读', readingNow: '正在朗读 {name}', voiceHint: '用对局语言的本地语音朗读新发言；过去的发言可单独点击朗读。', voiceMissing: '没有可用的本地对局语言语音，请安装对应的系统语音后重试。', voiceFailed: '语音播放暂不可用，请重试或使用支持语音的浏览器。', voiceBacklog: '朗读已落后于对局，已停止播放。可点选发言朗读，或重新开启。', candidate: '上警', withdrawn: '退水', nominated: '曾上警', elected: '当选', currentSpeaker: '{name} 正在发言', closeDetails: '关闭详情', details: '对局详情', sheriff: '警长',
+      follow: '跟随玩家', village: '村庄席位', speaking: '当前发言', speakingNow: '发言中', voiceOn: '朗读：开', voiceOff: '朗读：关', readSpeech: '朗读', stopReading: '停止朗读', readingNow: '正在朗读 {name}', voiceHint: '用对局语言的本地语音朗读新发言和法官公开播报；过去的记录可单独点读。', voiceMissing: '没有可用的本地对局语言语音，请安装对应的系统语音后重试。', voiceFailed: '语音播放暂不可用，请重试或使用支持语音的浏览器。', voiceBacklog: '朗读已落后于对局，已停止播放。可点选发言朗读，或重新开启。', candidate: '上警', withdrawn: '退水', nominated: '曾上警', elected: '当选', currentSpeaker: '{name} 正在发言', closeDetails: '关闭详情', details: '对局详情', sheriff: '警长',
       eliminated: '已出局', alive: '存活', hiddenRole: '身份未知', transcript: '场上记录',
       autoScroll: '跟随最新 ↓', autoScrollOff: '跟随最新', waitingTitle: '第一声低语之前',
       waitingCopy: '开始对局，静候村庄苏醒。', transcriptNote: '身份宣称不等于身份确认。',
@@ -319,6 +319,8 @@ function createSpeechPlayer({ synth, Utterance, onState = () => {} } = {}) {
   const speechKinds = new Set(['speech', 'speak', 'campaign', 'tie_speech', 'last_words', 'wolf_discussion', 'wolf_chat']);
   function speechKey(index) { return `${state.speechEpoch}:${index}`; }
   function isSpeech(event) { return Boolean(event.seat) && speechKinds.has(event.kind); }
+  function isNarratable(event) { return isSpeech(event) || (!isPrivate(event) && Boolean(eventText(event)?.trim())); }
+  function narrationName(event) { return isSpeech(event) ? playerName(event.seat) : t('referee'); }
   function speechLanguage() { return state.snapshot?.language || state.locale; }
   function resetSpeechView() {
     speechPlayer.stop(); state.speechEpoch += 1; state.speechEvents = null;
@@ -349,15 +351,15 @@ function createSpeechPlayer({ synth, Utterance, onState = () => {} } = {}) {
       : state.speechError === 'queue_full' ? 'voiceBacklog' : 'voiceFailed');
     else if (speechPlayer.currentKey != null) {
       const index = Number(String(speechPlayer.currentKey).split(':')[1]);
-      const seat = state.snapshot?.events?.[index]?.seat;
-      if (seat) status = t('readingNow', { name: playerName(seat) });
+      const event = state.snapshot?.events?.[index];
+      if (event) status = t('readingNow', { name: narrationName(event) });
     }
     $('speech-status').hidden = !status; $('speech-status').textContent = status; $('speech-status').title = status;
     document.querySelectorAll('[data-speech-key]').forEach((button) => {
       const reading = button.dataset.speechKey === speechPlayer.currentKey;
       button.textContent = t(reading ? 'stopReading' : 'readSpeech');
       button.setAttribute('aria-pressed', String(reading));
-      button.setAttribute('aria-label', `${t(reading ? 'stopReading' : 'readSpeech')} · ${playerName(button.dataset.speechSeat)}`);
+      button.setAttribute('aria-label', `${t(reading ? 'stopReading' : 'readSpeech')} · ${button.dataset.speechReferee === 'true' ? t('referee') : playerName(button.dataset.speechSeat)}`);
       button.closest('.event')?.classList.toggle('reading', reading);
     });
   }
@@ -381,7 +383,7 @@ function createSpeechPlayer({ synth, Utterance, onState = () => {} } = {}) {
     state.speechGameLanguage = snapshot.language;
     if (!reset && state.autoSpeech && state.at === null) {
       for (let index = previousCount; index < events.length; index++) {
-        if (isSpeech(events[index]) && !speechPlayer.enqueue(eventText(events[index]), snapshot.language, speechKey(index))) break;
+        if (isNarratable(events[index]) && !speechPlayer.enqueue(eventText(events[index]), snapshot.language, speechKey(index))) break;
       }
     }
     renderSpeechControls();
@@ -597,7 +599,7 @@ function createSpeechPlayer({ synth, Utterance, onState = () => {} } = {}) {
       seat.classList.toggle('dead', !player.alive);
       seat.classList.toggle('active', acting.includes(Number(player.seat)));
       const readingIndex = speechPlayer.currentKey == null ? null : Number(String(speechPlayer.currentKey).split(':')[1]);
-      seat.classList.toggle('audio-playing', readingIndex !== null && Number(state.snapshot?.events?.[readingIndex]?.seat) === Number(player.seat));
+      seat.classList.toggle('audio-playing', readingIndex !== null && isSpeech(state.snapshot?.events?.[readingIndex] || {}) && Number(state.snapshot?.events?.[readingIndex]?.seat) === Number(player.seat));
       seat.classList.toggle('selected', $('details-dialog').open && state.detailsPanel === 'dossier' && Number(player.seat) === state.detailSeat);
       if (acting.includes(Number(player.seat))) seat.setAttribute('aria-current', 'true');
       seat.setAttribute('aria-label', `${t('inspect', { seat: player.seat })}: ${player.name}, ${roleName(permittedRole(player))}, ${t(player.alive ? 'alive' : 'eliminated')}`);
@@ -657,10 +659,10 @@ function createSpeechPlayer({ synth, Utterance, onState = () => {} } = {}) {
       if (isPrivate(event)) head.append(node('span', 'audience-tag', typeof event.audience === 'string' && event.audience.includes('wolf') ? t('wolfTeam') : t('private')));
       const meta = node('span', 'event-meta', phaseName(event.phase || event.kind));
       head.append(meta);
-      if (speech) {
+      if (isNarratable(event)) {
         const play = node('button', 'text-button speech-play', t('readSpeech')); play.type = 'button';
         const epoch = state.speechEpoch, language = speechLanguage(), key = speechKey(index);
-        play.dataset.speechKey = key; play.dataset.speechSeat = String(event.seat);
+        play.dataset.speechKey = key; play.dataset.speechSeat = String(event.seat || ''); play.dataset.speechReferee = String(!speech);
         play.addEventListener('click', () => {
           if (epoch !== state.speechEpoch || !play.isConnected) return;
           if (speechPlayer.currentKey === key) speechPlayer.stop();
