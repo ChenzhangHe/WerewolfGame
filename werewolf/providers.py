@@ -15,11 +15,13 @@ from urllib import error, request as http
 
 
 PROMPT_VERSION = "player-v3"
-TOOLS_PROMPT_VERSION = "player-tools-v5"
+TOOLS_PROMPT_VERSION = "player-tools-v6"
 MAX_TOOL_MODEL_REQUESTS = 6
 MAX_TOOL_READ_CALLS = 12
-MAX_TOOL_MESSAGE_CHARS = 144_000
-MAX_TOOL_CONTEXT_CHARS = 24_000
+MAX_TOOL_MESSAGE_CHARS = 1_000_000
+MAX_TOOL_CONTEXT_CHARS = 128_000
+V4_MAX_TOOL_MESSAGE_CHARS = 144_000
+V4_MAX_TOOL_CONTEXT_CHARS = 24_000
 LEGACY_MAX_TOOL_MESSAGE_CHARS = 60_000
 DEEPSEEK_FLASH_MODEL = "deepseek-flash"
 DEEPSEEK_FLASH_MAX_TOKENS = 8192
@@ -192,24 +194,26 @@ def _seat_harness(player_request):
     context = player_request["tool_context"]
     return SeatToolHarness(copy.deepcopy(context["observation"]), copy.deepcopy(context["decision"]),
                            notes=context["private_notes"], language=player_request["language"],
-                           fixed_pages=player_request.get("prompt_version") in {"player-tools-v3", "player-tools-v4", "player-tools-v5"},
-                           explicit_consequences=player_request.get("prompt_version") == "player-tools-v5")
+                           fixed_pages=player_request.get("prompt_version") in {"player-tools-v3", "player-tools-v4", "player-tools-v5", "player-tools-v6"},
+                           explicit_consequences=player_request.get("prompt_version") in {"player-tools-v5", "player-tools-v6"})
 
 
 def tool_protocol_limits(version):
     """Protocol versions pin resource limits and final-stage capabilities."""
-    if version not in {"player-tools-v1", "player-tools-v2", "player-tools-v3", "player-tools-v4", "player-tools-v5"}:
+    if version not in {"player-tools-v1", "player-tools-v2", "player-tools-v3", "player-tools-v4", "player-tools-v5", "player-tools-v6"}:
         raise ProviderError("Unsupported player tool protocol.")
-    current = version in {"player-tools-v4", "player-tools-v5"}
+    current = version in {"player-tools-v4", "player-tools-v5", "player-tools-v6"}
     return {"model_requests": MAX_TOOL_MODEL_REQUESTS, "read_calls": MAX_TOOL_READ_CALLS,
-            "message_chars": MAX_TOOL_MESSAGE_CHARS if current else LEGACY_MAX_TOOL_MESSAGE_CHARS,
-            "context_chars": MAX_TOOL_CONTEXT_CHARS if current else None,
+            "message_chars": (MAX_TOOL_MESSAGE_CHARS if version == "player-tools-v6" else
+                              V4_MAX_TOOL_MESSAGE_CHARS if current else LEGACY_MAX_TOOL_MESSAGE_CHARS),
+            "context_chars": (MAX_TOOL_CONTEXT_CHARS if version == "player-tools-v6" else
+                              V4_MAX_TOOL_CONTEXT_CHARS if current else None),
             "final_action_stage": current}
 
 
 def _build_tools_request(config, observation, decision, notes, language, version=None):
     version = version or TOOLS_PROMPT_VERSION
-    if version not in {"player-tools-v1", "player-tools-v2", "player-tools-v3", "player-tools-v4", "player-tools-v5"}:
+    if version not in {"player-tools-v1", "player-tools-v2", "player-tools-v3", "player-tools-v4", "player-tools-v5", "player-tools-v6"}:
         raise ProviderError("Unsupported player tool protocol.")
     result = {
         "prompt_version": version, "provider": config.provider,
@@ -241,7 +245,7 @@ def _build_tools_request(config, observation, decision, notes, language, version
            if language == "zh" else "All speech, wolf discussion, and private notes must be in English. ")
         + "Keep tool names and enum values exactly as declared. Your fixed personality: " + config.personality
     )
-    if version in {"player-tools-v4", "player-tools-v5"}:
+    if version in {"player-tools-v4", "player-tools-v5", "player-tools-v6"}:
         result["instructions"] += (
             "\nUse targeted public-log search instead of repeatedly retrieving broad history. "
             "All reads are from this same frozen snapshot; repeated reads cannot produce new events. "

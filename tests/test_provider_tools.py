@@ -100,7 +100,7 @@ class ProviderToolsTests(unittest.TestCase):
         original = self.assembled("player-tools-v4")
         stored = json.loads(json.dumps(original))
         body = p.wire_request(self.config, original)
-        self.assertEqual("player-tools-v5", p.TOOLS_PROMPT_VERSION)
+        self.assertEqual("player-tools-v6", p.TOOLS_PROMPT_VERSION)
         self.assertEqual("player-tools-v4", stored["prompt_version"])
         self.assertEqual(body, p.wire_request(self.config, stored))
         self.assertNotIn("win_conditions", json.loads(body["messages"][1]["content"]))
@@ -120,6 +120,38 @@ class ProviderToolsTests(unittest.TestCase):
             # Rules are made explicit; the host neither chooses for the model
             # nor prohibits a legal (even losing) sacrifice.
             self.assertEqual({"type": "explode"}, p._seat_harness(request).call("action_explode", {}))
+
+    def test_v6_handles_long_chinese_log_across_all_six_requests(self):
+        observation = copy.deepcopy(self.observation)
+        observation["language"] = "zh"
+        observation["history"] = [
+            {"kind": "speech", "audience": "public", "seat": 2,
+             "text": f"公开发言{i}：" + "请根据公开票型判断。" * 100}
+            for i in range(50)
+        ]
+        def assembled(version):
+            return p._build_tools_request(self.config, observation, self.decision, "", "zh", version=version)
+        replies = [response([call("read_public_log", {"offset": i * 10}, f"read-{i}")])
+                   for i in range(5)]
+        replies.append(response([call("action_speak", {"text": "我会根据公开记录投票。"})]))
+        result, network = self.infer(replies, assembled("player-tools-v6"))
+        self.assertEqual(6, network.call_count)
+        sizes = [len(json.dumps(t["wire_request"]["messages"], ensure_ascii=False))
+                 for t in result.tool_trace]
+        self.assertGreater(max(sizes), 24_000)
+        self.assertGreater(sum(sizes), 144_000)
+        self.assertEqual("speak", result["type"])
+        self.assertEqual({"action_speak"}, {t["function"]["name"]
+                         for t in result.tool_trace[-1]["wire_request"]["tools"]})
+        self.assertEqual(p.wire_request(self.config, assembled("player-tools-v5")),
+                         p.wire_request(self.config, assembled("player-tools-v6")))
+        with self.assertRaises(p.ProviderError) as failure:
+            self.infer(replies, assembled("player-tools-v5"))
+        self.assertEqual("tool_context_budget", failure.exception.validation_details["category"])
+        for version in ("player-tools-v4", "player-tools-v5"):
+            limits = p.tool_protocol_limits(version)
+            self.assertEqual(24_000, limits["context_chars"])
+            self.assertEqual(144_000, limits["message_chars"])
 
     def test_initial_wire_is_compact_and_host_context_is_not_sent(self):
         assembled = self.assembled()
@@ -248,7 +280,7 @@ class ProviderToolsTests(unittest.TestCase):
         self.assertEqual({"action_speak"}, {tool["function"]["name"]
                          for tool in failure.exception.tool_trace[-1]["wire_request"]["tools"]})
 
-    def test_v4_context_cap_stops_before_http_but_legacy_has_no_request_cap(self):
+    def test_v6_context_cap_stops_before_http_but_legacy_has_no_request_cap(self):
         with patch.object(p, "MAX_TOOL_CONTEXT_CHARS", 20), patch.object(p.http, "urlopen") as network:
             with self.assertRaises(p.ProviderError) as failure:
                 p.decide(self.config, self.assembled())

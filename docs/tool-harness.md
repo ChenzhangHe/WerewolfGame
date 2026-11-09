@@ -88,8 +88,27 @@ it does not establish equal strategic strength or a formal isolation proof.
 
 ## V5 critical game facts
 
-New games use `player-tools-v5`, retaining v4 budgets and final action stage.
+Protocol `player-tools-v5` retains v4 budgets and final action stage.
 Briefings always include concise win conditions and permanent-death consequences.
 Self-explosion/pass tools explain their neutral consequences directly; other
 actions and legal choices stay the same. V1–v4 games remain pinned to their
 original profile. See [the explosion diagnosis](explosion-diagnostics.md).
+
+
+## V6 larger context budget
+
+New games use `player-tools-v6`: 128,000 characters per request and 1,000,000
+characters cumulatively per decision, including repeated request messages and
+returned content. These are application character limits, not token counts or
+the provider model's context window. The initial briefing, read permissions,
+pagination, six-request/twelve-read limits, final action stage, output-token cap,
+and v5 game facts are unchanged. No history is eagerly loaded or truncated.
+V1–v5 archives retain their original budgets on ordinary restore.
+
+A trusted local archive may be explicitly upgraded from v5 to v6 to recover a
+context-budget failure: retain historical inference records and their versions;
+update only the top-level `tool_prompt_version` and each pending request's
+`prompt_version` to `player-tools-v6`, then validate with `Runner.from_archive`.
+This deliberately changes the remaining decisions' budget and must be reported
+when using that game as an evaluation. Successful cached pending actions remain
+valid because v5/v6 briefings and action capabilities are identical.

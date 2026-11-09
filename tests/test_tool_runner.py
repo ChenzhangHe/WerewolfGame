@@ -69,6 +69,31 @@ class ToolRunnerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             Runner.from_archive(archive)
 
+    def test_explicit_v5_budget_upgrade_preserves_cached_actions_and_historical_requests(self):
+        runner = self.runner()
+        runner._tool_prompt_version = "player-tools-v5"
+        first = runner.game.pending()[0]["seat"]
+        def infer(config, request):
+            if config.seat == first:
+                raise p.ProviderError("Context budget test failure.")
+            return self.answer(config, request)
+        with patch.object(p, "decide", side_effect=infer):
+            runner.step()
+        archive = runner.export()
+        historical = copy.deepcopy(archive["inference"])
+        archive["tool_prompt_version"] = "player-tools-v6"
+        for entry in archive["pending_batch"]:
+            entry["request"]["prompt_version"] = "player-tools-v6"
+        with patch.object(p, "decide", side_effect=AssertionError("Restore is model free")):
+            restored = Runner.from_archive(archive)
+        self.assertEqual(historical, restored.export()["inference"])
+        with patch.object(p, "decide", side_effect=self.answer) as inference:
+            self.assertNotEqual("error", restored.step()["status"])
+        self.assertEqual([first], [c.args[0].seat for c in inference.call_args_list])
+        self.assertEqual("player-tools-v6", inference.call_args.args[1]["prompt_version"])
+        reloaded = Runner.from_archive(restored.export())
+        self.assertEqual(restored.game.export()["events"], reloaded.game.export()["events"])
+
     def test_restore_keeps_original_tool_protocol_after_application_upgrade(self):
         runner = self.runner()
         archive = runner.export()
