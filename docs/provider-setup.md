@@ -192,3 +192,11 @@ historical views without inference; later role reveals do not leak backward.
 
 OpenAI documentation was checked on 2026-11-08. Subscription integration details
 and provider capabilities should be verified again when implementing sign-in.
+
+
+DeepSeek thinking HTTP requests allow 300 seconds of socket waiting, compared
+with 90 seconds for fast mode. Native tool calls still have one transport
+attempt; a connection failure is recorded and pauses for an explicit retry.
+Safe diagnostics retain exception class, wait limit and attempt count, not raw
+exception text, credentials, or provider bodies. An in-flight retry clears the
+stale UI error while retaining the original inference failure in the archive.

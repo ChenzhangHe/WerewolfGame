@@ -11,6 +11,7 @@ import math
 import os
 import re
 import html
+from http.client import IncompleteRead
 from pathlib import Path
 import time
 from urllib import error, request as http
@@ -547,6 +548,7 @@ def _send_http(config, body, *, attempts=2):
         raise ProviderError(f"Missing {env_name}; configure this provider before continuing.")
     payload = json.dumps(body, ensure_ascii=False).encode("utf-8")
     response_data = None
+    timeout_seconds = 300 if config.provider == "deepseek" and config.thinking == "enabled" else 90
     for attempt in range(attempts):
         req = http.Request(endpoint, data=payload, method="POST", headers={
             "Authorization": "Bearer " + token,
@@ -554,7 +556,7 @@ def _send_http(config, body, *, attempts=2):
             "Accept": "text/event-stream" if body.get("stream") else "application/json",
         })
         try:
-            with http.urlopen(req, timeout=90) as response:
+            with http.urlopen(req, timeout=timeout_seconds) as response:
                 if body.get("stream"):
                     response_data = _read_stream(response)
                 else:
@@ -579,11 +581,19 @@ def _send_http(config, body, *, attempts=2):
             else:
                 message = f"{name} rejected inference (HTTP {code}); check access, model, and usage."
             raise ProviderError(message) from None
-        except (error.URLError, TimeoutError, OSError):
+        except (error.URLError, TimeoutError, OSError, IncompleteRead) as cause:
             if attempt + 1 < attempts:
                 time.sleep(0.25)
                 continue
-            raise ProviderError(f"Provider connection failed after {attempts} attempt(s); game paused.") from None
+            reason = getattr(cause, "reason", cause)
+            failure_type = type(reason).__name__ if isinstance(reason, BaseException) else type(cause).__name__
+            details = {"failure_type": failure_type, "timeout_seconds": timeout_seconds, "attempts": attempts}
+            message = (f"Provider response timed out after {timeout_seconds} seconds; game paused."
+                       if isinstance(reason, TimeoutError) else
+                       f"Provider connection failed after {attempts} attempt(s); game paused.")
+            failure = ProviderError(message)
+            failure.validation_details = {"category": "provider_transport_error", "transport": details}
+            raise failure from None
         except (ValueError, KeyError, TypeError):
             raise ProviderError("Provider returned an unreadable response; game paused.") from None
     return response_data
@@ -700,7 +710,11 @@ def _tools_live(config, player_request):
             # Native tool decisions never receive network retries or format repair.
             response = _send_http(config, body, attempts=1)
         except ProviderError as cause:
-            raise fail(str(cause), "tool_transport_error", entry) from None
+            failure = fail(str(cause), "tool_transport_error", entry)
+            details = getattr(cause, "validation_details", {})
+            if isinstance(details.get("transport"), dict):
+                failure.validation_details["transport"] = copy.deepcopy(details["transport"])
+            raise failure from None
         try:
             if not isinstance(response, dict):
                 raise ValueError("Invalid response object")

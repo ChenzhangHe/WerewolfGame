@@ -176,6 +176,7 @@ class Controller:
                     result["status"] = "finished"
                 elif self.busy or self.playing or self.step_requested:
                     result["status"] = "running"
+                    result["error"] = None
             else:
                 if type(at) is not int or not 0 <= at < len(self.history):
                     raise ValueError("Replay checkpoint is out of range.")
