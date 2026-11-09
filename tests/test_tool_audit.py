@@ -66,6 +66,15 @@ class ToolAuditTests(unittest.TestCase):
         self.assertEqual(24, report['completion_tokens'])
         self.assertEqual(2, report['max_hops_per_decision'])
 
+    def test_unexpected_instruction_text_is_not_trusted_even_if_wire_matches_it(self):
+        archive = self.archive()
+        record = archive['inference'][0]
+        record['request']['instructions'] += ' UNEXPECTED_PRIVATE_CONTEXT'
+        for hop in record['tool_trace']:
+            hop['wire_request']['messages'][0]['content'] = record['request']['instructions']
+        with self.assertRaises(AssertionError):
+            AUDIT(archive)
+
     def test_invalid_read_is_audited_as_explicit_failure_not_success(self):
         archive = self.archive(invalid_read=True)
         report = AUDIT(archive)

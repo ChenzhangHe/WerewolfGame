@@ -61,6 +61,9 @@ def audit(archive):
         accepted += bool(record['accepted'])
         config = configs[record['seat']]
         context = request['tool_context']
+        fresh = p.build_request(config, context['observation'], context['decision'],
+                                context['private_notes'], tool_prompt_version=request['prompt_version'])
+        require(request == fresh, 'Player request differs from the frozen seat request builder.')
         h = p._seat_harness(request)
         expected = p.wire_request(config, request)
         if request.get('prompt_version') == 'player-tools-v1':

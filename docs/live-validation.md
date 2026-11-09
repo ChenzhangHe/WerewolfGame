@@ -72,3 +72,72 @@ the game or invoke a model.
 Validation at completion: **90 automated tests pass**, JavaScript syntax check
 passes, and all three private archives are retained locally. The successful
 server game is restored and paused at night 4 for spectator replay or continuation.
+
+## Native tool-harness validation
+
+The tool-harness series uses fresh Chinese games with twelve real DeepSeek Flash
+players, thinking disabled, temperature 0.7, and 8192 output tokens. Every failed
+run remains in a separate local private archive; none is relabeled as a success.
+
+| Protocol | Result |
+| --- | --- |
+| v1, automatic tool choice | Four accepted actions, three cached uncommitted actions, one failed attempt. A Wolf read chat then returned prose without a terminal call. |
+| v2, required tool choice | 77 accepted actions in 27 batches, then one invalid read on day 3: Hunter requested `limit: 21` against the declared maximum of 20. |
+| v3, fixed ten-entry pages | 80 accepted actions in 26 batches, then one cumulative-message-budget failure on day 3. Witch used five reading requests, including a repeated private-results read. |
+
+A separate configuration-check run was interrupted after nine accepted actions
+because it still used automatic tool choice; it is excluded from required-tool
+results. The rejected v1 prose was never converted to an attack, the v2 oversized
+page was never silently clamped, and the v3 budget was never enlarged midgame.
+
+The corresponding fixes require tool calls at the API level, remove caller
+control of page size, and reserve the final request for action tools. Protocol v4
+separately bounds each request's message context to 24,000 characters and all
+messages sent during a decision to 144,000 characters, with six model requests
+and twelve read calls maximum. Old games retain their original protocol.
+
+Initial wire bodies in v2 and v3 were about 61–62% smaller than the equivalent
+JSON adapter built from the same authorized observations. Cumulative wire
+traffic was respectively 44% and 63% larger because tool interactions repeated
+context across requests. These are character counts including tool schemas,
+not a token-cost or strategic-strength comparison. Smaller initial prompts do
+not by themselves mean lower total inference usage.
+
+Run the local audit without sending an archive to a model:
+
+```sh
+python3 scripts/audit_tools.py artifacts/deepseek-tools-v4-zh.private.json
+```
+
+The audit reconstructs each player's permitted historical observation and notes,
+checks exact credential-free wire bodies and continuation messages, executes
+reads again against only the frozen seat view, and binds every recorded result
+to the actual model call. It also validates checkpoint replay without inference.
+
+### Completed v4 run
+
+The fresh v4 game completed three rounds and stopped before night-4 actions:
+**88 accepted actions in 33 batches, zero failed attempts, zero format repairs**.
+It made 286 model requests and 299 successful read calls. Two decisions reached
+the sixth, action-only stage and completed successfully. All sixteen accepted
+speech/discussion responses contained Chinese text. The run had no overall game
+winner at the requested boundary.
+
+Mean initial wire size was 7,996 characters versus 19,665 for the equivalent JSON
+adapter: **59.3% smaller**. Peak whole-wire size was 22,129 characters, including
+tool schemas. Peak message context was 19,295 characters, below the 24,000 limit.
+Mean cumulative wire traffic per action was 36,938 characters: **87.8% larger**
+than the equivalent one-call JSON request. This implementation bounds and reduces
+initial context; further work is needed to reduce repeated tool-call traffic.
+
+The full local audit passed, including own-seat historical observations and
+notes, all exact requests and tool results, legal terminal actions, and replay.
+The actual API credential was absent from the archive. Restoring the archive
+made no inference calls and preserved the night-4 state and hidden-role
+projections. The game is restored and paused at `http://127.0.0.1:8765/`; the prior
+JSON game remains preserved in its original private archive.
+
+Validation after this series: **146 automated tests pass**, JavaScript syntax
+check passes, and all diagnostic archives remain local and excluded from Git.
+Hunter shots, poison actions, Idiot reveals, and an endgame were not exercised
+by the completed v4 run; their referee branches retain automated coverage.
