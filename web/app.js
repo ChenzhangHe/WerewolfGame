@@ -2,6 +2,175 @@
 (() => {
   'use strict';
 
+  // BEGIN LOCAL SPEECH CONTROLLER
+/*
+ * Local browser speech only. This factory makes no fetches and never selects a
+ * remote voice. Root UI owns user consent, current perspective, and event IDs.
+ * No audio plays on construction, enable(), or voiceschanged.
+ *
+ * onState({type, enabled, currentKey, language, reason?, available?})
+ * Types: enabled, disabled, start, end, stop, error, voiceschanged.
+ * Reasons: invalid_language, disabled, language_mismatch, invalid_text,
+ * invalid_key, local_voice_unavailable, speech_unavailable, synthesis_failed,
+ * synthesis_interrupted, queue_full.
+ *
+ * play(text, language, key): latest manual utterance wins; cancels old audio and
+ * all pending live speech. enqueue(...) optionally supports live playback with
+ * at most FOUR waiting utterances plus one active utterance. Overflow is rejected
+ * with queue_full; duplicates return false without adding speech. The UI should
+ * show overflow and let the viewer choose the current utterance manually.
+ * stop() clears current and pending audio, retaining opt-in. disable() also
+ * revokes opt-in. Both protect against stale cancellation/completion callbacks.
+ */
+function createSpeechPlayer({ synth, Utterance, onState = () => {} } = {}) {
+  const MAX_PENDING = 4;
+  const MAX_TEXT_CHARS = 1200;
+  let optedIn = false;
+  let selectedLanguage = null;
+  let current = null;
+  let pending = [];
+  let generation = 0;
+
+  function emit(type, extra = {}) {
+    const update = { type, enabled: optedIn, currentKey: current ? current.key : null,
+      language: selectedLanguage, ...extra };
+    // A view callback must never break cancellation or advance the queue twice.
+    try { onState(update); } catch (_) { /* UI errors do not grant audio access. */ }
+  }
+  function validLanguage(language) { return language === 'en' || language === 'zh'; }
+  function supported() {
+    return synth && typeof synth.getVoices === 'function' && typeof synth.speak === 'function'
+      && typeof synth.cancel === 'function' && typeof Utterance === 'function';
+  }
+  function localVoice(language) {
+    if (!supported() || !validLanguage(language)) return null;
+    let voices;
+    try { voices = synth.getVoices(); } catch (_) { return null; }
+    if (!Array.isArray(voices)) return null;
+    const matches = voices.filter((voice) => voice && voice.localService === true
+      && typeof voice.lang === 'string'
+      && voice.lang.toLowerCase().replaceAll('_', '-').split('-')[0] === language);
+    const preferred = language === 'zh' ? ['zh-cn', 'zh-hans', 'zh'] : ['en-us', 'en-gb', 'en'];
+    return matches.find((voice) => preferred.includes(voice.lang.toLowerCase().replaceAll('_', '-')))
+      || matches[0] || null;
+  }
+  function fail(reason) { emit('error', { reason }); return false; }
+  function cancel() {
+    // Invalidate first: browsers can synchronously emit onend/onerror in cancel().
+    generation += 1;
+    current = null;
+    pending = [];
+    if (synth && typeof synth.cancel === 'function') {
+      try { synth.cancel(); } catch (_) { emit('error', { reason: 'synthesis_failed' }); }
+    }
+  }
+  function validate(text, language, key) {
+    if (!optedIn) return fail('disabled');
+    if (!validLanguage(language)) return fail('invalid_language');
+    if (language !== selectedLanguage) return fail('language_mismatch');
+    if (typeof text !== 'string' || !text.trim() || Array.from(text).length > MAX_TEXT_CHARS)
+      return fail('invalid_text');
+    if (!((typeof key === 'string' && key.length > 0 && key.length <= 200)
+      || (typeof key === 'number' && Number.isFinite(key)))) return fail('invalid_key');
+    if (!localVoice(language)) return fail('local_voice_unavailable');
+    return true;
+  }
+  function begin(item) {
+    if (!optedIn || item.language !== selectedLanguage) return false;
+    const voice = localVoice(item.language);
+    if (!voice) { pending = []; return fail('local_voice_unavailable'); }
+    const ticket = ++generation;
+    let utterance;
+    try {
+      utterance = new Utterance(item.text);
+      // Never leave voice unset: that could select the browser's remote default.
+      utterance.voice = voice;
+      utterance.lang = voice.lang;
+    } catch (_) { pending = []; return fail('synthesis_failed'); }
+    current = { ...item, utterance, ticket };
+    utterance.onend = () => {
+      if (!optedIn || !current || current.ticket !== ticket || generation !== ticket) return;
+      current = null;
+      emit('end', { completedKey: item.key });
+      // onState can call stop(), disable(), or play(). Respect that reentrancy.
+      if (!optedIn || generation !== ticket || current) return;
+      const next = pending.shift();
+      if (next) begin(next);
+    };
+    utterance.onerror = () => {
+      if (!current || current.ticket !== ticket || generation !== ticket) return;
+      generation += 1;
+      current = null;
+      pending = [];
+      fail('synthesis_interrupted');
+    };
+    emit('start');
+    // A callback may revoke opt-in before speak() is reached.
+    if (!optedIn || !current || current.ticket !== ticket || generation !== ticket) return false;
+    try { synth.speak(utterance); }
+    catch (_) {
+      if (current && current.ticket === ticket) {
+        generation += 1; current = null; pending = []; fail('synthesis_failed');
+      }
+      return false;
+    }
+    return true;
+  }
+  function enable(language) {
+    if (!validLanguage(language)) return fail('invalid_language');
+    if (!supported()) return fail('speech_unavailable');
+    if (!localVoice(language)) {
+      optedIn = false;
+      selectedLanguage = language;
+      cancel();
+      return fail('local_voice_unavailable');
+    }
+    if (selectedLanguage !== language) cancel();
+    selectedLanguage = language;
+    optedIn = true;
+    emit('enabled');
+    return true;
+  }
+  function disable() {
+    optedIn = false;
+    cancel();
+    emit('disabled');
+  }
+  function stop() { cancel(); emit('stop'); }
+  function play(text, language, key) {
+    if (!validate(text, language, key)) return false;
+    cancel();
+    return begin({ text: text.trim(), language, key });
+  }
+  function enqueue(text, language, key) {
+    if (!validate(text, language, key)) return false;
+    if ((current && current.key === key) || pending.some((item) => item.key === key)) return false;
+    const item = { text: text.trim(), language, key };
+    if (!current) return begin(item);
+    if (pending.length >= MAX_PENDING) return fail('queue_full');
+    pending.push(item);
+    return true;
+  }
+  function voicesChanged() {
+    emit('voiceschanged', { available: selectedLanguage ? Boolean(localVoice(selectedLanguage)) : false });
+  }
+  if (synth && typeof synth.addEventListener === 'function') synth.addEventListener('voiceschanged', voicesChanged);
+  else if (synth && 'onvoiceschanged' in synth) {
+    const previous = synth.onvoiceschanged;
+    synth.onvoiceschanged = function (event) {
+      try { if (typeof previous === 'function') previous.call(this, event); }
+      finally { voicesChanged(); }
+    };
+  }
+  return {
+    enable, disable, play, stop, enqueue,
+    get enabled() { return optedIn; },
+    get currentKey() { return current ? current.key : null; },
+  };
+}
+
+  // END LOCAL SPEECH CONTROLLER
+
   const I18N = {
     en: {
       brandCaption: 'AN AI SOCIAL EXPERIMENT', localSession: 'LOCAL SESSION', newGame: 'New game',
