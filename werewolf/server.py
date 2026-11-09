@@ -101,7 +101,7 @@ def parse_setup(body):
 class Controller:
     """A single inference worker with detached, nonblocking spectator snapshots."""
 
-    def __init__(self, initial_setup=None):
+    def __init__(self, initial_setup=None, restored_runner=None):
         self.condition = threading.Condition(threading.RLock())
         self.runner = None
         self.views = {}
@@ -111,7 +111,11 @@ class Controller:
         self.step_requested = False
         self.stopped = False
         self.failure = None
-        self.create(initial_setup or {})
+        if restored_runner is None:
+            self.create(initial_setup or {})
+        else:
+            self.runner = restored_runner
+            self._capture()
         self.worker = threading.Thread(target=self._work, daemon=True, name="werewolf-turns")
         self.worker.start()
 
@@ -359,19 +363,28 @@ def main(argv=None):
     parser.add_argument("--preset", choices=("demo", "deepseek_flash"), default="demo")
     parser.add_argument("--check-deepseek", action="store_true",
                         help="Verify one real Flash speech request without creating a game.")
+    parser.add_argument("--resume", type=Path,
+                        help="Restore a trusted local private archive, paused, without inference.")
     args = parser.parse_args(argv)
     try:
         load_local_credentials()
+        if args.resume and (args.check_deepseek or args.preset != "demo"):
+            parser.error("--resume cannot be combined with --check-deepseek or --preset.")
         if args.check_deepseek:
             result = providers.check_deepseek(args.language)
             print(json.dumps(result, ensure_ascii=False), flush=True)
             return
-        controller = Controller({"preset": args.preset, "language": args.language})
+        if args.resume:
+            controller = Controller(restored_runner=Runner.from_archive(
+                json.loads(args.resume.read_text(encoding="utf-8"))))
+        else:
+            controller = Controller({"preset": args.preset, "language": args.language})
     except (ValueError, providers.ProviderError) as exc:
         parser.exit(1, f"{exc}\n")
     server = LocalServer(("127.0.0.1", args.port), controller)
     print(f"Werewolf spectator: http://127.0.0.1:{server.server_address[1]}", flush=True)
-    print("DeepSeek Flash players configured; press Play to start inference." if args.preset == "deepseek_flash"
+    print("Saved game restored and paused; press Play to resume inference." if args.resume else
+          "DeepSeek Flash players configured; press Play to start inference." if args.preset == "deepseek_flash"
           else "Default players are scripted demo players. Configure live providers before evaluating AI.", flush=True)
     try:
         server.serve_forever()

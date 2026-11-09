@@ -11,6 +11,26 @@ from werewolf.providers import PlayerConfig, build_request, wire_request
 
 
 class CompleteGameTests(unittest.TestCase):
+    def test_server_restores_game_paused_without_inference(self):
+        from unittest.mock import patch
+        configs, seed, language = parse_setup({})
+        original = Runner(configs, seed=seed, language=language)
+        original.step()
+        archive = original.export()
+        with patch("werewolf.providers.decide", side_effect=AssertionError("Unexpected model call")):
+            restored = Runner.from_archive(archive)
+            controller = Controller(restored_runner=restored)
+            try:
+                snapshot = controller.snapshot()
+                self.assertEqual(snapshot["status"], "paused")
+                self.assertEqual(snapshot["step"], original.max_step)
+                self.assertEqual(snapshot["events"], original.snapshot()["events"])
+                self.assertEqual(snapshot["configs"], original.snapshot()["configs"])
+                self.assertFalse(snapshot["busy"])
+            finally:
+                controller.close()
+                controller.worker.join(timeout=2)
+
     def test_hidden_role_swap_produces_identical_actual_player_requests(self):
         assignments = list(ROLES)
         swapped = assignments.copy()
