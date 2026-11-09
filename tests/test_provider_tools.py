@@ -67,6 +67,7 @@ class ProviderToolsTests(unittest.TestCase):
                        "OLD_PUBLIC_ONLY_ON_READ", "INTERNAL_ROUTING_ID"):
             self.assertNotIn(hidden, encoded)
         self.assertNotIn("response_format", body)
+        self.assertEqual("required", body["tool_choice"])
         self.assertEqual({"type": "disabled"}, body["thinking"])
         names = {t["function"]["name"] for t in body["tools"]}
         self.assertIn("action_speak", names)

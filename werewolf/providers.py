@@ -15,7 +15,7 @@ from urllib import error, request as http
 
 
 PROMPT_VERSION = "player-v3"
-TOOLS_PROMPT_VERSION = "player-tools-v1"
+TOOLS_PROMPT_VERSION = "player-tools-v2"
 MAX_TOOL_MODEL_REQUESTS = 6
 MAX_TOOL_READ_CALLS = 12
 MAX_TOOL_MESSAGE_CHARS = 60_000
@@ -319,7 +319,9 @@ def wire_request(config, player_request):
         if config.interaction_mode == "tools":
             body.pop("response_format")
             body["tools"] = _seat_harness(player_request).tools()
-            body["tool_choice"] = "auto"
+            # Without this the API defaults to auto, permitting a prose-only
+            # reply even though every game turn must end with a tool action.
+            body["tool_choice"] = "required"
         if config.thinking == "enabled":
             body["reasoning_effort"] = config.reasoning_effort or "low"
         if config.temperature is not None:
