@@ -1,6 +1,8 @@
 # Werewolf simulator design
 
-Status: initial design agreed on 2026-11-08; first implementation in progress.
+Status: initial design agreed on 2026-11-08; local prototype implemented.
+Live model validation and subscription sign-in remain outstanding; see
+[work breakdown](work-breakdown.md).
 
 ## Purpose
 
