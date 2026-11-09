@@ -149,3 +149,31 @@ Archive files contain hidden information; do not give them to active players.
 - [Live DeepSeek validation results](docs/live-validation.md)
 - [Prompt failure diagnosis](docs/prompt-diagnostics.md)
 - [Seat-scoped player tools](docs/tool-harness.md)
+
+### Spectator voice and election markers
+
+Player seats show public Sheriff nominations, withdrawals, and election history.
+These markers follow the selected replay checkpoint; private nomination choices
+are not shown before publication.
+
+Use **Voice off / 朗读：关** above the transcript to enable automatic reading of
+new player speech. Each speech also has **Read aloud / 朗读** for manual playback.
+The game language chooses English or Chinese independently of the UI language.
+Playback uses only local system voices reported by the browser; no additional
+API key is needed. Install the corresponding system voice if none is available.
+[Local voice identification](https://developer.mozilla.org/en-US/docs/Web/API/SpeechSynthesisVoice/localService)
+is part of the browser speech API. Voice starts off, history is not automatically
+read on enable, and changing perspective, replay, or games cancels old playback.
+The live queue is bounded; if narration falls behind it stops with a visible
+message, allowing manual selection instead.
+
+Run the browser-logic checks without making model calls:
+
+```sh
+node tests/speech.test.cjs
+node tests/speech-ui.test.cjs
+node tests/election-ui.test.cjs
+```
+
+See [the repeated-explosion diagnosis](docs/explosion-diagnostics.md) for the
+evidence and the new v5 prompt changes.

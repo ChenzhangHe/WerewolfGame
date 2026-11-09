@@ -180,7 +180,7 @@ function createSpeechPlayer({ synth, Utterance, onState = () => {} } = {}) {
       demoCopy: 'These players are smoke-test scripts, not a measure of AI capability.',
       mixedDemoTitle: 'Includes scripted players', mixedDemoCopy: 'Some seats use demonstration scripts. Treat this as a mixed test, not a controlled AI comparison.',
       play: 'Play', pause: 'Pause', perspective: 'Perspective', mystery: 'Mystery', omniscient: 'Omniscient',
-      follow: 'Follow a player', village: 'The village', speaking: 'Speaking', speakingNow: 'Speaking', currentSpeaker: '{name} is speaking', closeDetails: 'Close details', details: 'Game details', sheriff: 'Sheriff',
+      follow: 'Follow a player', village: 'The village', speaking: 'Speaking', speakingNow: 'Speaking', voiceOn: 'Voice on', voiceOff: 'Voice off', readSpeech: 'Read aloud', stopReading: 'Stop reading', readingNow: 'Reading {name}', voiceHint: 'Read new speech with a local voice in the game language. Use Read aloud on a past speech to hear it.', voiceMissing: 'No local voice is available for this game language. Install a system voice and try again.', voiceFailed: 'Speech playback is unavailable. Try again in a supported browser.', voiceBacklog: 'Voice playback fell behind and was stopped. Select a speech to read or enable voice again.', candidate: 'Running', withdrawn: 'Withdrawn', nominated: 'Ran', elected: 'Elected', currentSpeaker: '{name} is speaking', closeDetails: 'Close details', details: 'Game details', sheriff: 'Sheriff',
       eliminated: 'Eliminated', alive: 'alive', hiddenRole: 'Unknown role', transcript: 'The conversation',
       autoScroll: 'Follow latest ↓', autoScrollOff: 'Follow latest', waitingTitle: 'Before the first whisper',
       waitingCopy: 'Start the game to watch the village come alive.', transcriptNote: 'Claims are not confirmed roles.',
@@ -241,7 +241,7 @@ function createSpeechPlayer({ synth, Utterance, onState = () => {} } = {}) {
       demoCopy: '当前玩家由测试脚本驱动，演示结果不代表 AI 能力。',
       mixedDemoTitle: '包含脚本玩家', mixedDemoCopy: '部分席位使用演示脚本。本局属于混合测试，不能视为受控的 AI 能力对比。',
       play: '开始', pause: '暂停', perspective: '观战视角', mystery: '悬疑视角', omniscient: '全知视角',
-      follow: '跟随玩家', village: '村庄席位', speaking: '当前发言', speakingNow: '发言中', currentSpeaker: '{name} 正在发言', closeDetails: '关闭详情', details: '对局详情', sheriff: '警长',
+      follow: '跟随玩家', village: '村庄席位', speaking: '当前发言', speakingNow: '发言中', voiceOn: '朗读：开', voiceOff: '朗读：关', readSpeech: '朗读', stopReading: '停止朗读', readingNow: '正在朗读 {name}', voiceHint: '用对局语言的本地语音朗读新发言；过去的发言可单独点击朗读。', voiceMissing: '没有可用的本地对局语言语音，请安装对应的系统语音后重试。', voiceFailed: '语音播放暂不可用，请重试或使用支持语音的浏览器。', voiceBacklog: '朗读已落后于对局，已停止播放。可点选发言朗读，或重新开启。', candidate: '上警', withdrawn: '退水', nominated: '曾上警', elected: '当选', currentSpeaker: '{name} 正在发言', closeDetails: '关闭详情', details: '对局详情', sheriff: '警长',
       eliminated: '已出局', alive: '存活', hiddenRole: '身份未知', transcript: '场上记录',
       autoScroll: '跟随最新 ↓', autoScrollOff: '跟随最新', waitingTitle: '第一声低语之前',
       waitingCopy: '开始对局，静候村庄苏醒。', transcriptNote: '身份宣称不等于身份确认。',
@@ -302,6 +302,7 @@ function createSpeechPlayer({ synth, Utterance, onState = () => {} } = {}) {
     lastEventSignature: '', draft: null, providerInfo: null, providerLoading: false,
     connectionChecking: false, connectionResult: null, flashApplied: false,
     detailsPanel: 'dossier', drawerReturnSeat: null,
+    autoSpeech: false, speechEpoch: 0, speechScope: '', speechEvents: null, speechStep: null, speechError: '', speechGameLanguage: null, speechHandlingError: false,
   };
   const names = {
     en: ['Rowan', 'Iris', 'Ash', 'Juniper', 'Sage', 'Wren', 'Hazel', 'Reed', 'Laurel', 'Finch', 'Briar', 'Clover'],
@@ -313,6 +314,78 @@ function createSpeechPlayer({ synth, Utterance, onState = () => {} } = {}) {
   };
   const avatarColors = ['#485344', '#4c5140', '#3d514b', '#54513d', '#455547', '#424c50', '#4f5845', '#4c5041', '#3f5143', '#54533e', '#455343', '#4c594b'];
 
+  const speechPlayer = createSpeechPlayer({ synth: window.speechSynthesis,
+    Utterance: window.SpeechSynthesisUtterance, onState: onSpeechState });
+  const speechKinds = new Set(['speech', 'speak', 'campaign', 'tie_speech', 'last_words', 'wolf_discussion', 'wolf_chat']);
+  function speechKey(index) { return `${state.speechEpoch}:${index}`; }
+  function isSpeech(event) { return Boolean(event.seat) && speechKinds.has(event.kind); }
+  function speechLanguage() { return state.snapshot?.language || state.locale; }
+  function resetSpeechView() {
+    speechPlayer.stop(); state.speechEpoch += 1; state.speechEvents = null;
+    state.speechScope = ''; state.speechStep = null; state.speechError = '';
+  }
+  function changePerspective() {
+    resetSpeechView(); state.snapshot = null; state.lastEventSignature = ''; render(); refresh();
+  }
+  function onSpeechState(update) {
+    if (update.type === 'error') {
+      if (state.speechHandlingError) return;
+      state.autoSpeech = false; state.speechHandlingError = true;
+      try { speechPlayer.disable(); } finally { state.speechHandlingError = false; }
+      state.speechError = update.reason;
+    } else if (['enabled', 'start', 'stop', 'disabled'].includes(update.type)) state.speechError = '';
+    if (update.type === 'voiceschanged' && update.available) state.speechError = '';
+    renderSpeechControls();
+    if ($('seats')) renderSeats(getPlayers());
+  }
+  function renderSpeechControls() {
+    const toggle = $('speech-toggle');
+    if (!toggle) return;
+    toggle.textContent = t(state.autoSpeech ? 'voiceOn' : 'voiceOff');
+    toggle.setAttribute('aria-pressed', String(state.autoSpeech)); toggle.title = t('voiceHint');
+    toggle.disabled = !state.snapshot || !window.speechSynthesis || !window.SpeechSynthesisUtterance;
+    let status = '';
+    if (state.speechError) status = t(state.speechError === 'local_voice_unavailable' ? 'voiceMissing'
+      : state.speechError === 'queue_full' ? 'voiceBacklog' : 'voiceFailed');
+    else if (speechPlayer.currentKey != null) {
+      const index = Number(String(speechPlayer.currentKey).split(':')[1]);
+      const seat = state.snapshot?.events?.[index]?.seat;
+      if (seat) status = t('readingNow', { name: playerName(seat) });
+    }
+    $('speech-status').hidden = !status; $('speech-status').textContent = status; $('speech-status').title = status;
+    document.querySelectorAll('[data-speech-key]').forEach((button) => {
+      const reading = button.dataset.speechKey === speechPlayer.currentKey;
+      button.textContent = t(reading ? 'stopReading' : 'readSpeech');
+      button.setAttribute('aria-pressed', String(reading));
+      button.setAttribute('aria-label', `${t(reading ? 'stopReading' : 'readSpeech')} · ${playerName(button.dataset.speechSeat)}`);
+      button.closest('.event')?.classList.toggle('reading', reading);
+    });
+  }
+  function syncSpeech(snapshot) {
+    if (!snapshot) return;
+    const scope = [state.mode, state.followSeat, state.at === null ? 'live' : `replay-${state.at}`, snapshot.language].join(':');
+    const events = snapshot.events || [], signatures = events.map((event) => JSON.stringify(event));
+    const reset = scope !== state.speechScope || state.speechEvents === null
+      || signatures.length < state.speechEvents.length || state.speechEvents.some((text, index) => text !== signatures[index])
+      || (state.speechStep !== null && snapshot.step < state.speechStep);
+    const previousCount = reset ? events.length : state.speechEvents.length;
+    if (reset) {
+      if (state.speechGameLanguage != null && state.speechGameLanguage !== snapshot.language) {
+        state.autoSpeech = false; speechPlayer.disable();
+      } else speechPlayer.stop();
+      state.speechEpoch += 1;
+      // A reset changes keys even when this checkpoint has the same public text.
+      state.lastEventSignature = ''; renderEvents(events);
+    }
+    state.speechScope = scope; state.speechEvents = signatures; state.speechStep = snapshot.step;
+    state.speechGameLanguage = snapshot.language;
+    if (!reset && state.autoSpeech && state.at === null) {
+      for (let index = previousCount; index < events.length; index++) {
+        if (isSpeech(events[index]) && !speechPlayer.enqueue(eventText(events[index]), snapshot.language, speechKey(index))) break;
+      }
+    }
+    renderSpeechControls();
+  }
   function readLocale() {
     try { const saved = localStorage.getItem('werewolf-locale'); if (saved === 'en' || saved === 'zh') return saved; } catch (_) { /* Storage may be disabled. */ }
     return navigator.language?.startsWith('zh') ? 'zh' : 'en';
@@ -438,6 +511,7 @@ function createSpeechPlayer({ synth, Utterance, onState = () => {} } = {}) {
     $('go-live').title = state.at === null ? t('live') : t('replayHint');
     $('replay-back').disabled = !state.snapshot || index <= 0;
     $('export').disabled = !state.snapshot;
+    renderSpeechControls();
   }
   function render() {
     renderControls();
@@ -466,6 +540,7 @@ function createSpeechPlayer({ synth, Utterance, onState = () => {} } = {}) {
     $('current-speaker').textContent = speakers.length ? t('currentSpeaker', { name: speakers.join(' · ') }) : '';
     renderSeats(players);
     renderEvents(snapshot?.events || []);
+    syncSpeech(snapshot);
     renderDossier();
     renderVotes(snapshot?.events || []);
   }
@@ -476,8 +551,44 @@ function createSpeechPlayer({ synth, Utterance, onState = () => {} } = {}) {
       return option;
     }));
   }
+  // BEGIN PUBLIC ELECTION MARKS
+  function publicElectionMarks(events, players, finished = false) {
+    let original = new Set(), current = new Set(), withdrawn = new Set();
+    const dead = new Set();
+    let open = false, elected = null;
+    const seats = (values) => new Set((Array.isArray(values) ? values : []).map(Number)
+      .filter((seat) => Number.isInteger(seat) && seat >= 1 && seat <= 12));
+    for (const event of events) {
+      if (event.audience != null && event.audience !== 'public' && event.audience !== 'all') continue;
+      if (event.kind === 'explosion' || event.kind === 'exile') dead.add(Number(event.seat));
+      if (event.kind === 'dawn') for (const seat of seats(event.data?.deaths)) dead.add(seat);
+      if (event.kind === 'hunter_shot') dead.add(Number(event.data?.target));
+      if (event.kind === 'nominations') {
+        original = seats(event.data?.candidates); current = new Set(original);
+        withdrawn = new Set(); open = true; elected = null;
+      } else if (event.kind === 'withdrawals' && open) {
+        const remaining = seats(event.data?.candidates);
+        for (const seat of current) if (!remaining.has(seat) && !dead.has(seat)) withdrawn.add(seat);
+        current = remaining;
+      } else if (event.kind === 'sheriff_ballots' && open) {
+        const tally = Object.entries(event.data?.tally || {}).filter(([, votes]) => typeof votes === 'number' && votes > 0);
+        const maximum = Math.max(0, ...tally.map(([, votes]) => votes));
+        const leaders = tally.filter(([, votes]) => votes === maximum).map(([seat]) => Number(seat));
+        if (leaders.length > 1) current = seats(leaders);
+      } else if (event.kind === 'sheriff') {
+        open = false; elected = Number(event.data?.sheriff) || null;
+      }
+    }
+    const alive = new Set(players.filter((player) => player.alive).map((player) => Number(player.seat)));
+    const marks = new Map();
+    for (const seat of original) marks.set(seat, withdrawn.has(seat) ? 'withdrawn' : elected === seat ? 'elected'
+      : open && !finished && current.has(seat) && alive.has(seat) ? 'candidate' : 'nominated');
+    return marks;
+  }
+  // END PUBLIC ELECTION MARKS
   function renderSeats(players) {
     const acting = (state.snapshot?.current_speakers || []).map((seat) => Number(typeof seat === 'object' ? seat.seat : seat));
+    const electionMarks = publicElectionMarks(state.snapshot?.events || [], players, Boolean(state.snapshot?.winner));
     const focusedSeat = $('seats').contains(document.activeElement) ? document.activeElement.dataset.seat : null;
     $('seats').replaceChildren(...[...players].sort((a, b) => a.seat - b.seat).map((player, index) => {
       const seat = node('button', 'seat'); seat.type = 'button';
@@ -485,10 +596,14 @@ function createSpeechPlayer({ synth, Utterance, onState = () => {} } = {}) {
       seat.style.setProperty('--avatar-bg', avatarColors[index % avatarColors.length]);
       seat.classList.toggle('dead', !player.alive);
       seat.classList.toggle('active', acting.includes(Number(player.seat)));
+      const readingIndex = speechPlayer.currentKey == null ? null : Number(String(speechPlayer.currentKey).split(':')[1]);
+      seat.classList.toggle('audio-playing', readingIndex !== null && Number(state.snapshot?.events?.[readingIndex]?.seat) === Number(player.seat));
       seat.classList.toggle('selected', $('details-dialog').open && state.detailsPanel === 'dossier' && Number(player.seat) === state.detailSeat);
       if (acting.includes(Number(player.seat))) seat.setAttribute('aria-current', 'true');
       seat.setAttribute('aria-label', `${t('inspect', { seat: player.seat })}: ${player.name}, ${roleName(permittedRole(player))}, ${t(player.alive ? 'alive' : 'eliminated')}`);
       seat.title = `${player.seat} · ${player.name}${acting.includes(Number(player.seat)) ? ` · ${t('speakingNow')}` : ''}`;
+      const electionMark = electionMarks.get(Number(player.seat));
+      if (electionMark) { seat.title += ` · ${t(electionMark)}`; seat.setAttribute('aria-label', `${seat.getAttribute('aria-label')}, ${t(electionMark)}`); }
       const wrap = node('span', 'avatar-wrap');
       wrap.append(node('span', 'avatar', [...String(player.name)][0] || '?'), node('span', 'seat-number', player.seat));
       if (acting.includes(Number(player.seat))) {
@@ -498,10 +613,13 @@ function createSpeechPlayer({ synth, Utterance, onState = () => {} } = {}) {
       }
       if (player.sheriff) { const badge = node('span', 'sheriff-badge', '✦'); badge.title = t('sheriff'); wrap.append(badge); }
       const role = permittedRole(player);
-      seat.append(wrap, node('span', 'seat-name', player.name), node('span', `seat-role ${role === 'wolf' ? 'wolf' : ''}`, player.alive ? roleName(role) : `${t('eliminated')} · ${roleName(role)}`));
+      const roleLine = node('span', `seat-role ${role === 'wolf' ? 'wolf' : ''}`);
+      roleLine.append(node('span', 'seat-role-text', player.alive ? roleName(role) : `${t('eliminated')} · ${roleName(role)}`));
+      if (electionMark) roleLine.append(node('span', `election-tag ${electionMark}`, t(electionMark)));
+      seat.append(wrap, node('span', 'seat-name', player.name), roleLine);
       seat.addEventListener('click', () => {
         state.detailSeat = Number(player.seat);
-        if (state.mode === 'player') { state.followSeat = Number(player.seat); refresh(); }
+        if (state.mode === 'player' && state.followSeat !== Number(player.seat)) { state.followSeat = Number(player.seat); changePerspective(); }
         else render();
         state.drawerReturnSeat = Number(player.seat);
         openDetails('dossier');
@@ -526,19 +644,30 @@ function createSpeechPlayer({ synth, Utterance, onState = () => {} } = {}) {
     const previousScroll = transcript.scrollTop;
     const children = [];
     let priorDay = null;
-    for (const event of events) {
+    for (const [index, event] of events.entries()) {
       if (event.day !== priorDay) {
         const label = node('div', 'phase-separator', `${t(phaseIsNight(event) ? 'night' : 'day')} ${event.day ?? 1}`);
         children.push(label); priorDay = event.day;
       }
-      const speech = Boolean(event.seat) && ['speech', 'speak', 'campaign', 'tie_speech', 'last_words', 'wolf_discussion', 'wolf_chat'].includes(event.kind);
+      const speech = isSpeech(event);
       const item = node('article', `event ${speech ? '' : 'system'} ${isPrivate(event) ? 'private' : ''}`);
       const head = node('div', 'event-head');
       if (event.seat) head.append(node('span', 'event-seat', event.seat));
       head.append(node('span', 'event-speaker', speech ? playerName(event.seat) : t('referee')));
       if (isPrivate(event)) head.append(node('span', 'audience-tag', typeof event.audience === 'string' && event.audience.includes('wolf') ? t('wolfTeam') : t('private')));
       const meta = node('span', 'event-meta', phaseName(event.phase || event.kind));
-      head.append(meta); item.append(head, node('p', 'event-body', eventText(event)));
+      head.append(meta);
+      if (speech) {
+        const play = node('button', 'text-button speech-play', t('readSpeech')); play.type = 'button';
+        const epoch = state.speechEpoch, language = speechLanguage(), key = speechKey(index);
+        play.dataset.speechKey = key; play.dataset.speechSeat = String(event.seat);
+        play.addEventListener('click', () => {
+          if (epoch !== state.speechEpoch || !play.isConnected) return;
+          if (speechPlayer.currentKey === key) speechPlayer.stop();
+          else if (speechPlayer.enable(language)) speechPlayer.play(eventText(event), language, key);
+        }); head.append(play);
+      }
+      item.append(head, node('p', 'event-body', eventText(event)));
       children.push(item);
     }
     if (!children.length) {
@@ -745,7 +874,7 @@ function createSpeechPlayer({ synth, Utterance, onState = () => {} } = {}) {
       const language = $('setup-language').value;
       const players = state.draft.map((config) => ({ ...config, name: config.name.trim(), model: config.model.trim(), language }));
       await api('/api/game', { seed: Number($('setup-seed').value), language, players });
-      state.at = null; state.lastEventSignature = ''; closeDialog('setup-dialog');
+      resetSpeechView(); state.at = null; state.lastEventSignature = ''; closeDialog('setup-dialog');
       await refresh(); notice(t('gameReplaced'));
     } catch (error) { $('setup-error').textContent = error.message; $('setup-error').hidden = false; }
     finally { state.busy = false; $('setup-create').disabled = false; renderControls(); }
@@ -776,13 +905,18 @@ function createSpeechPlayer({ synth, Utterance, onState = () => {} } = {}) {
   $('locale-zh').addEventListener('click', () => setLocale('zh'));
   $('play').addEventListener('click', () => command(state.snapshot?.status === 'running' ? '/api/pause' : '/api/play'));
   $('step').addEventListener('click', () => command('/api/step'));
-  $('perspective').addEventListener('change', (event) => { state.mode = event.target.value; if (state.mode === 'player') state.detailSeat = state.followSeat; state.lastEventSignature = ''; refresh(); });
-  $('follow-seat').addEventListener('change', (event) => { state.followSeat = Number(event.target.value); state.detailSeat = state.followSeat; refresh(); });
+  $('perspective').addEventListener('change', (event) => { state.mode = event.target.value; if (state.mode === 'player') state.detailSeat = state.followSeat; state.lastEventSignature = ''; changePerspective(); });
+  $('follow-seat').addEventListener('change', (event) => { state.followSeat = Number(event.target.value); state.detailSeat = state.followSeat; changePerspective(); });
   $('detail-seat').addEventListener('change', (event) => { state.detailSeat = Number(event.target.value); renderDossier(); renderSeats(getPlayers()); });
+  $('speech-toggle').addEventListener('click', () => {
+    if (state.autoSpeech) { state.autoSpeech = false; speechPlayer.disable(); }
+    else if (speechPlayer.enable(speechLanguage())) { state.autoSpeech = true; renderSpeechControls(); }
+  });
+  window.addEventListener('pagehide', () => speechPlayer.disable());
   $('autoscroll').addEventListener('click', () => { state.autoScroll = !state.autoScroll; renderControls(); if (state.autoScroll) $('transcript').scrollTop = $('transcript').scrollHeight; });
-  $('replay-range').addEventListener('input', (event) => { state.at = Number(event.target.value); refresh(); });
-  $('replay-back').addEventListener('click', () => { state.at = Math.max(0, (state.at ?? state.snapshot?.step ?? 0) - 1); refresh(); });
-  $('go-live').addEventListener('click', () => { state.at = null; refresh(); });
+  $('replay-range').addEventListener('input', (event) => { state.at = Number(event.target.value); changePerspective(); });
+  $('replay-back').addEventListener('click', () => { state.at = Math.max(0, (state.at ?? state.snapshot?.step ?? 0) - 1); changePerspective(); });
+  $('go-live').addEventListener('click', () => { state.at = null; changePerspective(); });
   $('setup-open').addEventListener('click', openSetup);
   $('setup-close').addEventListener('click', () => closeDialog('setup-dialog'));
   $('setup-cancel').addEventListener('click', () => closeDialog('setup-dialog'));

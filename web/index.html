@@ -32,9 +32,9 @@
         </section>
 
         <section class="panel transcript-panel" aria-labelledby="transcript-heading">
-          <div class="panel-heading"><div class="transcript-title"><h2 id="transcript-heading" data-i18n="transcript">The conversation</h2><span id="current-speaker" class="current-speaker" hidden></span></div><div class="panel-tools"><button type="button" class="text-button" id="votes-open" aria-haspopup="dialog" aria-controls="details-dialog" data-i18n="voteLedger">Voting record</button><button class="text-button" id="autoscroll" aria-pressed="true" data-i18n="autoScroll">Follow latest ↓</button></div></div>
+          <div class="panel-heading"><div class="transcript-title"><h2 id="transcript-heading" data-i18n="transcript">The conversation</h2><span id="current-speaker" class="current-speaker" hidden></span></div><div class="panel-tools"><button type="button" class="text-button" id="votes-open" aria-haspopup="dialog" aria-controls="details-dialog" data-i18n="voteLedger">Voting record</button><button type="button" class="text-button speech-toggle" id="speech-toggle" aria-pressed="false">Voice off</button><button class="text-button" id="autoscroll" aria-pressed="true" data-i18n="autoScroll">Follow latest ↓</button></div></div>
           <div class="transcript" id="transcript" tabindex="0" aria-label="Game event transcript"><div class="empty-state"><span aria-hidden="true">◌</span><h3 data-i18n="waitingTitle">Before the first whisper</h3><p data-i18n="waitingCopy">Start the game to watch the village come alive.</p></div></div>
-          <div class="transcript-footer"><span class="small muted" id="event-count">0 events</span><span class="small muted" data-i18n="transcriptNote">Claims are not confirmed roles.</span></div>
+          <div class="transcript-footer"><span class="small muted" id="event-count">0 events</span><span id="speech-status" class="speech-status" role="status" aria-live="polite" hidden></span><span class="small muted" data-i18n="transcriptNote">Claims are not confirmed roles.</span></div>
         </section>
       </div>
 

@@ -76,3 +76,14 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;gap:10px;padding:10p
 /* Anchor seat labels to the avatar itself, without inline baseline spacing. */
 .seat .avatar-wrap{display:inline-flex;align-self:center;line-height:1}
 .seat-number{left:14.645%;top:85.355%;bottom:auto;transform:translate(-50%,-50%);display:grid;place-items:center;padding:0;line-height:1;text-align:center;font-variant-numeric:tabular-nums}
+
+/* Public election history stays separate from secret roles and the current badge. */
+.seat .seat-role{display:flex;align-items:center;justify-self:stretch;gap:4px;min-width:0;overflow:hidden}
+.seat-role-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.election-tag{flex:none;border:1px solid #719a9270;border-radius:4px;background:#719a9214;color:#b6d4ce;padding:0 4px;font-size:8px;line-height:12px}
+.election-tag.candidate{border-color:#85c7ba88;background:#85c7ba1c;color:#b8e5db}.election-tag.elected{border-color:#e9bb7666;color:var(--amber)}.election-tag.withdrawn,.election-tag.nominated{color:var(--muted);background:transparent;border-color:#9aa79c40}
+@media(max-width:760px){.seat .seat-role{align-self:stretch;justify-content:center;gap:2px}.election-tag{font-size:7px;line-height:10px;padding:0 2px}}
+
+.speech-toggle[aria-pressed=true],.speech-play[aria-pressed=true]{color:var(--amber)}.speech-play{font-size:9px;white-space:nowrap;padding:1px 5px;border:1px solid var(--line);border-radius:4px}.speech-play:hover{border-color:var(--amber-dim)}
+.speech-status{min-width:0;max-width:55%;font-size:10px;color:var(--amber);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.event.reading{border-left:2px solid #85c7ba;padding-left:12px}.seat.audio-playing:not(.active) .avatar{border-color:#85c7ba;box-shadow:0 0 0 3px #85c7ba20}
+@media(max-width:760px){.speech-status{max-width:100%;font-size:9px}.speech-play{font-size:8px}.transcript-panel .panel-tools{gap:8px}}
