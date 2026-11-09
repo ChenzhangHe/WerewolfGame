@@ -54,6 +54,17 @@ class ToolAuditTests(unittest.TestCase):
             runner.step()
         return json.loads(json.dumps(runner.export()))
 
+    def test_v7_action_phase_notice_is_verified_in_full_wire_audit(self):
+        archive = self.archive(prompt_version='player-tools-v7', read_hops=11)
+        report = AUDIT(archive)
+        self.assertEqual(12, report['max_hops_per_decision'])
+        self.assertEqual(4, report['accepted'])
+        final = archive['inference'][0]['tool_trace'][-1]['wire_request']
+        self.assertIn('ACTION PHASE:', final['messages'][0]['content'])
+        final['messages'][0]['content'] += ' UNAUTHORIZED_CONTEXT'
+        with self.assertRaisesRegex(AssertionError, 'Wire body'):
+            AUDIT(archive)
+
     def test_valid_archive_counts_reads_actions_hops_and_usage(self):
         report = AUDIT(self.archive())
         self.assertEqual(4, report['decisions'])

@@ -97,7 +97,7 @@ original profile. See [the explosion diagnosis](explosion-diagnostics.md).
 
 ## V6 larger context budget
 
-New games use `player-tools-v6`: 128,000 characters per request and 1,000,000
+Protocol `player-tools-v6` uses: 128,000 characters per request and 1,000,000
 characters cumulatively per decision, including repeated request messages and
 returned content. These are application character limits, not token counts or
 the provider model's context window. The initial briefing, read permissions,
@@ -112,3 +112,23 @@ update only the top-level `tool_prompt_version` and each pending request's
 This deliberately changes the remaining decisions' budget and must be reported
 when using that game as an evaluation. Successful cached pending actions remain
 valid because v5/v6 briefings and action capabilities are identical.
+
+
+## V7 read-to-action transition
+
+New games use `player-tools-v7`, retaining v6 character budgets and seat isolation.
+The model may make twelve requests with at most twelve read calls. Reads close
+on the twelfth request, or earlier once twelve reads have been used. That request
+exposes action tools only and adds an explicit host-system ACTION PHASE notice
+listing those actions. No correction retry or automatic action is introduced;
+a model that still calls a revoked tool is recorded and paused.
+
+A v6 game stopped at day 2, batch 78 because its sixth response requested public
+log offset 40 after five requests spent on wolf chat, notes, and log pages 0–30.
+The sixth request only offered pass/explode, so the read was correctly rejected
+without execution. V7 allows more time to finish those reads and explicitly
+announces the eventual transition. Ordinary restores preserve earlier profiles.
+An explicitly recovered game can update its top-level and pending request
+versions to v7; historical requests stay unchanged and cached successes are
+retained. Such a recovery changes the remaining protocol and is not a uniform
+evaluation run.

@@ -80,6 +80,7 @@ def audit(archive):
         trace = record.get('tool_trace', [])
         max_hops = max(max_hops, len(trace))
         terminal_count = 0
+        record_reads = 0
         for hop_index, hop in enumerate(trace):
             hops += 1
             prompt_tokens += hop.get("usage", {}).get("prompt_tokens", 0)
@@ -90,11 +91,21 @@ def audit(archive):
             # tool_choice and absence of unexpected context-bearing fields.
             expected_body = deepcopy(expected)
             expected_body['messages'] = deepcopy(expected_messages)
-            if request.get('prompt_version') in {'player-tools-v4', 'player-tools-v5', 'player-tools-v6'} and hop_index == 5:
-                # V4's final model request still lets the model choose, but
-                # offers terminal actions only after five opportunities to read.
+            limits = p.tool_protocol_limits(request['prompt_version'])
+            action_phase = limits['final_action_stage'] and (
+                hop_index == limits['model_requests'] - 1 or
+                (request['prompt_version'] == 'player-tools-v7' and record_reads >= limits['read_calls']))
+            if action_phase:
+                # Verify the versioned action-only stage and host transition notice.
                 expected_body['tools'] = [tool for tool in expected_body['tools']
                                           if tool['function']['name'].startswith('action_')]
+                if request['prompt_version'] == 'player-tools-v7':
+                    tool_names = ", ".join(tool['function']['name'] for tool in expected_body['tools'])
+                    expected_body['messages'][0]['content'] += (
+                        "\nACTION PHASE: Reading is now closed for this decision. "
+                        "Call exactly one offered action function now: " + tool_names +
+                        ". No read functions are available. Do not request another page. "
+                        "Choose your action using the information already retrieved.")
             require(body == expected_body, 'Wire body differs from the seat-local request.')
             require(all('reasoning_content' not in m for m in body['messages']))
             failed_hop = bool(hop.get('error'))
@@ -148,6 +159,7 @@ def audit(archive):
                     require(result['result'] == record['response'], 'Recorded action differs from the native call.')
                 else:
                     reads += 1
+                    record_reads += 1
                     executed_reads.append((call, result))
             if executed_reads and not failed_hop:
                 require(len({call['id'] for call in calls}) == len(calls), 'Native tool IDs must be unique within a hop.')

@@ -15,7 +15,7 @@ from urllib import error, request as http
 
 
 PROMPT_VERSION = "player-v3"
-TOOLS_PROMPT_VERSION = "player-tools-v6"
+TOOLS_PROMPT_VERSION = "player-tools-v7"
 MAX_TOOL_MODEL_REQUESTS = 6
 MAX_TOOL_READ_CALLS = 12
 MAX_TOOL_MESSAGE_CHARS = 1_000_000
@@ -194,26 +194,26 @@ def _seat_harness(player_request):
     context = player_request["tool_context"]
     return SeatToolHarness(copy.deepcopy(context["observation"]), copy.deepcopy(context["decision"]),
                            notes=context["private_notes"], language=player_request["language"],
-                           fixed_pages=player_request.get("prompt_version") in {"player-tools-v3", "player-tools-v4", "player-tools-v5", "player-tools-v6"},
-                           explicit_consequences=player_request.get("prompt_version") in {"player-tools-v5", "player-tools-v6"})
+                           fixed_pages=player_request.get("prompt_version") in {"player-tools-v3", "player-tools-v4", "player-tools-v5", "player-tools-v6", "player-tools-v7"},
+                           explicit_consequences=player_request.get("prompt_version") in {"player-tools-v5", "player-tools-v6", "player-tools-v7"})
 
 
 def tool_protocol_limits(version):
     """Protocol versions pin resource limits and final-stage capabilities."""
-    if version not in {"player-tools-v1", "player-tools-v2", "player-tools-v3", "player-tools-v4", "player-tools-v5", "player-tools-v6"}:
+    if version not in {"player-tools-v1", "player-tools-v2", "player-tools-v3", "player-tools-v4", "player-tools-v5", "player-tools-v6", "player-tools-v7"}:
         raise ProviderError("Unsupported player tool protocol.")
-    current = version in {"player-tools-v4", "player-tools-v5", "player-tools-v6"}
-    return {"model_requests": MAX_TOOL_MODEL_REQUESTS, "read_calls": MAX_TOOL_READ_CALLS,
-            "message_chars": (MAX_TOOL_MESSAGE_CHARS if version == "player-tools-v6" else
+    current = version in {"player-tools-v4", "player-tools-v5", "player-tools-v6", "player-tools-v7"}
+    return {"model_requests": 12 if version == "player-tools-v7" else MAX_TOOL_MODEL_REQUESTS, "read_calls": MAX_TOOL_READ_CALLS,
+            "message_chars": (MAX_TOOL_MESSAGE_CHARS if version in {"player-tools-v6", "player-tools-v7"} else
                               V4_MAX_TOOL_MESSAGE_CHARS if current else LEGACY_MAX_TOOL_MESSAGE_CHARS),
-            "context_chars": (MAX_TOOL_CONTEXT_CHARS if version == "player-tools-v6" else
+            "context_chars": (MAX_TOOL_CONTEXT_CHARS if version in {"player-tools-v6", "player-tools-v7"} else
                               V4_MAX_TOOL_CONTEXT_CHARS if current else None),
             "final_action_stage": current}
 
 
 def _build_tools_request(config, observation, decision, notes, language, version=None):
     version = version or TOOLS_PROMPT_VERSION
-    if version not in {"player-tools-v1", "player-tools-v2", "player-tools-v3", "player-tools-v4", "player-tools-v5", "player-tools-v6"}:
+    if version not in {"player-tools-v1", "player-tools-v2", "player-tools-v3", "player-tools-v4", "player-tools-v5", "player-tools-v6", "player-tools-v7"}:
         raise ProviderError("Unsupported player tool protocol.")
     result = {
         "prompt_version": version, "provider": config.provider,
@@ -239,13 +239,13 @@ def _build_tools_request(config, observation, decision, notes, language, version
         "native function arguments. Do not emit an action as ordinary text or wrap it in JSON. "
         "Do not mix a terminal action with read calls, or issue multiple terminal actions. "
         "Optional notes are a concise private strategy self-report, not reasoning traces. "
-        f"This decision permits at most {MAX_TOOL_MODEL_REQUESTS} model requests and "
+        f"This decision permits at most {tool_protocol_limits(version)['model_requests']} model requests and "
         f"{MAX_TOOL_READ_CALLS} read calls; finish before the budget is exhausted. "
         + ("All speech, wolf discussion, and private notes must be in Simplified Chinese (简体中文). "
            if language == "zh" else "All speech, wolf discussion, and private notes must be in English. ")
         + "Keep tool names and enum values exactly as declared. Your fixed personality: " + config.personality
     )
-    if version in {"player-tools-v4", "player-tools-v5", "player-tools-v6"}:
+    if version in {"player-tools-v4", "player-tools-v5", "player-tools-v6", "player-tools-v7"}:
         result["instructions"] += (
             "\nUse targeted public-log search instead of repeatedly retrieving broad history. "
             "All reads are from this same frozen snapshot; repeated reads cannot produce new events. "
@@ -253,6 +253,13 @@ def _build_tools_request(config, observation, decision, notes, language, version
             "private results or notes; use the information you already retrieved. The sixth and final "
             "model request exposes only your current action_ functions, with tool choice required. "
             "Choose exactly one of those actions on that final step; no read tools are available then."
+        )
+    if version == "player-tools-v7":
+        result["instructions"] = result["instructions"].replace("sixth and final", "twelfth and final")
+        result["instructions"] += (
+            " The host may close reads earlier when all twelve read calls are used. "
+            "When the host announces ACTION PHASE, use only the listed action functions, "
+            "even if earlier messages mentioned read tools. Decide using the information already available."
         )
     if len(json.dumps(result, ensure_ascii=False)) > MAX_CONTEXT_CHARS:
         raise ProviderError("Player context exceeded the configured limit; game paused without truncation.")
@@ -545,10 +552,19 @@ def _tools_live(config, player_request):
     for hop in range(limits["model_requests"]):
         body = copy.deepcopy(base)
         body["messages"] = copy.deepcopy(messages)
-        if limits["final_action_stage"] and hop == limits["model_requests"] - 1:
+        if limits["final_action_stage"] and (hop == limits["model_requests"] - 1 or
+                (player_request.get("prompt_version") == "player-tools-v7" and read_calls >= limits["read_calls"])):
             body["tools"] = [tool for tool in body["tools"] if harness.is_action(tool["function"]["name"])]
             body["tool_choice"] = "required"
-        context_chars = len(json.dumps(messages, ensure_ascii=False))
+            if player_request.get("prompt_version") == "player-tools-v7":
+                names = ", ".join(tool["function"]["name"] for tool in body["tools"])
+                body["messages"][0]["content"] += (
+                    "\nACTION PHASE: Reading is now closed for this decision. "
+                    "Call exactly one offered action function now: " + names +
+                    ". No read functions are available. Do not request another page. "
+                    "Choose your action using the information already retrieved."
+                )
+        context_chars = len(json.dumps(body["messages"], ensure_ascii=False))
         if limits["context_chars"] is not None and context_chars > limits["context_chars"]:
             raise fail("Player tool conversation exceeded its per-request context budget; game paused.", "tool_context_budget")
         used_chars += context_chars

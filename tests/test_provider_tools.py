@@ -100,7 +100,7 @@ class ProviderToolsTests(unittest.TestCase):
         original = self.assembled("player-tools-v4")
         stored = json.loads(json.dumps(original))
         body = p.wire_request(self.config, original)
-        self.assertEqual("player-tools-v6", p.TOOLS_PROMPT_VERSION)
+        self.assertEqual("player-tools-v7", p.TOOLS_PROMPT_VERSION)
         self.assertEqual("player-tools-v4", stored["prompt_version"])
         self.assertEqual(body, p.wire_request(self.config, stored))
         self.assertNotIn("win_conditions", json.loads(body["messages"][1]["content"]))
@@ -243,19 +243,19 @@ class ProviderToolsTests(unittest.TestCase):
         with patch.dict(os.environ, {"DEEPSEEK_API_KEY": "SECRET"}), \
              patch.object(p.http, "urlopen", return_value=io.BytesIO(json.dumps(excessive).encode())) as network:
             with self.assertRaises(p.ProviderError) as failure:
-                p.decide(self.config, self.assembled())
+                p.decide(self.config, self.assembled("player-tools-v6"))
             self.assertEqual(1, network.call_count)
             self.assertEqual("tool_read_budget", failure.exception.validation_details["category"])
         with patch.object(p, "MAX_TOOL_MESSAGE_CHARS", 20), patch.object(p.http, "urlopen") as network:
             with self.assertRaises(p.ProviderError) as failure:
-                p.decide(self.config, self.assembled())
+                p.decide(self.config, self.assembled("player-tools-v6"))
             self.assertEqual("tool_message_budget", failure.exception.validation_details["category"])
             network.assert_not_called()
 
     def test_v4_sixth_request_offers_only_actions_and_model_can_finish(self):
         responses = [response([call("read_my_notes", {}, f"read-{i}")]) for i in range(5)]
         responses.append(response([call("action_speak", {"text": "I am ready to vote."}, "finish")]))
-        result, network = self.infer(responses)
+        result, network = self.infer(responses, self.assembled("player-tools-v6"))
         self.assertEqual("speak", result["type"])
         self.assertEqual(6, network.call_count)
         for sent in network.call_args_list[:5]:
@@ -265,7 +265,7 @@ class ProviderToolsTests(unittest.TestCase):
         self.assertEqual({"action_speak"}, {tool["function"]["name"] for tool in final["tools"]})
         self.assertEqual("required", final["tool_choice"])
         self.assertEqual(final, result.tool_trace[-1]["wire_request"])
-        self.assertIn("repeated reads cannot produce new events", self.assembled()["instructions"])
+        self.assertIn("repeated reads cannot produce new events", self.assembled("player-tools-v6")["instructions"])
 
     def test_v4_rejects_revoked_read_on_final_step_without_executing_it(self):
         responses = [io.BytesIO(json.dumps(response([call("read_my_notes", {}, f"read-{i}")])).encode())
@@ -273,12 +273,51 @@ class ProviderToolsTests(unittest.TestCase):
         with patch.dict(os.environ, {"DEEPSEEK_API_KEY": "SECRET"}), \
              patch.object(p.http, "urlopen", side_effect=responses) as network:
             with self.assertRaises(p.ProviderError) as failure:
-                p.decide(self.config, self.assembled())
+                p.decide(self.config, self.assembled("player-tools-v6"))
         self.assertEqual(6, network.call_count)
         self.assertEqual("invalid_tool_read", failure.exception.validation_details["category"])
         self.assertEqual([], failure.exception.tool_trace[-1]["tool_results"])
         self.assertEqual({"action_speak"}, {tool["function"]["name"]
                          for tool in failure.exception.tool_trace[-1]["wire_request"]["tools"]})
+
+    def test_v7_can_read_past_sixth_request_then_act(self):
+        replies = [response([call("read_my_notes", {}, f"read-{i}")]) for i in range(6)]
+        replies.append(response([call("action_speak", {"text": "I have enough information."})]))
+        result, network = self.infer(replies)
+        self.assertEqual(7, network.call_count)
+        sixth = result.tool_trace[5]["wire_request"]
+        self.assertIn("read_my_notes", {t["function"]["name"] for t in sixth["tools"]})
+        self.assertNotIn("ACTION PHASE:", sixth["messages"][0]["content"])
+        self.assertEqual("speak", result["type"])
+
+    def test_v7_final_request_has_explicit_host_action_phase(self):
+        replies = [response([call("read_my_notes", {}, f"read-{i}")]) for i in range(11)]
+        replies.append(response([call("action_speak", {"text": "My decision."})]))
+        result, network = self.infer(replies)
+        self.assertEqual(12, network.call_count)
+        final = result.tool_trace[-1]["wire_request"]
+        self.assertEqual({"action_speak"}, {t["function"]["name"] for t in final["tools"]})
+        self.assertIn("ACTION PHASE:", final["messages"][0]["content"])
+        self.assertIn("action_speak", final["messages"][0]["content"])
+        self.assertIn("twelfth and final", self.assembled()["instructions"])
+        self.assertNotIn("sixth and final", self.assembled()["instructions"])
+
+    def test_v7_exhausted_read_calls_switch_to_action_phase_early(self):
+        replies = [response([call("read_my_notes", {}, f"read-{i}-{j}") for j in range(3)])
+                   for i in range(4)]
+        replies.append(response([call("action_speak", {"text": "My decision."})]))
+        result, network = self.infer(replies)
+        self.assertEqual(5, network.call_count)
+        final = result.tool_trace[-1]["wire_request"]
+        self.assertEqual({"action_speak"}, {t["function"]["name"] for t in final["tools"]})
+        self.assertIn("ACTION PHASE:", final["messages"][0]["content"])
+
+    def test_v7_hallucinated_read_in_action_phase_is_still_rejected(self):
+        replies = [response([call("read_my_notes", {}, f"read-{i}")]) for i in range(12)]
+        with self.assertRaises(p.ProviderError) as failure:
+            self.infer(replies)
+        self.assertEqual("invalid_tool_read", failure.exception.validation_details["category"])
+        self.assertEqual([], failure.exception.tool_trace[-1]["tool_results"])
 
     def test_v6_context_cap_stops_before_http_but_legacy_has_no_request_cap(self):
         with patch.object(p, "MAX_TOOL_CONTEXT_CHARS", 20), patch.object(p.http, "urlopen") as network:
