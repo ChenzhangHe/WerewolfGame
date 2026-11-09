@@ -116,7 +116,7 @@ valid because v5/v6 briefings and action capabilities are identical.
 
 ## V7 read-to-action transition
 
-New games use `player-tools-v7`, retaining v6 character budgets and seat isolation.
+Protocol `player-tools-v7` retains v6 character budgets and seat isolation.
 The model may make twelve requests with at most twelve read calls. Reads close
 on the twelfth request, or earlier once twelve reads have been used. That request
 exposes action tools only and adds an explicit host-system ACTION PHASE notice
@@ -132,3 +132,21 @@ An explicitly recovered game can update its top-level and pending request
 versions to v7; historical requests stay unchanged and cached successes are
 retained. Such a recovery changes the remaining protocol and is not a uniform
 evaluation run.
+
+
+## V8 explicit output length
+
+New games use `player-tools-v8`, retaining v7 read/action budgets and information
+permissions. The host instructions, initial briefing, and speech tool field
+description now explicitly state the unchanged 1,200-character speech limit,
+a recommended 400–700-character target, and 2,000-character notes limit. Counts
+refer to decoded Unicode characters, including spaces, punctuation and newlines,
+not tokens, words, or JSON escape sequences.
+
+A v7 speech at day 3, batch 90 was rejected at 1,259 characters. Its schema
+already declared maxLength=1200, but the main host instructions did not emphasize
+that constraint. V8 makes it visible without optional rules retrieval. Invalid
+terminal actions retain a nested `action_validation` diagnosis with the field,
+actual length and maximum. The original call is preserved; no truncation,
+correction retry, or fabricated action is introduced. A prompt improves guidance
+but cannot guarantee that a model obeys every constraint.

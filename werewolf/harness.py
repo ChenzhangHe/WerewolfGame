@@ -58,7 +58,8 @@ EXPLICIT_CONSEQUENCES = {
 class SeatToolHarness:
     """Immutable seat-local input, bounded reads, and exact terminal proposals."""
 
-    def __init__(self, observation, decision, notes='', language='en', *, fixed_pages=False, explicit_consequences=False):
+    def __init__(self, observation, decision, notes='', language='en', *, fixed_pages=False, explicit_consequences=False,
+                 explicit_output_limits=False):
         if not isinstance(observation, dict) or not isinstance(decision, dict):
             raise ValueError('Invalid player context.')
         if language not in RULES or observation.get('language', language) != language:
@@ -80,6 +81,7 @@ class SeatToolHarness:
         self._language = language
         self._fixed_pages = fixed_pages
         self._explicit_consequences = explicit_consequences
+        self._explicit_output_limits = explicit_output_limits
         self._notes = notes
         # Explicit metadata allowlist avoids forwarding opaque engine-global fields.
         self._metadata = deepcopy({k: observation[k] for k in
@@ -135,6 +137,10 @@ class SeatToolHarness:
             facts = EXPLICIT_CONSEQUENCES[self._language]
             result['win_conditions'] = facts['win_conditions']
             result['death_consequences'] = facts['death_consequences']
+        if self._explicit_output_limits:
+            result['output_limits'] = {'speech_max_chars': 1200, 'speech_target_chars': [400, 700],
+                                       'notes_max_chars': 2000,
+                                       'counting': 'Decoded Unicode characters, including spaces, punctuation and newlines; not tokens or words.'}
         if self._metadata.get('role') == 'wolf':
             result['log_counts']['wolf_chat'] = len(self._wolf)
         # Large recent events are omitted as whole entries, with explicit pointers
@@ -185,6 +191,8 @@ class SeatToolHarness:
             required = [key for key in keys if all(key in o for o in options)]
             if options[0]['type'] in ('speak', 'discuss'):
                 properties['text'] = {'type': 'string', 'minLength': 1, 'maxLength': 1200}
+                if self._explicit_output_limits:
+                    properties['text']['description'] = 'Public speech: aim for 400–700 characters; hard maximum 1200 decoded characters including spaces, punctuation and newlines. Be concise.'
                 required.append('text')
             properties['notes'] = {'type': 'string', 'maxLength': 2000,
                                    'description': 'Optional private strategy self-report replacing your previous notes.'}
@@ -264,8 +272,12 @@ class SeatToolHarness:
                 validate_action(action, self._decision)
             except ValueError:
                 raise
-            except Exception:
-                raise ValueError('Proposed action is not legal for this turn.') from None
+            except Exception as cause:
+                failure = ValueError('Proposed action is not legal for this turn.')
+                details = getattr(cause, 'validation_details', None)
+                if isinstance(details, dict):
+                    failure.validation_details = deepcopy(details)
+                raise failure from None
             return deepcopy(action)
         if name == 'read_public_log':
             return self._page(self._public, args)

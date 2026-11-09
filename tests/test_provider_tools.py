@@ -100,7 +100,7 @@ class ProviderToolsTests(unittest.TestCase):
         original = self.assembled("player-tools-v4")
         stored = json.loads(json.dumps(original))
         body = p.wire_request(self.config, original)
-        self.assertEqual("player-tools-v7", p.TOOLS_PROMPT_VERSION)
+        self.assertEqual("player-tools-v8", p.TOOLS_PROMPT_VERSION)
         self.assertEqual("player-tools-v4", stored["prompt_version"])
         self.assertEqual(body, p.wire_request(self.config, stored))
         self.assertNotIn("win_conditions", json.loads(body["messages"][1]["content"]))
@@ -152,6 +152,40 @@ class ProviderToolsTests(unittest.TestCase):
             limits = p.tool_protocol_limits(version)
             self.assertEqual(24_000, limits["context_chars"])
             self.assertEqual(144_000, limits["message_chars"])
+
+    def test_v8_puts_output_limits_upfront_without_changing_legal_actions(self):
+        for language in ("en", "zh"):
+            observation = {**copy.deepcopy(self.observation), "language": language}
+            def assembled(version):
+                return p._build_tools_request(self.config, observation, self.decision, "", language, version=version)
+            old, new = assembled("player-tools-v7"), assembled("player-tools-v8")
+            self.assertNotIn("output_limits", old["input"])
+            self.assertEqual(1200, new["input"]["output_limits"]["speech_max_chars"])
+            self.assertEqual(old["input"], {k:v for k,v in new["input"].items() if k != "output_limits"})
+            self.assertIn("OUTPUT LENGTH:", new["instructions"])
+            self.assertIn("not a token or word limit", new["instructions"])
+            old_tools, new_tools = p.wire_request(self.config, old)["tools"], p.wire_request(self.config, new)["tools"]
+            self.assertEqual([t["function"]["name"] for t in old_tools], [t["function"]["name"] for t in new_tools])
+            text = next(t for t in new_tools if t["function"]["name"] == "action_speak")["function"]["parameters"]["properties"]["text"]
+            self.assertEqual(1200, text["maxLength"])
+            self.assertIn("400–700", text["description"])
+
+    def test_tool_speech_length_boundaries_preserve_text_and_diagnose_rejection(self):
+        for length in (1200, 1201, 1259):
+            text = "中\n " + "文" * (length - 3)
+            reply = response([call("action_speak", {"text": text})])
+            if length == 1200:
+                result, _ = self.infer([reply])
+                self.assertEqual(text, result["text"])
+                continue
+            with self.subTest(length=length), self.assertRaises(p.ProviderError) as failure:
+                self.infer([reply])
+            details = failure.exception.validation_details
+            self.assertEqual("invalid_tool_action", details["category"])
+            self.assertEqual({"category": "invalid_speech_text", "field": "text", "actual_chars": length, "max_chars": 1200},
+                             details["action_validation"])
+            self.assertEqual(reply["choices"][0]["message"]["tool_calls"], failure.exception.tool_trace[0]["assistant"]["tool_calls"])
+            self.assertEqual([], failure.exception.tool_trace[0]["tool_results"])
 
     def test_initial_wire_is_compact_and_host_context_is_not_sent(self):
         assembled = self.assembled()
