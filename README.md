@@ -115,10 +115,16 @@ python3 scripts/verify_live.py --rounds 3 --output artifacts/live-check.private.
 ```
 
 The script leaves the game paused and saves a private diagnostic archive. It
-does not change providers, roles, or player settings. If a player returns an
-invalid action shape, the runner records it privately and allows one format
-correction using only that player's unchanged observation and legal options.
-A second invalid response pauses the game; no substitute action is invented.
+does not change providers, roles, or player settings. New games pause on the
+first invalid player response and retain the exact request, action content,
+and structured validation details for prompt debugging. First-attempt failures
+are never counted as clean successes.
+
+Optional recovery can be enabled before creating a new game with
+`--allow-format-repair` (or `allow_format_repair: true` in setup JSON). This allows
+one logged correction attempt using only that player's unchanged observation
+and legal options. The policy is fixed for the game and is preserved on restore;
+older archives retain their original repair-enabled policy.
 
 To continue an interrupted game after restarting the server, use a trusted local
 archive downloaded with **Export full archive** or saved by the verifier:
@@ -139,3 +145,4 @@ Archive files contain hidden information; do not give them to active players.
 - [Work breakdown and remaining tasks](docs/work-breakdown.md)
 - [Provider connections and limitations](docs/provider-setup.md)
 - [Live DeepSeek validation results](docs/live-validation.md)
+- [Prompt failure diagnosis](docs/prompt-diagnostics.md)

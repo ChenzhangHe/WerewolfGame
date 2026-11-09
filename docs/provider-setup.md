@@ -129,10 +129,16 @@ simultaneous batch are retained for an explicit retry; no partial batch reaches
 the referee and no player sees another uncommitted action. A referee rejection
 discards the batch for a clean explicit retry without automatic substitutions.
 
+New games default to strict first-attempt validation: an invalid response pauses
+the game and remains available for diagnosis. Safe `validation_details` classify
+wrong action types, illegal options, extra/missing fields, JSON syntax positions,
+and token truncation alongside the exact credential-free request and final text.
+
 Parsed but invalid actions are retained in the private inference log with
-`rejected: true`. Each decision permits at most one automatic format-repair
-request using that player's unchanged observation, the same legal options, and
-its own rejected action. Both attempts are recorded, and only the accepted
+`rejected: true`. Optional `allow_format_repair: true`, chosen before the game,
+permits at most one automatic format-repair request using that player's unchanged
+observation, the same legal options, and its own rejected action. Both attempts
+are recorded, and only the accepted
 response can update the game or private notes. Authentication/network failures
 do not trigger format repair. These invalid attempts remain visible to evaluation
 instead of being silently normalized into legal choices.
@@ -154,6 +160,10 @@ examples and explicitly disallows wrappers and extra keys.
 Subsequent live testing captured a concrete protocol confusion: an AI returned
 `{"type":"json_object"}` as its action. `json_object` describes serialization,
 not a legal game action; it must never replace the task's supplied action type.
+The `player-v3` prompt fixes a concrete path mismatch: the model's actual user
+message contains `decision.options`, whereas earlier instructions referenced a
+nonexistent `input.decision.options` wrapper. This is a confirmed prompt defect,
+not proof that it caused every observed failure. See [the diagnosis](prompt-diagnostics.md).
 
 Trusted local archives can be restored with `python3 -m werewolf --resume PATH`.
 The engine reconstructs state from accepted actions and checks historical views;

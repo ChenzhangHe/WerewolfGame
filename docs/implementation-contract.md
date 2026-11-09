@@ -63,7 +63,10 @@ shared sessions, or provider conversation state. No cross-game memory.
 evaluation. Live adapters use direct HTTP inference without tools. Research and
 document the supported subscription token route; no extracting Codex credentials.
 
-`werewolf.runner.Runner(configs, seed=1, language='en')` owns a Game and twelve frozen configs.
+`werewolf.runner.Runner(configs, seed=1, language='en', allow_format_repair=False)`
+owns a Game and twelve frozen configs. Invalid output is logged and pauses new
+games by default. Optional repair is fixed at setup, reported in spectator/run
+metadata, and never supplied as game information to a player.
 `runner.step()` resolves ONE engine decision batch and returns a spectator
 snapshot; all requests are built against the pre-batch state. On provider error,
 pause without submitting partial batches, preserve successful responses for retry,
