@@ -38,10 +38,23 @@ def audit(archive):
     batches = gd['submitted_batches']
     for index in range(len(batches)+1):
         own_notes = archive['checkpoints'][index]['omniscient']['private_notes']
+        reveal_kinds = {'hunter_shot': 'hunter', 'idiot_reveal': 'idiot', 'explosion': 'wolf'}
+        public_reveals = {e['seat']: reveal_kinds[e['kind']] for e in game.events
+                          if e['audience'] == 'public' and e['kind'] in reveal_kinds}
         for record in by_batch.get(index, []):
             context = record['request'].get('tool_context')
             if context is not None:
                 seat = record['seat']
+                observation = context['observation']
+                for player in observation['players']:
+                    require(player.get('revealed_role') == public_reveals.get(player['seat']),
+                            'A role reveal lacks a published ability event.')
+                    require('role' not in player or player['seat'] == seat or player['seat'] in public_reveals or bool(observation.get('winner')),
+                            'An unrevealed other-seat role reached a player observation.')
+                require('wolf_teammates' not in observation or observation['role'] == 'wolf',
+                        'A non-Wolf received the wolf team roster.')
+                require('potions' not in observation or observation['role'] == 'witch',
+                        'A non-Witch received potion resources.')
                 require(context['observation'] == game.observe(seat))
                 require(context['private_notes'] == own_notes[str(seat)])
                 decision = next(d for d in game.pending() if d['seat'] == seat)
@@ -94,12 +107,12 @@ def audit(archive):
             limits = p.tool_protocol_limits(request['prompt_version'])
             action_phase = limits['final_action_stage'] and (
                 hop_index == limits['model_requests'] - 1 or
-                (request['prompt_version'] in {'player-tools-v7', 'player-tools-v8'} and record_reads >= limits['read_calls']))
+                (request['prompt_version'] in {'player-tools-v7', 'player-tools-v8', 'player-tools-v9'} and record_reads >= limits['read_calls']))
             if action_phase:
                 # Verify the versioned action-only stage and host transition notice.
                 expected_body['tools'] = [tool for tool in expected_body['tools']
                                           if tool['function']['name'].startswith('action_')]
-                if request['prompt_version'] in {'player-tools-v7', 'player-tools-v8'}:
+                if request['prompt_version'] in {'player-tools-v7', 'player-tools-v8', 'player-tools-v9'}:
                     tool_names = ", ".join(tool['function']['name'] for tool in expected_body['tools'])
                     expected_body['messages'][0]['content'] += (
                         "\nACTION PHASE: Reading is now closed for this decision. "

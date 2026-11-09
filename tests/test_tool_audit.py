@@ -65,6 +65,21 @@ class ToolAuditTests(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, 'Wire body'):
             AUDIT(archive)
 
+    def test_role_visibility_check_is_independent_of_engine_projection(self):
+        from werewolf.engine import Game
+        original = Game.observe
+        def leaking_observe(game, seat):
+            observation = original(game, seat)
+            target = next(p for p in observation['players'] if p['seat'] == 5)
+            target['role'] = game.players[5]['role']
+            return observation
+        # Even if the producer and replay engine share the same defect, the
+        # independent role visibility invariant must reject the archive.
+        with patch.object(Game, 'observe', leaking_observe):
+            archive = self.archive()
+            with self.assertRaisesRegex(AssertionError, 'unrevealed other-seat role'):
+                AUDIT(archive)
+
     def test_valid_archive_counts_reads_actions_hops_and_usage(self):
         report = AUDIT(self.archive())
         self.assertEqual(4, report['decisions'])
