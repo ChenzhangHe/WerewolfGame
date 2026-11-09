@@ -76,9 +76,9 @@ class SetupTests(unittest.TestCase):
         for config in configs:
             self.assertEqual(config.provider, "deepseek")
             self.assertEqual(config.model, "deepseek-flash")
-            self.assertEqual(config.thinking, "enabled")
-            self.assertEqual(config.reasoning_effort, "low")
-            self.assertIsNone(config.temperature)
+            self.assertEqual(config.thinking, "disabled")
+            self.assertIsNone(config.reasoning_effort)
+            self.assertEqual(config.temperature, 0.7)
             self.assertEqual(config.max_tokens, 8192)
             self.assertEqual(config.language, "zh")
 

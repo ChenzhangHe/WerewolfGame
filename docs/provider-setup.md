@@ -49,11 +49,15 @@ automatically, and both consume API usage. Check success verifies access to the
 requested model for that request, not a guarantee of future availability.
 
 The `deepseek_flash` game preset and the UI's twelve-seat Flash button use
-`thinking: "enabled"`, `reasoning_effort: "low"`, `temperature: null`, and
-`max_tokens: 8192`. The initial 4096-token preset exhausted its budget before
-producing final action content on two live voting requests; an explicit retry
-at the original budget succeeded. The larger preset applies only to new games,
-and is headroom rather than a guarantee of completion. Thinking-enabled configurations reject non-null temperature
+`thinking: "disabled"`, `reasoning_effort: null`, `temperature: 0.7`, and
+`max_tokens: 8192`. This fast dialogue preset keeps real AI decisions while
+avoiding the long reasoning delays observed in live tests. Thinking-enabled
+4096 and 8192 configurations both exhausted their budgets before producing final
+action content. Two 4096-token voting requests succeeded after explicit retries
+with unchanged settings; a later speech still hit that limit. Thinking remains
+available per player for separate evaluation series. Preset changes apply only
+to new games; never relabel fast-mode results as thinking-mode results.
+Thinking-enabled configurations reject non-null temperature
 because the provider would ignore it. Disabled thinking omits effort and permits
 temperature. Existing unspecified thinking settings explicitly send `disabled`
 instead of inheriting DeepSeek's provider-side enabled/high default. All fields

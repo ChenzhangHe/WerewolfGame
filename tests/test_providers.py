@@ -140,19 +140,28 @@ class ProvidersTests(unittest.TestCase):
     def test_flash_preset_pins_model_and_supported_thinking_settings(self):
         config = p.deepseek_flash_config(3, "Flash player", language="zh")
         self.assertEqual("deepseek-flash", config.model)
-        self.assertEqual("enabled", config.thinking)
-        self.assertEqual("low", config.reasoning_effort)
-        self.assertIsNone(config.temperature)
+        self.assertEqual("disabled", config.thinking)
+        self.assertIsNone(config.reasoning_effort)
+        self.assertEqual(0.7, config.temperature)
         self.assertEqual(8192, config.max_tokens)
         self.assertEqual("zh", config.language)
         body = p.wire_request(config, self.request(config))
-        self.assertEqual({"type": "enabled"}, body["thinking"])
-        self.assertEqual("low", body["reasoning_effort"])
+        self.assertEqual({"type": "disabled"}, body["thinking"])
+        self.assertNotIn("reasoning_effort", body)
         self.assertEqual(8192, body["max_tokens"])
-        self.assertNotIn("temperature", body)
+        self.assertEqual(0.7, body["temperature"])
         self.assertNotIn("tools", body)
         with self.assertRaises(FrozenInstanceError):
             config.thinking = "disabled"
+
+    def test_explicit_reasoning_mode_preserves_effort_and_omits_temperature(self):
+        config = p.PlayerConfig(1, "Reasoning player", provider="deepseek", model="deepseek-flash",
+                                thinking="enabled", reasoning_effort="high", temperature=None,
+                                max_tokens=8192)
+        body = p.wire_request(config, self.request(config))
+        self.assertEqual(body["thinking"], {"type": "enabled"})
+        self.assertEqual(body["reasoning_effort"], "high")
+        self.assertNotIn("temperature", body)
 
     def test_thinking_validation_prevents_ignored_or_irrelevant_settings(self):
         cases = [

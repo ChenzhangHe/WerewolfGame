@@ -69,11 +69,12 @@ It is a trusted local spectator application, not a multi-user hosting service.
    select **Use DeepSeek Flash for all 12**. **Test connection** makes one explicit
    request without revealing or changing the current game.
 
-The preset selects `deepseek-flash`, thinking **enabled**, effort **low**, and a
-8192-token response limit. This gives thinking more headroom than the original
-4096-token preset, which hit the limit in live voting tests. Existing games keep
-their original budgets. Temperature is unset because DeepSeek ignores it in
-thinking mode. Change these settings before creating a game; they remain fixed
+The preset selects `deepseek-flash` in **fast dialogue mode (thinking disabled)**,
+temperature **0.7**, and an **8192-token** response limit. Live thinking-mode
+tests exhausted both 4096 and 8192 budgets before producing action content, so
+thinking is an explicit per-player experiment rather than the viewing default.
+You can enable it before a new game, selecting an effort and leaving temperature
+unset. Existing games keep their original settings. Change settings before creating a game; they remain fixed
 during play. Each player uses only its own authorized context. API failures pause
 the game without silently replacing a player with a script or another model.
 See [DeepSeek's model documentation](https://api-docs.deepseek.com/) and the

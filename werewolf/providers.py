@@ -90,8 +90,8 @@ def deepseek_flash_config(seat, name, personality="", language="en"):
     return PlayerConfig(
         seat=seat, name=name, provider="deepseek", model=DEEPSEEK_FLASH_MODEL,
         personality=personality or "Thoughtful, concise, and willing to revise a suspicion.",
-        temperature=None, max_tokens=DEEPSEEK_FLASH_MAX_TOKENS, language=language,
-        thinking="enabled", reasoning_effort="low",
+        temperature=0.7, max_tokens=DEEPSEEK_FLASH_MAX_TOKENS, language=language,
+        thinking="disabled", reasoning_effort=None,
     )
 
 
