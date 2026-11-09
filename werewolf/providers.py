@@ -14,7 +14,7 @@ import time
 from urllib import error, request as http
 
 
-PROMPT_VERSION = "player-v2"
+PROMPT_VERSION = "player-v3"
 DEEPSEEK_FLASH_MODEL = "deepseek-flash"
 DEEPSEEK_FLASH_MAX_TOKENS = 8192
 MAX_SPEECH_CHARS = 1200
@@ -120,7 +120,8 @@ def _action_contract(decision, language):
     speech = set(kinds) <= {"speak", "discuss"}
     return (
         f"\nCURRENT TASK: {decision['kind']}. Allowed type values: {json.dumps(kinds)}. "
-        "Choose ONE complete object from input.decision.options, copying its keys, enum values, "
+        "The user message contains observation, decision, and private_notes at its top level. "
+        "Choose ONE complete object from decision.options, copying its keys, enum values, "
         "and numeric/null value types exactly. Return that object at the top level, not inside "
         "an action/decision wrapper. Do not return an array, a quoted JSON string, or null. "
         "Never use json_object or json as the action type: those describe serialization, "
@@ -182,7 +183,7 @@ def build_repair_request(player_request, rejected_result):
     repaired["instructions"] += (
         "\nPROTOCOL CORRECTION (one retry): your previous action was rejected by the output "
         "validator and has NOT changed the game. The observation and legal options are unchanged. "
-        "Return a valid action object for the CURRENT TASK using input.decision.options. "
+        "Return a valid action object for the CURRENT TASK using decision.options. "
         "Do not explain the error or add wrapper/extra fields. Keep any optional private notes "
         "in notes only. Do not infer new game facts from this format correction."
     )
@@ -198,26 +199,45 @@ def check_credentials(config):
         raise ProviderError(f"Missing {env_name}; configure this provider before starting the game.")
 
 
+def _validation_error(message, category, **details):
+    error = ProviderError(message)
+    error.validation_details = {"category": category, **details}
+    return error
+
+
 def validate_action(action, decision):
     """Check provider output before caching or committing a simultaneous batch."""
     if not isinstance(action, dict):
-        raise ProviderError("Player response must be a JSON action object.")
+        raise _validation_error("Player response must be a JSON action object.", "action_not_object")
     base = {k: v for k, v in action.items() if k not in {"text", "notes"}}
     # JSON equality would otherwise consider True equal to seat 1.
     fingerprint = json.dumps(base, sort_keys=True, ensure_ascii=False)
     if not any(fingerprint == json.dumps(o, sort_keys=True, ensure_ascii=False)
                for o in decision["options"]):
-        raise ProviderError("Player proposed an action outside its supplied legal options.")
+        types = sorted({option["type"] for option in decision["options"]})
+        returned_type = action.get("type")
+        same_type = [option for option in decision["options"] if option["type"] == returned_type]
+        required = set.intersection(*(set(option) for option in same_type)) if same_type else {"type"}
+        allowed = set.union(*(set(option) for option in same_type)) if same_type else {"type"}
+        invalid = [field for field in base if field in allowed and not any(
+            json.dumps(base[field], sort_keys=True) == json.dumps(option.get(field), sort_keys=True)
+            for option in same_type)]
+        raise _validation_error("Player proposed an action outside its supplied legal options.",
+                                "invalid_action_type" if not same_type else "invalid_option",
+                                expected_types=types,
+                                returned_type=returned_type if isinstance(returned_type, str) else type(returned_type).__name__,
+                                missing_fields=sorted(required - set(base)),
+                                extra_fields=sorted(set(base) - allowed), invalid_fields=sorted(invalid))
     if action.get("type") in {"speak", "discuss"}:
         text = action.get("text")
         if not isinstance(text, str) or not text.strip() or len(text) > MAX_SPEECH_CHARS:
-            raise ProviderError("Player speech must contain 1–1200 characters.")
+            raise _validation_error("Player speech must contain 1–1200 characters.", "invalid_speech_text")
     elif "text" in action:
-        raise ProviderError("Only speech actions may contain public text.")
+        raise _validation_error("Only speech actions may contain public text.", "unexpected_text")
     if "notes" in action and (
         not isinstance(action["notes"], str) or len(action["notes"]) > MAX_NOTES_CHARS
     ):
-        raise ProviderError("Private notes must contain at most 2000 characters.")
+        raise _validation_error("Private notes must contain at most 2000 characters.", "invalid_private_notes")
     return action
 
 
@@ -300,9 +320,10 @@ def _read_stream(response):
     raise ProviderError("Provider stream ended before completed inference.")
 
 
-def _action_content_error(message, content, response, repairable=True):
+def _action_content_error(message, content, response, repairable=True, category="json_syntax"):
     """Attach only model action text and safe metadata, never the transport body."""
-    exc = ProviderError(message)
+    exc = _validation_error(message, category)
+    response = response if isinstance(response, dict) else {}
     if isinstance(content, str):
         exc.rejected_text = content
         exc.reported_model = response.get("model") if isinstance(response.get("model"), str) else None
@@ -371,12 +392,13 @@ def _live(config, player_request):
                         "DeepSeek output reached its token limit; game paused. "
                         "Use a larger max_tokens setting when configuring a new game.",
                         raw_text, response_data, repairable=False,
+                        category="output_truncated",
                     )
                 raise _action_content_error("DeepSeek output was interrupted or incomplete; game paused.",
-                                            raw_text, response_data, repairable=False)
+                                            raw_text, response_data, repairable=False, category="output_incomplete")
             if not isinstance(raw_text, str) or not raw_text.strip():
                 raise _action_content_error("DeepSeek returned blank action content; game paused. Retry the request or start a new game with a larger token budget.",
-                                            raw_text, response_data)
+                                            raw_text, response_data, category="blank_output")
         else:
             if response_data.get("status") != "completed":
                 raise ProviderError("Provider inference did not complete; game paused.")
@@ -386,9 +408,15 @@ def _live(config, player_request):
             raise ValueError("Expected a JSON object.")
         return DecisionResult(action, model=response_data.get("model"),
                               usage=_number_usage(response_data.get("usage")), raw_text=raw_text)
-    except (ValueError, KeyError, IndexError, TypeError, AttributeError):
-        raise _action_content_error("Provider did not return a complete JSON action; game paused.",
-                                    raw_text, response_data) from None
+    except (ValueError, KeyError, IndexError, TypeError, AttributeError) as cause:
+        category = "json_syntax" if isinstance(cause, json.JSONDecodeError) else (
+            "json_not_object" if isinstance(raw_text, str) else "invalid_provider_response")
+        failure = _action_content_error("Provider did not return a complete JSON action; game paused.",
+                                        raw_text, response_data, category=category)
+        if isinstance(cause, json.JSONDecodeError):
+            failure.validation_details.update(reason=cause.msg, line=cause.lineno,
+                                              column=cause.colno, position=cause.pos)
+        raise failure from None
 
 
 def _demo(config, player_request):

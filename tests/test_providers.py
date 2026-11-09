@@ -3,6 +3,7 @@ from dataclasses import FrozenInstanceError
 import io
 import json
 import os
+from pathlib import Path
 import unittest
 from unittest.mock import patch
 from urllib.error import HTTPError
@@ -21,6 +22,24 @@ class ProvidersTests(unittest.TestCase):
         self.assertIn("NOT a speech task", instructions)
         self.assertIn("Never use json_object or json as the action type", instructions)
         self.assertNotIn('"type":"speak","text"', instructions)
+        self.assertNotIn("input.decision.options", instructions)
+
+    def test_prompt_paths_match_actual_provider_message_shape(self):
+        request = self.request()
+        wire = p.wire_request(p.PlayerConfig(1, "Ada", provider="deepseek", model="deepseek-flash"), request)
+        payload = json.loads(wire["messages"][1]["content"])
+        self.assertIn("decision", payload)
+        self.assertNotIn("input", payload)
+        self.assertIn("decision.options", request["instructions"])
+        self.assertNotIn("input.decision.options", request["instructions"])
+        repaired = p.build_repair_request(request, {"type": "json_object"})
+        self.assertNotIn("input.decision.options", repaired["instructions"])
+
+    def test_saved_public_baseline_documents_the_original_path_mismatch(self):
+        legacy = (Path(__file__).parent / "fixtures" / "player-v2-instructions.txt").read_text()
+        self.assertIn("input.decision.options", legacy)
+        wire = p.wire_request(p.PlayerConfig(1, "Ada", provider="deepseek", model="deepseek-flash"), self.request())
+        self.assertNotIn("input", json.loads(wire["messages"][1]["content"]))
 
     def test_rejected_result_is_captured_without_transport_or_reasoning(self):
         rejected = p.DecisionResult({"type": "speak", "text": "Wrong phase."},
@@ -98,6 +117,38 @@ class ProvidersTests(unittest.TestCase):
                 p.validate_action(invalid, vote)
         with self.assertRaises(p.ProviderError):
             p.validate_action({"type": "speak", "text": "x" * 1201}, self.decision)
+
+    def test_validation_details_distinguish_type_target_and_extra_fields(self):
+        decision = {"options": [{"type": "investigate", "target": 2}]}
+        for action, category, field in (({"type": "json_object"}, "invalid_action_type", None),
+                ({"type": "investigate", "target": 3}, "invalid_option", "target"),
+                ({"type": "investigate", "target": 2, "reason": "PRIVATE"}, "invalid_option", "reason")):
+            with self.subTest(action=action), self.assertRaises(p.ProviderError) as failure:
+                p.validate_action(action, decision)
+            details = failure.exception.validation_details
+            self.assertEqual(details["category"], category)
+            self.assertEqual(details["expected_types"], ["investigate"])
+            self.assertNotIn("PRIVATE", json.dumps(details))
+            if field:
+                self.assertIn(field, details["extra_fields"] + details["invalid_fields"])
+
+    def test_json_diagnostics_keep_exact_bad_text_and_parser_location(self):
+        config = p.deepseek_flash_config(1, "Synthetic player")
+        samples = ('{"type":"pass","notes":"example")} ',
+                   '{"type":"pass"}\n<simulated-message>example</simulated-message>')
+        for raw in samples:
+            wire = {"model": "deepseek-flash", "choices": [{"finish_reason": "stop",
+                    "message": {"content": raw}}], "usage": {"total_tokens": 20}}
+            with self.subTest(raw=raw), patch.dict(os.environ, {"DEEPSEEK_API_KEY": "TEST_TOKEN"}), \
+                 patch.object(p.http, "urlopen", return_value=io.BytesIO(json.dumps(wire).encode())) as network:
+                with self.assertRaises(p.ProviderError) as failure:
+                    p.decide(config, self.request(config))
+                details = failure.exception.validation_details
+                self.assertEqual(details["category"], "json_syntax")
+                self.assertGreater(details["position"], 0)
+                self.assertIn("reason", details)
+                self.assertEqual(failure.exception.rejected_text, raw)
+                network.assert_called_once()
 
     def test_subscription_body_omits_unsupported_settings_and_sessions(self):
         config = p.PlayerConfig(1, "Ada", provider="openai_subscription", model="account-model",
