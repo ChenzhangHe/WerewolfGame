@@ -25,6 +25,23 @@ def event(text, audience='public', kind='speech', seat=1):
 
 
 class HarnessTests(unittest.TestCase):
+    def test_fixed_page_protocol_removes_page_size_choice_and_preserves_legacy(self):
+        observation = context()
+        observation['history'] = [event(f'Public message {i}') for i in range(21)]
+        harness = SeatToolHarness(observation, speech(), fixed_pages=True)
+        for tool in harness.tools():
+            if tool['function']['name'] in {'read_public_log', 'read_my_results', 'search_public_log'}:
+                self.assertNotIn('limit', tool['function']['parameters']['properties'])
+        page = harness.call('read_public_log', {})
+        self.assertEqual(10, len(page['events']))
+        self.assertEqual(10, page['next_offset'])
+        self.assertEqual(20, harness.call('read_public_log', {'offset': 10})['next_offset'])
+        self.assertIsNone(harness.call('read_public_log', {'offset': 20})['next_offset'])
+        with self.assertRaises(ValueError):
+            harness.call('read_public_log', {'limit': 21})
+        legacy = SeatToolHarness(observation, speech())
+        self.assertEqual(20, len(legacy.call('read_public_log', {'limit': 20})['events']))
+
     def test_briefing_is_compact_detached_and_has_no_history_or_global_id(self):
         observation = context()
         observation['history'] = [event(f'Public message {i}') for i in range(12)]

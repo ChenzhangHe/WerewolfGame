@@ -15,7 +15,7 @@ from urllib import error, request as http
 
 
 PROMPT_VERSION = "player-v3"
-TOOLS_PROMPT_VERSION = "player-tools-v2"
+TOOLS_PROMPT_VERSION = "player-tools-v3"
 MAX_TOOL_MODEL_REQUESTS = 6
 MAX_TOOL_READ_CALLS = 12
 MAX_TOOL_MESSAGE_CHARS = 60_000
@@ -145,11 +145,11 @@ def _action_contract(decision, language):
     )
 
 
-def build_request(config, observation, decision, notes=""):
+def build_request(config, observation, decision, notes="", *, tool_prompt_version=None):
     """Build only from one authorized observation and that player's local task."""
     language = observation.get("language", config.language)
     if config.interaction_mode == "tools":
-        return _build_tools_request(config, observation, decision, notes, language)
+        return _build_tools_request(config, observation, decision, notes, language, tool_prompt_version)
     instruction = (
         "You are one player in a twelve-player Werewolf game. Play to win for your role's team. "
         "All twelve players are independent. Use only the supplied observation and your private notes. "
@@ -189,12 +189,16 @@ def _seat_harness(player_request):
     from .harness import SeatToolHarness
     context = player_request["tool_context"]
     return SeatToolHarness(copy.deepcopy(context["observation"]), copy.deepcopy(context["decision"]),
-                           notes=context["private_notes"], language=player_request["language"])
+                           notes=context["private_notes"], language=player_request["language"],
+                           fixed_pages=player_request.get("prompt_version") == "player-tools-v3")
 
 
-def _build_tools_request(config, observation, decision, notes, language):
+def _build_tools_request(config, observation, decision, notes, language, version=None):
+    version = version or TOOLS_PROMPT_VERSION
+    if version not in {"player-tools-v1", "player-tools-v2", "player-tools-v3"}:
+        raise ProviderError("Unsupported player tool protocol.")
     result = {
-        "prompt_version": TOOLS_PROMPT_VERSION, "provider": config.provider,
+        "prompt_version": version, "provider": config.provider,
         "model": config.model, "language": language, "interaction_mode": "tools",
         "tool_context": {"observation": copy.deepcopy(observation),
                          "decision": {"kind": decision["kind"], "options": copy.deepcopy(decision["options"])},
@@ -321,7 +325,8 @@ def wire_request(config, player_request):
             body["tools"] = _seat_harness(player_request).tools()
             # Without this the API defaults to auto, permitting a prose-only
             # reply even though every game turn must end with a tool action.
-            body["tool_choice"] = "required"
+            body["tool_choice"] = ("auto" if player_request.get("prompt_version") == "player-tools-v1"
+                                   else "required")
         if config.thinking == "enabled":
             body["reasoning_effort"] = config.reasoning_effort or "low"
         if config.temperature is not None:

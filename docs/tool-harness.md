@@ -3,7 +3,8 @@
 New DeepSeek Flash presets use `interaction_mode: "tools"`. Select `"json"`
 explicitly for the original one-request adapter. The setting is frozen with each
 player's configuration. Existing archives without this field restore in JSON
-mode. Tool mode currently requires DeepSeek with thinking disabled; thinking
+mode. The tool protocol version is also frozen per game and preserved on restore,
+including earlier tool manifests. Tool mode currently requires DeepSeek with thinking disabled; thinking
 experiments retain the JSON adapter.
 
 ## Context and permissions
@@ -21,6 +22,11 @@ credentials, spectator view, or other player session. Its host-only `tool_contex
 is retained in the private archive but excluded from every model wire request.
 Filtering happens before search, pagination, and result counts. Read tools never
 accept a caller-selected seat. Log offsets are local to the visible stream.
+
+New log reads return fixed pages of at most ten events, continued with returned
+offsets; models do not choose a page size. A v2 live run requested 21 entries
+against a 20-entry maximum and paused. Removing that parameter in a fresh v3 game
+addresses the unnecessary choice rather than silently accepting the invalid call.
 
 Read tools cover paginated public history, public-history search, private role
 results, wolf chat for Wolves only, the player's notes, and public rule sections.
@@ -42,7 +48,7 @@ budgets pause the game and retain a diagnostic trace. Tool mode never invokes
 format repair, including when JSON-mode repair is enabled for the game. An
 explicit retry preserves settings and cached successful decisions.
 
-Protocol `player-tools-v2` allows at most six model requests and twelve read calls
+Protocol `player-tools-v3` allows at most six model requests and twelve read calls
 per decision, with a 60,000-character cumulative message budget. Each request also
 retains the player's frozen output-token cap. These bounds prevent an unbounded
 agent loop; retrieving too much evidence is a visible evaluation failure rather

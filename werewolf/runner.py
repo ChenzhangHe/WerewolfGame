@@ -18,6 +18,7 @@ class Runner:
         if type(allow_format_repair) is not bool:
             raise ValueError("allow_format_repair must be a boolean.")
         self._allow_format_repair = allow_format_repair
+        self._tool_prompt_version = providers.TOOLS_PROMPT_VERSION
         configs = tuple(configs)
         if len(configs) != 12 or sorted(c.seat for c in configs) != list(range(1, 13)):
             raise ValueError("Configure exactly one player for each seat 1–12.")
@@ -173,7 +174,8 @@ class Runner:
                 for decision in pending:
                     seat = decision["seat"]
                     requests[decision["id"]] = providers.build_request(
-                        self.configs[seat - 1], self.game.observe(seat), decision, self._notes[seat]
+                        self.configs[seat - 1], self.game.observe(seat), decision, self._notes[seat],
+                        tool_prompt_version=self._tool_prompt_version,
                     )
             except providers.ProviderError as exc:
                 return self._pause_error(str(exc))
@@ -243,7 +245,7 @@ class Runner:
         return copy.deepcopy({
             "format": "werewolf-archive-v1", "ruleset": "rules-v1",
             "prompt_version": providers.PROMPT_VERSION, "language": self.language,
-            "tool_prompt_version": providers.TOOLS_PROMPT_VERSION,
+            "tool_prompt_version": self._tool_prompt_version,
             "allow_format_repair": self.allow_format_repair,
             "configs": [asdict(c) for c in self.configs],
             "inference": self._records, "game": self.game.export(),
@@ -294,6 +296,9 @@ class Runner:
         result = cls.__new__(cls)
         result.configs = configs
         result.language = language
+        result._tool_prompt_version = archive.get("tool_prompt_version", "player-tools-v1")
+        if result._tool_prompt_version not in {"player-tools-v1", "player-tools-v2", "player-tools-v3"}:
+            raise ValueError("Unsupported player tool protocol.")
         # Earlier archives predate this explicit policy and always repaired.
         policy = archive.get("allow_format_repair", True)
         if type(policy) is not bool:
@@ -390,7 +395,8 @@ class Runner:
         for decision in pending:
             seat = decision["seat"]
             config = self.configs[seat - 1]
-            fresh = providers.build_request(config, self.game.observe(seat), decision, self._notes[seat])
+            fresh = providers.build_request(config, self.game.observe(seat), decision, self._notes[seat],
+                                            tool_prompt_version=self._tool_prompt_version)
             requests[decision["id"]] = fresh
             entry = by_seat.get(seat)
             if entry is not None:

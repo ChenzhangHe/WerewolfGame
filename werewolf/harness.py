@@ -42,7 +42,7 @@ RULES = {
 class SeatToolHarness:
     """Immutable seat-local input, bounded reads, and exact terminal proposals."""
 
-    def __init__(self, observation, decision, notes='', language='en'):
+    def __init__(self, observation, decision, notes='', language='en', *, fixed_pages=False):
         if not isinstance(observation, dict) or not isinstance(decision, dict):
             raise ValueError('Invalid player context.')
         if language not in RULES or observation.get('language', language) != language:
@@ -62,6 +62,7 @@ class SeatToolHarness:
                for o in options):
             raise ValueError('Invalid legal actions.')
         self._language = language
+        self._fixed_pages = fixed_pages
         self._notes = notes
         # Explicit metadata allowlist avoids forwarding opaque engine-global fields.
         self._metadata = deepcopy({k: observation[k] for k in
@@ -132,10 +133,15 @@ class SeatToolHarness:
     def tools(self):
         page = {'offset': {'type': 'integer', 'minimum': 0, 'default': 0},
                 'limit': {'type': 'integer', 'minimum': 1, 'maximum': MAX_PAGE_SIZE, 'default': 10}}
+        if self._fixed_pages:
+            page.pop('limit')
+        search = {'query': {'type': 'string', 'minLength': 1, 'maxLength': 200}}
+        if not self._fixed_pages:
+            search['limit'] = page['limit']
         definitions = [
             self._tool('read_public_log', 'Read public game events by local public-log index. No hidden/global event IDs. Continue at next_offset.', page),
             self._tool('search_public_log', 'Search only public event text. Returned indices can be read with read_public_log; more_matches explicitly indicates omitted matches.',
-                       {'query': {'type': 'string', 'minLength': 1, 'maxLength': 200}, 'limit': page['limit']}, ['query']),
+                       search, ['query']),
             self._tool('read_my_results', 'Read only your private role results and deliveries, excluding the wolf channel. Continue at next_offset.', page),
             self._tool('read_rules', 'Read one curated public rules section; no filesystem access.',
                        {'section': {'type': 'string', 'enum': list(RULE_SECTIONS)}}, ['section']),
@@ -162,6 +168,10 @@ class SeatToolHarness:
             properties['notes'] = {'type': 'string', 'maxLength': 2000,
                                    'description': 'Optional private strategy self-report replacing your previous notes.'}
             definitions.append(self._tool(name, 'Finish this turn by proposing this legal game action. This does not directly mutate game state.', properties, required))
+        if self._fixed_pages:
+            for definition in definitions:
+                if definition['function']['name'] in {'read_public_log', 'read_my_results', 'read_wolf_chat', 'search_public_log'}:
+                    definition['function']['description'] += ' Returns at most 10 entries per call. Page size is fixed; use next_offset or next_public_offset to continue.'
         return deepcopy(definitions)
 
     @staticmethod
@@ -215,6 +225,9 @@ class SeatToolHarness:
 
     def call(self, name, arguments):
         args = self._arguments(arguments)
+        if (self._fixed_pages and name in {'read_public_log', 'read_my_results', 'read_wolf_chat', 'search_public_log'}
+                and 'limit' in args):
+            raise ValueError('Page size is fixed; use the returned continuation offset.')
         if self.is_action(name):
             option_type = self._actions[name][0]['type']
             if 'type' in args:

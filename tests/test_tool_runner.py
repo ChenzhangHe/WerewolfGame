@@ -68,3 +68,18 @@ class ToolRunnerTests(unittest.TestCase):
             {"kind": "speech", "audience": "public", "text": "Injected archive context"})
         with self.assertRaises(ValueError):
             Runner.from_archive(archive)
+
+    def test_restore_keeps_original_tool_protocol_after_application_upgrade(self):
+        runner = self.runner()
+        archive = runner.export()
+        archive['tool_prompt_version'] = 'player-tools-v2'
+        restored = Runner.from_archive(archive)
+        with patch.object(p, 'TOOLS_PROMPT_VERSION', 'player-tools-v3'), \
+             patch.object(p, 'decide', side_effect=self.answer):
+            restored.step()
+        record = restored.export()['inference'][0]
+        self.assertEqual('player-tools-v2', record['request']['prompt_version'])
+        log_tool = next(t for t in record['wire_request']['tools']
+                        if t['function']['name'] == 'read_public_log')
+        self.assertIn('limit', log_tool['function']['parameters']['properties'])
+        self.assertEqual('player-tools-v2', restored.export()['tool_prompt_version'])
