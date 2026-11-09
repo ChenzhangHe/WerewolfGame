@@ -18,6 +18,8 @@ def main():
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--rounds", type=int, default=3)
     parser.add_argument("--timeout", type=int, default=1800)
+    parser.add_argument("--retry-error", action="store_true",
+                        help="Explicitly retry the current failed batch once, preserving settings and cached responses.")
     parser.add_argument("--output", type=Path, default=Path("artifacts/live-check.private.json"))
     args = parser.parse_args()
     if not 1 <= args.rounds <= 10 or not 1 <= args.port <= 65535 or args.timeout < 1:
@@ -33,7 +35,11 @@ def main():
             return json.load(response)
 
     state = api("/api/state")
-    if state.get("status") == "error":
+    if state.get("status") == "error" and args.retry_error:
+        print("Explicitly retrying failed decisions once with unchanged player settings.", flush=True)
+        api("/api/step", {})
+        state = api("/api/state")
+    elif state.get("status") == "error":
         parser.exit(1, "Game is paused with an error; resolve it before starting verification.\n")
     initial_day = state["day"]
     target_day = initial_day + args.rounds
