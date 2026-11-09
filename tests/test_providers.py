@@ -11,6 +11,33 @@ from werewolf import providers as p
 
 
 class ProvidersTests(unittest.TestCase):
+    def test_nonspeech_task_has_its_own_json_shape_and_no_speech_example(self):
+        decision = {"id": "hidden", "seat": 1, "kind": "wolf_attack",
+                    "options": [{"type": "attack", "target": None}, {"type": "attack", "target": 6}]}
+        request = p.build_request(self.config, self.observation, decision)
+        instructions = request["instructions"]
+        self.assertIn("CURRENT TASK: wolf_attack", instructions)
+        self.assertIn('"type": "attack", "target": null', instructions)
+        self.assertIn("NOT a speech task", instructions)
+        self.assertNotIn('"type":"speak","text"', instructions)
+
+    def test_rejected_result_is_captured_without_transport_or_reasoning(self):
+        rejected = p.DecisionResult({"type": "speak", "text": "Wrong phase."},
+                                    model="test-model", usage={"total_tokens": 20},
+                                    raw_text='{"type":"speak","text":"Wrong phase."}')
+        decision = {"kind": "wolf_attack", "options": [{"type": "attack", "target": None}]}
+        assembled = p.build_request(self.config, self.observation, decision)
+        with patch.object(p, "_demo", return_value=rejected):
+            with self.assertRaises(p.ProviderError) as failure:
+                p.decide(self.config, assembled)
+        self.assertEqual(dict(failure.exception.rejected_result), dict(rejected))
+        corrected = p.build_repair_request(assembled, failure.exception.rejected_result)
+        self.assertEqual(corrected["input"]["observation"], assembled["input"]["observation"])
+        self.assertEqual(corrected["input"]["decision"], assembled["input"]["decision"])
+        self.assertEqual(corrected["input"]["rejected_action"], dict(rejected))
+        self.assertNotIn("rejected_action", assembled["input"])
+        self.assertNotIn("id", corrected["input"]["decision"])
+
     def setUp(self):
         self.config = p.PlayerConfig(1, "Ada")
         self.observation = {"seat": 1, "role": "villager", "day": 1, "language": "en", "history": []}

@@ -14,7 +14,7 @@ import time
 from urllib import error, request as http
 
 
-PROMPT_VERSION = "player-v1"
+PROMPT_VERSION = "player-v2"
 DEEPSEEK_FLASH_MODEL = "deepseek-flash"
 MAX_SPEECH_CHARS = 1200
 MAX_NOTES_CHARS = 2000
@@ -109,6 +109,27 @@ def _rules():
     return (Path(__file__).resolve().parent.parent / "docs" / "rules-v1.md").read_text(encoding="utf-8")
 
 
+def _action_contract(decision, language):
+    """Describe this task's protocol, rather than bias every turn toward speech."""
+    options = decision["options"]
+    example = copy.deepcopy(options[0]) if options else {}
+    if example.get("type") in {"speak", "discuss"}:
+        example["text"] = "简短的游戏发言。" if language == "zh" else "A brief game statement."
+    kinds = sorted({option["type"] for option in options})
+    speech = set(kinds) <= {"speak", "discuss"}
+    return (
+        f"\nCURRENT TASK: {decision['kind']}. Allowed type values: {json.dumps(kinds)}. "
+        "Choose ONE complete object from input.decision.options, copying its keys, enum values, "
+        "and numeric/null value types exactly. Return that object at the top level, not inside "
+        "an action/decision wrapper. Do not add seat, reason, reasoning, explanation, confidence, "
+        "or any other fields. Optional private strategy belongs only in notes. "
+        + ("This is a speech task: add a text string. " if speech else
+           "This is NOT a speech task: do not return speak/discuss and do not add text. ")
+        + "JSON shape example (illustrates the format, not a recommended choice): "
+        + json.dumps(example, ensure_ascii=False) + "."
+    )
+
+
 def build_request(config, observation, decision, notes=""):
     """Build only from one authorized observation and that player's local task."""
     language = observation.get("language", config.language)
@@ -123,12 +144,11 @@ def build_request(config, observation, decision, notes=""):
         "For a speak or discuss action add a text string (at most 1200 characters); "
         "you may add notes (at most 2000 characters), a concise private strategy self-report replacing "
         "your previous notes. Do not provide hidden chain of thought. No Markdown fences. "
-        'Example: {"type":"speak","text":"I suspect seat 4 because its votes contradict its claims.",'
-        '"notes":"Watch seat 4 next round."}. '
         + ("All speech, wolf discussion, and private notes MUST be in Simplified Chinese (简体中文). "
            if language == "zh" else "All speech, wolf discussion, and private notes MUST be in English. ")
         + "Action keys and enum values must remain exactly as supplied in English. "
         + "Your fixed personality: " + config.personality + "\n\nAuthoritative rules-v1:\n" + _rules()
+        + _action_contract(decision, language)
     )
     result = {
         "prompt_version": PROMPT_VERSION,
@@ -145,6 +165,22 @@ def build_request(config, observation, decision, notes=""):
     if len(json.dumps(result, ensure_ascii=False)) > MAX_CONTEXT_CHARS:
         raise ProviderError("Player context exceeded the configured limit; game paused without truncation.")
     return result
+
+
+def build_repair_request(player_request, rejected_result):
+    """One player's own formatting feedback, with no new game information."""
+    repaired = copy.deepcopy(player_request)
+    repaired["input"]["rejected_action"] = copy.deepcopy(dict(rejected_result))
+    repaired["instructions"] += (
+        "\nPROTOCOL CORRECTION (one retry): your previous action was rejected by the output "
+        "validator and has NOT changed the game. The observation and legal options are unchanged. "
+        "Return a valid action object for the CURRENT TASK using input.decision.options. "
+        "Do not explain the error or add wrapper/extra fields. Keep any optional private notes "
+        "in notes only. Do not infer new game facts from this format correction."
+    )
+    if len(json.dumps(repaired, ensure_ascii=False)) > MAX_CONTEXT_CHARS:
+        raise ProviderError("Player context exceeded the configured limit; game paused without truncation.")
+    return repaired
 
 
 def check_credentials(config):
@@ -385,7 +421,13 @@ def _demo(config, player_request):
 
 def decide(config, player_request):
     result = _demo(config, player_request) if config.provider == "demo" else _live(config, player_request)
-    return validate_action(result, player_request["input"]["decision"])
+    try:
+        return validate_action(result, player_request["input"]["decision"])
+    except ProviderError as exc:
+        # Preserve parsed action content only; never attach HTTP bodies, auth
+        # headers, provider reasoning, or another player's state to diagnostics.
+        exc.rejected_result = result
+        raise
 
 
 def check_deepseek(language="en"):
