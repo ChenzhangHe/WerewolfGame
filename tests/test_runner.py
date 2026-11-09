@@ -191,6 +191,112 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(1, restored.max_step)
         self.assertEqual(len(pending), sum(r["accepted"] for r in restored.export()["inference"]))
 
+    def _archive_with_pending_successes(self, *, repair=False, raw_repair=False):
+        runner = Runner(configs())
+        pending = runner.game.pending()
+        successful, failing = pending[0]["seat"], pending[1]["seat"]
+        real_decide = __import__("werewolf.providers", fromlist=["decide"]).decide
+        rejected_once = False
+        lock = threading.Lock()
+        def decide(config, request):
+            nonlocal rejected_once
+            if config.seat == failing:
+                raise ProviderError("Synthetic connection failure.")
+            with lock:
+                if config.seat == successful and repair and not rejected_once:
+                    rejected_once = True
+                    failure = ProviderError("Synthetic format failure.")
+                    if raw_repair:
+                        failure.rejected_text = "not JSON"
+                        failure.reported_model = "test-model"
+                        failure.usage = {"total_tokens": 4}
+                        failure.repairable = True
+                    else:
+                        failure.rejected_result = DecisionResult({"type": "invalid"})
+                    raise failure
+            return real_decide(config, request)
+        with patch("werewolf.runner.providers.decide", side_effect=decide):
+            runner.step()
+        self.assertEqual("error", runner.status)
+        archive = runner.export()
+        entry = next(e for e in archive["pending_batch"] if e["seat"] == successful)
+        self.assertIsNotNone(entry["response"])
+        return archive, entry["record_index"]
+
+    def test_restore_rejects_stale_cached_task_batch_context_and_rejected_flags(self):
+        archive, index = self._archive_with_pending_successes()
+        mutations = [
+            lambda r: r.update(kind="exile_vote"),
+            lambda r: r.update(batch_index=99),
+            lambda r: r.update(batch_index=True),
+            lambda r: r.update(rejected=True),
+            lambda r: r.update(error="Synthetic stale error"),
+            lambda r: r["request"]["input"]["observation"].update(day=99),
+            lambda r: r["request"]["input"].update(private_notes="Different private context"),
+            lambda r: r["request"].update(model="different-model"),
+            lambda r: r["request"]["input"].update(rejected_action={"type": "invalid"}),
+        ]
+        for number, mutate in enumerate(mutations):
+            changed = copy.deepcopy(archive)
+            mutate(changed["inference"][index])
+            with self.subTest(mutation=number), self.assertRaises(ValueError):
+                Runner.from_archive(changed)
+
+    def test_restore_validates_repair_provenance_and_preserves_valid_repair(self):
+        archive, index = self._archive_with_pending_successes(repair=True)
+        restored = Runner.from_archive(archive)
+        self.assertGreater(len(restored._batch_responses), 0)
+        self.assertTrue(restored._batch_repair_used)
+        rejected_index = index - 1
+        mutations = [
+            lambda a: a["inference"][rejected_index].update(seat=12),
+            lambda a: a["inference"][rejected_index].update(kind="wolf_attack"),
+            lambda a: a["inference"][rejected_index].update(batch_index=99),
+            lambda a: a["inference"][rejected_index].update(accepted=True),
+            lambda a: a["inference"][rejected_index].update(rejected=False),
+            lambda a: a["inference"][rejected_index]["request"]["input"].update(private_notes="Other context"),
+            lambda a: a["inference"][index]["request"]["input"].update(rejected_action={"type": "other"}),
+            lambda a: a["inference"][index]["request"]["input"].update(rejected_output="extra raw feedback"),
+            lambda a: a["inference"][index]["request"]["input"]["observation"].update(day=99),
+            lambda a: next(e for e in a["pending_batch"] if e["record_index"] == index).update(repair_used=False),
+        ]
+        for number, mutate in enumerate(mutations):
+            changed = copy.deepcopy(archive)
+            mutate(changed)
+            with self.subTest(mutation=number), self.assertRaises(ValueError):
+                Runner.from_archive(changed)
+
+    def test_rejected_text_is_recorded_and_repaired_but_truncation_is_not(self):
+        archive, index = self._archive_with_pending_successes(repair=True, raw_repair=True)
+        rejected = archive["inference"][index - 1]
+        self.assertEqual("not JSON", rejected["rejected_text"])
+        self.assertEqual("not JSON", rejected["raw_text"])
+        self.assertEqual("test-model", rejected["reported_model"])
+        self.assertEqual({"total_tokens": 4}, rejected["usage"])
+        self.assertEqual("not JSON", archive["inference"][index]["request"]["input"]["rejected_output"])
+        Runner.from_archive(archive)
+        changed = copy.deepcopy(archive)
+        changed["inference"][index - 1]["rejected_text"] = "Someone else's rejected output"
+        with self.assertRaises(ValueError):
+            Runner.from_archive(changed)
+        runner = Runner(configs())
+        before = runner.game.export()
+        pending_count = len(runner.game.pending())
+        def truncated(config, request):
+            failure = ProviderError("Synthetic token limit.")
+            failure.rejected_text = '{"type":'
+            failure.reported_model = "truncated-model"
+            failure.usage = {"total_tokens": 4096}
+            failure.repairable = False
+            raise failure
+        with patch("werewolf.runner.providers.decide", side_effect=truncated) as called:
+            runner.step()
+        self.assertEqual(pending_count, called.call_count)
+        self.assertEqual(before, runner.game.export())
+        self.assertTrue(all(r["raw_text"] == '{"type":' and not r["repairable"]
+                            for r in runner.export()["inference"]))
+        self.assertFalse(runner._batch_repair_used)
+
     def test_parallel_batch_has_four_worker_limit_and_no_early_submit(self):
         runner = Runner(configs())
         # Reach the simultaneous public nomination batch with twelve decisions.

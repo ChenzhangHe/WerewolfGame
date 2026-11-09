@@ -106,14 +106,28 @@ class Runner:
             except providers.ProviderError as exc:
                 record["error"] = str(exc)
                 rejected = getattr(exc, "rejected_result", None)
+                rejected_text = getattr(exc, "rejected_text", None)
                 if isinstance(rejected, dict):
                     record.update(self._response_fields(rejected))
                     record["rejected"] = True
+                    record["repairable"] = True
+                    repair_input = rejected
+                elif isinstance(rejected_text, str):
+                    # Only the model's final action content is attached by the
+                    # adapter. Never archive an HTTP body or reasoning content.
+                    record.update({"rejected_text": rejected_text, "raw_text": rejected_text,
+                                   "reported_model": getattr(exc, "reported_model", None),
+                                   "usage": copy.deepcopy(getattr(exc, "usage", {})),
+                                   "rejected": True,
+                                   "repairable": getattr(exc, "repairable", False) is True})
+                    repair_input = rejected_text if record["repairable"] else None
+                else:
+                    repair_input = None
                 records.append(record)
-                if isinstance(rejected, dict) and not repair_used:
+                if repair_input is not None and not repair_used:
                     repair_used = True
                     try:
-                        assembled = providers.build_repair_request(original_request, rejected)
+                        assembled = providers.build_repair_request(original_request, repair_input)
                     except Exception:
                         return records, None, "Could not assemble a safe action-format repair; game paused.", repair_used
                     repair = True
@@ -355,6 +369,8 @@ class Runner:
                     raise ValueError("Pending request disagrees with player context.")
                 if entry.get("repair_used"):
                     self._batch_repair_used.add(decision["id"])
+                if type(entry.get("repair_used")) is not bool:
+                    raise ValueError("Invalid pending repair flag.")
                 response = entry.get("response")
                 record_index = entry.get("record_index")
                 if response is None:
@@ -364,8 +380,11 @@ class Runner:
                 if type(record_index) is not int or not 0 <= record_index < len(self._records):
                     raise ValueError("Invalid pending response record.")
                 record = self._records[record_index]
-                if record.get("accepted") or record.get("response") != response or record["seat"] != seat:
+                if self._canonical(record.get("response")) != self._canonical(response):
                     raise ValueError("Pending response record disagrees.")
+                self._validate_cached_record(record_index, decision, fresh)
+                if record.get("repair") and not entry["repair_used"]:
+                    raise ValueError("Repaired response lacks its repair flag.")
                 providers.validate_action(response, decision)
                 self._batch_responses[decision["id"]] = copy.deepcopy(response)
                 self._batch_record_indices[decision["id"]] = record_index
@@ -378,14 +397,66 @@ class Runner:
                     if (record["seat"] != seat or record.get("accepted") or record.get("rejected")
                             or "response" not in record or record.get("error")):
                         continue
-                    stored = record["request"]
-                    if self._canonical(stored.get("input")) != self._canonical(fresh["input"]):
-                        continue
                     try:
+                        self._validate_cached_record(index, decision, fresh)
                         providers.validate_action(record["response"], decision)
-                    except providers.ProviderError:
+                    except (ValueError, providers.ProviderError):
                         continue
                     self._batch_responses[decision["id"]] = copy.deepcopy(record["response"])
                     self._batch_record_indices[decision["id"]] = index
+                    if record.get("repair"):
+                        self._batch_repair_used.add(decision["id"])
                     break
         self._batch_requests = requests
+
+    def _record_matches_task(self, record, decision, fresh):
+        """A cached response needs provenance, not merely a legal action shape."""
+        stored = record.get("request")
+        return (
+            record.get("seat") == decision["seat"]
+            and record.get("kind") == decision["kind"]
+            and type(record.get("batch_index")) is int
+            and record["batch_index"] == self.max_step
+            and record.get("accepted") is False
+            and isinstance(stored, dict)
+            and all(stored.get(key) == fresh.get(key) for key in ("provider", "model", "language"))
+        )
+
+    def _validate_cached_record(self, index, decision, fresh):
+        record = self._records[index]
+        if (not self._record_matches_task(record, decision, fresh)
+                or record.get("rejected") or "error" in record
+                or type(record.get("repair")) is not bool):
+            raise ValueError("Cached response is not a successful response for the current task.")
+        stored_input = record["request"].get("input")
+        expected_input = copy.deepcopy(fresh["input"])
+        if not record["repair"]:
+            if self._canonical(stored_input) != self._canonical(expected_input):
+                raise ValueError("Cached response has a different player context.")
+            return
+        if not isinstance(stored_input, dict):
+            raise ValueError("Invalid repaired response input.")
+        fields = [key for key in ("rejected_action", "rejected_output") if key in stored_input]
+        if len(fields) != 1:
+            raise ValueError("Repair must identify exactly one rejected output.")
+        field = fields[0]
+        rejected = stored_input[field]
+        if field == "rejected_action" and not isinstance(rejected, dict):
+            raise ValueError("Invalid rejected action.")
+        if field == "rejected_output" and not isinstance(rejected, str):
+            raise ValueError("Invalid rejected text.")
+        expected_input[field] = rejected
+        if self._canonical(stored_input) != self._canonical(expected_input):
+            raise ValueError("Repair changed the player's original context.")
+        for earlier in self._records[:index]:
+            if (not self._record_matches_task(earlier, decision, fresh)
+                    or earlier.get("rejected") is not True or not earlier.get("error")
+                    or earlier.get("repair") is not False
+                    or self._canonical(earlier["request"].get("input")) != self._canonical(fresh["input"])):
+                continue
+            prior_output = earlier.get("response") if field == "rejected_action" else earlier.get("rejected_text")
+            if self._canonical(prior_output) == self._canonical(rejected):
+                if field == "rejected_output" and earlier.get("repairable") is not True:
+                    continue
+                return
+        raise ValueError("Repair feedback has no matching private rejection for this task.")
