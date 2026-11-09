@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 from dataclasses import asdict, replace
+import json
 
 from .engine import Game
 from . import providers
@@ -29,6 +30,7 @@ class Runner:
         self._batch_requests = None
         self._batch_responses = {}
         self._batch_record_indices = {}
+        self._batch_repair_used = set()
         self._capture()
 
     def _capture(self):
@@ -71,6 +73,16 @@ class Runner:
         self.error = message
         return self.snapshot()
 
+    @staticmethod
+    def _response_fields(answer):
+        """Retain only the parsed action and explicitly safe provider metadata."""
+        return {
+            "response": copy.deepcopy(dict(answer)),
+            "reported_model": getattr(answer, "reported_model", None),
+            "usage": copy.deepcopy(getattr(answer, "usage", {})),
+            "raw_text": getattr(answer, "raw_text", None),
+        }
+
     def step(self):
         pending = self.game.pending()
         if not pending:
@@ -94,29 +106,45 @@ class Runner:
                 continue
             seat = decision["seat"]
             config = self.configs[seat - 1]
-            assembled = self._batch_requests[decision_id]
-            record = {"seat": seat, "request": copy.deepcopy(assembled),
-                      "wire_request": providers.wire_request(config, assembled) if config.provider != "demo" else None,
-                      "accepted": False}
-            try:
-                answer = providers.decide(config, assembled)
-                providers.validate_action(answer, decision)
-                record.update({"response": copy.deepcopy(dict(answer)),
-                               "reported_model": getattr(answer, "reported_model", None),
-                               "usage": getattr(answer, "usage", {}),
-                               "raw_text": getattr(answer, "raw_text", None)})
-                self._batch_responses[decision_id] = copy.deepcopy(dict(answer))
-            except providers.ProviderError as exc:
-                record["error"] = str(exc)
+            original_request = self._batch_requests[decision_id]
+            assembled = original_request
+            repair = False
+            while True:
+                record = {"seat": seat, "kind": decision["kind"], "batch_index": self.max_step,
+                          "request": copy.deepcopy(assembled), "repair": repair,
+                          "wire_request": providers.wire_request(config, assembled) if config.provider != "demo" else None,
+                          "accepted": False}
+                try:
+                    answer = providers.decide(config, assembled)
+                    providers.validate_action(answer, decision)
+                    record.update(self._response_fields(answer))
+                    self._batch_responses[decision_id] = copy.deepcopy(dict(answer))
+                except providers.ProviderError as exc:
+                    record["error"] = str(exc)
+                    rejected = getattr(exc, "rejected_result", None)
+                    if isinstance(rejected, dict):
+                        record.update(self._response_fields(rejected))
+                        record["rejected"] = True
+                    self._records.append(record)
+                    if isinstance(rejected, dict) and decision_id not in self._batch_repair_used:
+                        # One automatic format correction for this private task,
+                        # not a new turn and not a change to the frozen settings.
+                        self._batch_repair_used.add(decision_id)
+                        try:
+                            assembled = providers.build_repair_request(original_request, rejected)
+                        except Exception:
+                            return self._pause_error("Could not assemble a safe action-format repair; game paused.")
+                        repair = True
+                        continue
+                    return self._pause_error(str(exc))
+                except Exception:
+                    # Raw exceptions can contain headers, tokens, or response bodies.
+                    record["error"] = "Player inference failed; inspect local provider configuration."
+                    self._records.append(record)
+                    return self._pause_error(record["error"])
                 self._records.append(record)
-                return self._pause_error(str(exc))
-            except Exception:
-                # Raw exception messages can contain headers, tokens, or response bodies.
-                record["error"] = "Player inference failed; inspect local provider configuration."
-                self._records.append(record)
-                return self._pause_error(record["error"])
-            self._records.append(record)
-            self._batch_record_indices[decision_id] = len(self._records) - 1
+                self._batch_record_indices[decision_id] = len(self._records) - 1
+                break
         responses = copy.deepcopy(self._batch_responses)
         try:
             # Notes live only in the runner. Engine accepts only action/speech fields.
@@ -127,6 +155,7 @@ class Runner:
             self._batch_requests = None
             self._batch_responses = {}
             self._batch_record_indices = {}
+            self._batch_repair_used = set()
             return self._pause_error("Referee rejected the proposed batch; game paused without applying actions.")
         for decision in pending:
             response = responses[decision["id"]]
@@ -138,16 +167,204 @@ class Runner:
         self._batch_requests = None
         self._batch_responses = {}
         self._batch_record_indices = {}
+        self._batch_repair_used = set()
         self.error = None
         self.status = "finished" if self.game.view("mystery").get("winner") else "paused"
         self._capture()
         return self.snapshot()
 
     def export(self):
+        pending_batch = []
+        if self._batch_requests is not None:
+            for decision in self.game.pending():
+                decision_id = decision["id"]
+                pending_batch.append({
+                    "seat": decision["seat"], "kind": decision["kind"],
+                    "request": self._batch_requests[decision_id],
+                    "response": self._batch_responses.get(decision_id),
+                    "record_index": self._batch_record_indices.get(decision_id),
+                    "repair_used": decision_id in self._batch_repair_used,
+                })
         return copy.deepcopy({
             "format": "werewolf-archive-v1", "ruleset": "rules-v1",
             "prompt_version": providers.PROMPT_VERSION, "language": self.language,
             "configs": [asdict(c) for c in self.configs],
             "inference": self._records, "game": self.game.export(),
             "checkpoints": self._checkpoints, "private_notes": self._notes,
+            "pending_batch": pending_batch,
         })
+
+    @classmethod
+    def from_archive(cls, archive):
+        """Restore a trusted local archive by validating and replaying actions.
+
+        No provider is called, no credential is read, and no accepted action is
+        inferred again. Random routing UUIDs are remapped to fresh decision IDs.
+        Historical views are verified against the reconstructed referee instead
+        of trusting arbitrary spectator projections in the input.
+        """
+        try:
+            return cls._restore_archive(archive)
+        except (ValueError, KeyError, TypeError, IndexError, AttributeError, RecursionError, providers.ProviderError):
+            raise ValueError("Invalid or inconsistent game archive.") from None
+
+    @staticmethod
+    def _canonical(value):
+        # JSON round trips normalize integer seat keys in archived dictionaries.
+        return json.loads(json.dumps(value, ensure_ascii=False, allow_nan=False))
+
+    @classmethod
+    def _restore_archive(cls, source):
+        archive = cls._canonical(source)
+        if not isinstance(archive, dict) or archive.get("format") != "werewolf-archive-v1" or archive.get("ruleset") != "rules-v1":
+            raise ValueError("Unsupported archive.")
+        language = archive["language"]
+        if language not in ("en", "zh"):
+            raise ValueError("Invalid language.")
+        configs = tuple(providers.PlayerConfig(**c) for c in archive["configs"])
+        if len(configs) != 12 or sorted(c.seat for c in configs) != list(range(1, 13)) or any(c.language != language for c in configs):
+            raise ValueError("Invalid player configurations.")
+        configs = tuple(sorted(configs, key=lambda c: c.seat))
+        game_data = archive["game"]
+        players = game_data["players"]
+        if game_data.get("ruleset") != "rules-v1" or game_data.get("language") != language or len(players) != 12:
+            raise ValueError("Invalid referee archive.")
+        if sorted(p["seat"] for p in players) != list(range(1, 13)):
+            raise ValueError("Invalid seats.")
+        players = sorted(players, key=lambda p: p["seat"])
+        if any(p["name"] != c.name for p, c in zip(players, configs)):
+            raise ValueError("Names disagree.")
+        result = cls.__new__(cls)
+        result.configs = configs
+        result.language = language
+        result.game = Game(seed=game_data["seed"], names=[c.name for c in configs],
+                           roles=[p["role"] for p in players], language=language)
+        result.status = "paused"
+        result.error = None
+        result._records = []
+        result._checkpoints = []
+        result._batch_requests = None
+        result._batch_responses = {}
+        result._batch_record_indices = {}
+        result._batch_repair_used = set()
+        saved_checkpoints = archive["checkpoints"]
+        batches = game_data["submitted_batches"]
+        if not isinstance(saved_checkpoints, list) or not isinstance(batches, list) or len(saved_checkpoints) != len(batches) + 1:
+            raise ValueError("Invalid checkpoint count.")
+
+        def read_notes(raw):
+            if not isinstance(raw, dict) or set(raw) != {str(s) for s in range(1, 13)}:
+                raise ValueError("Invalid note owners.")
+            if any(not isinstance(v, str) or len(v) > providers.MAX_NOTES_CHARS for v in raw.values()):
+                raise ValueError("Invalid private notes.")
+            return {int(s): text for s, text in raw.items()}
+
+        def checkpoint(index):
+            saved = saved_checkpoints[index]
+            result._notes = read_notes(saved["omniscient"]["private_notes"])
+            result._capture()
+            if cls._canonical(result._checkpoints[-1]) != saved:
+                raise ValueError("Historical view disagrees with referee replay.")
+
+        checkpoint(0)
+        for index, batch in enumerate(batches):
+            current = result.game.pending()
+            archived = batch["decisions"]
+            actions = batch["actions"]
+            if not isinstance(archived, list) or len(current) != len(archived) or not isinstance(actions, dict):
+                raise ValueError("Invalid batch.")
+            if set(actions) != {d["id"] for d in archived}:
+                raise ValueError("Invalid submitted actions.")
+            archived_by_seat = {d["seat"]: d for d in archived}
+            if len(archived_by_seat) != len(archived) or set(archived_by_seat) != {d["seat"] for d in current}:
+                raise ValueError("Decision seats disagree.")
+            remapped = {}
+            for decision in current:
+                original = archived_by_seat[decision["seat"]]
+                if original["kind"] != decision["kind"] or original["options"] != decision["options"]:
+                    raise ValueError("Decision schema disagrees.")
+                remapped[decision["id"]] = actions[original["id"]]
+            result.game.submit(remapped)
+            checkpoint(index + 1)
+        actual = result.game.export()
+        for field in ("ruleset", "language", "seed", "players", "winner", "events"):
+            if cls._canonical(actual[field]) != game_data[field]:
+                raise ValueError("Final referee state disagrees.")
+        if read_notes(archive["private_notes"]) != result._notes:
+            raise ValueError("Final private notes disagree.")
+        records = archive["inference"]
+        if not isinstance(records, list):
+            raise ValueError("Invalid inference history.")
+        for record in records:
+            if (not isinstance(record, dict) or type(record.get("seat")) is not int
+                    or not 1 <= record["seat"] <= 12 or type(record.get("accepted")) is not bool
+                    or not isinstance(record.get("request"), dict)):
+                raise ValueError("Invalid inference record.")
+            if "response" in record and not isinstance(record["response"], dict):
+                raise ValueError("Invalid parsed response.")
+        result._records = copy.deepcopy(records)
+        result._restore_pending(archive.get("pending_batch"))
+        result.status = "finished" if result.game.view("mystery").get("winner") else "paused"
+        return result
+
+    def _restore_pending(self, saved):
+        """Recover legal uncommitted successes without exposing other seats."""
+        pending = self.game.pending()
+        if not pending:
+            if saved:
+                raise ValueError("Finished game has pending responses.")
+            return
+        if saved is not None and not isinstance(saved, list):
+            raise ValueError("Invalid pending batch.")
+        if saved:
+            by_seat = {entry["seat"]: entry for entry in saved}
+            if len(by_seat) != len(saved) or set(by_seat) != {d["seat"] for d in pending}:
+                raise ValueError("Pending seats disagree.")
+        else:
+            by_seat = {}
+        requests = {}
+        for decision in pending:
+            seat = decision["seat"]
+            config = self.configs[seat - 1]
+            fresh = providers.build_request(config, self.game.observe(seat), decision, self._notes[seat])
+            requests[decision["id"]] = fresh
+            entry = by_seat.get(seat)
+            if entry is not None:
+                if entry["kind"] != decision["kind"] or self._canonical(entry["request"]["input"]) != self._canonical(fresh["input"]):
+                    raise ValueError("Pending request disagrees with player context.")
+                if entry.get("repair_used"):
+                    self._batch_repair_used.add(decision["id"])
+                response = entry.get("response")
+                record_index = entry.get("record_index")
+                if response is None:
+                    if record_index is not None:
+                        raise ValueError("Pending record has no response.")
+                    continue
+                if type(record_index) is not int or not 0 <= record_index < len(self._records):
+                    raise ValueError("Invalid pending response record.")
+                record = self._records[record_index]
+                if record.get("accepted") or record.get("response") != response or record["seat"] != seat:
+                    raise ValueError("Pending response record disagrees.")
+                providers.validate_action(response, decision)
+                self._batch_responses[decision["id"]] = copy.deepcopy(response)
+                self._batch_record_indices[decision["id"]] = record_index
+            else:
+                # Older archives have no pending-cache field. A current-context
+                # record can still save a valid already-paid response. Never use
+                # a response from an accepted or rejected earlier decision.
+                for index in range(len(self._records) - 1, -1, -1):
+                    record = self._records[index]
+                    if (record["seat"] != seat or record.get("accepted") or record.get("rejected")
+                            or "response" not in record or record.get("error")):
+                        continue
+                    stored = record["request"]
+                    if self._canonical(stored.get("input")) != self._canonical(fresh["input"]):
+                        continue
+                    try:
+                        providers.validate_action(record["response"], decision)
+                    except providers.ProviderError:
+                        continue
+                    self._batch_responses[decision["id"]] = copy.deepcopy(record["response"])
+                    self._batch_record_indices[decision["id"]] = index
+                    break
+        self._batch_requests = requests
