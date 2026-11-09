@@ -83,9 +83,90 @@ class ProvidersTests(unittest.TestCase):
             self.assertEqual("Bearer SECRET_SENT_ONLY_IN_HEADER", sent.headers["Authorization"])
             self.assertNotIn("SECRET_SENT_ONLY_IN_HEADER", sent.data.decode())
             self.assertNotIn("tools", json.loads(sent.data))
+            self.assertEqual({"type": "disabled"}, json.loads(sent.data)["thinking"])
+            self.assertNotIn("reasoning_effort", json.loads(sent.data))
             self.assertEqual("reported-model", answer.reported_model)
             self.assertEqual({"total_tokens": 123}, answer.usage)
             self.assertNotIn("NOT STORED", answer.raw_text)
+
+    def test_flash_preset_pins_model_and_supported_thinking_settings(self):
+        config = p.deepseek_flash_config(3, "Flash player", language="zh")
+        self.assertEqual("deepseek-flash", config.model)
+        self.assertEqual("enabled", config.thinking)
+        self.assertEqual("low", config.reasoning_effort)
+        self.assertIsNone(config.temperature)
+        self.assertEqual(4096, config.max_tokens)
+        self.assertEqual("zh", config.language)
+        body = p.wire_request(config, self.request(config))
+        self.assertEqual({"type": "enabled"}, body["thinking"])
+        self.assertEqual("low", body["reasoning_effort"])
+        self.assertEqual(4096, body["max_tokens"])
+        self.assertNotIn("temperature", body)
+        self.assertNotIn("tools", body)
+        with self.assertRaises(FrozenInstanceError):
+            config.thinking = "disabled"
+
+    def test_thinking_validation_prevents_ignored_or_irrelevant_settings(self):
+        cases = [
+            {"provider": "deepseek", "thinking": "enabled"},  # default non-null temperature
+            {"provider": "deepseek", "thinking": "disabled", "reasoning_effort": "low"},
+            {"provider": "deepseek", "reasoning_effort": "low"},
+            {"provider": "deepseek", "thinking": "sometimes"},
+            {"provider": "deepseek", "thinking": "enabled", "temperature": None, "reasoning_effort": "ultra"},
+            {"provider": "demo", "thinking": "disabled"},
+            {"provider": "openai", "reasoning_effort": "low"},
+        ]
+        for fields in cases:
+            with self.subTest(fields=fields), self.assertRaises(ValueError):
+                p.PlayerConfig(1, "Ada", **fields)
+        # Explicit enabling without an effort chooses a pinned low effort rather
+        # than leaving the provider's default high effort implicit.
+        config = p.PlayerConfig(1, "Ada", provider="deepseek", thinking="enabled", temperature=None)
+        self.assertEqual("low", p.wire_request(config, self.request(config))["reasoning_effort"])
+
+    def test_connection_check_uses_synthetic_state_and_reports_only_safe_fields(self):
+        wire = {"model": "DeepSeek-V4.1-Flash-1017", "choices": [{"finish_reason": "stop", "message": {
+            "content": '{"type":"speak","text":"连接正常。"}', "reasoning_content": "DO NOT RETURN"}}],
+            "usage": {"total_tokens": 30}}
+        with patch.dict(os.environ, {"DEEPSEEK_API_KEY": "SECRET"}), \
+             patch.object(p.http, "urlopen", return_value=io.BytesIO(json.dumps(wire).encode())) as network:
+            result = p.check_deepseek("zh")
+        self.assertTrue(result["ok"])
+        self.assertEqual("deepseek-flash", result["model"])
+        self.assertEqual("DeepSeek-V4.1-Flash-1017", result["reported_model"])
+        self.assertEqual("连接正常。", result["text"])
+        self.assertEqual({"ok", "provider", "model", "reported_model", "usage", "text"}, set(result))
+        self.assertNotIn("SECRET", json.dumps(result))
+        self.assertNotIn("DO NOT RETURN", json.dumps(result))
+        body = json.loads(network.call_args.args[0].data)
+        synthetic = json.loads(body["messages"][1]["content"])
+        self.assertEqual([], synthetic["observation"]["players"])
+        self.assertEqual([], synthetic["observation"]["history"])
+        self.assertNotIn("id", synthetic["decision"])
+        self.assertIn("简体中文", body["messages"][0]["content"])
+
+    def test_deepseek_blank_truncated_and_malformed_actions_fail_closed(self):
+        config = p.deepseek_flash_config(1, "Ada")
+        cases = [("stop", "   ", "blank"), ("length", '{"type":"speak"', "token limit"),
+                 ("stop", "not JSON", "complete JSON action"), ("stop", "[]", "complete JSON action")]
+        for finish_reason, content, message in cases:
+            wire = {"choices": [{"finish_reason": finish_reason, "message": {"content": content}}]}
+            with self.subTest(content=content), patch.dict(os.environ, {"DEEPSEEK_API_KEY": "SECRET"}), \
+                 patch.object(p.http, "urlopen", return_value=io.BytesIO(json.dumps(wire).encode())):
+                with self.assertRaisesRegex(p.ProviderError, message):
+                    p.decide(config, self.request(config))
+
+    def test_deepseek_actionable_errors_do_not_echo_secrets(self):
+        config = p.deepseek_flash_config(1, "Ada")
+        for status, expected in [(401, "authentication"), (402, "balance"), (429, "usage limit")]:
+            def fail(*args, **kwargs):
+                raise HTTPError("https://api.deepseek.com", status, "SECRET RAW BODY", {}, io.BytesIO(b"SECRET"))
+            with self.subTest(status=status), patch.dict(os.environ, {"DEEPSEEK_API_KEY": "SECRET"}), \
+                 patch.object(p.http, "urlopen", side_effect=fail) as network, patch.object(p.time, "sleep"):
+                with self.assertRaisesRegex(p.ProviderError, expected) as failure:
+                    p.decide(config, self.request(config))
+                self.assertNotIn("SECRET", str(failure.exception))
+                self.assertEqual(2 if status == 429 else 1, network.call_count)
 
     def test_http_errors_are_bounded_and_do_not_expose_body(self):
         config = p.PlayerConfig(1, "Ada", provider="deepseek", model="chosen-model")

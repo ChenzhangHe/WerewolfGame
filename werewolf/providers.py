@@ -15,6 +15,7 @@ from urllib import error, request as http
 
 
 PROMPT_VERSION = "player-v1"
+DEEPSEEK_FLASH_MODEL = "deepseek-flash"
 MAX_SPEECH_CHARS = 1200
 MAX_NOTES_CHARS = 2000
 MAX_CONTEXT_CHARS = 500_000
@@ -40,6 +41,8 @@ class PlayerConfig:
     temperature: float | None = 0.7
     max_tokens: int | None = 500
     language: str = "en"
+    thinking: str | None = None
+    reasoning_effort: str | None = None
 
     def __post_init__(self):
         if type(self.seat) is not int or not 1 <= self.seat <= 12:
@@ -63,12 +66,32 @@ class PlayerConfig:
             type(self.max_tokens) is not int or not 64 <= self.max_tokens <= 32768
         ):
             raise ValueError("max_tokens must be null or an integer from 64 to 32768.")
+        if self.thinking is not None and self.thinking not in ("enabled", "disabled"):
+            raise ValueError("thinking must be null, enabled, or disabled.")
+        if self.reasoning_effort is not None and self.reasoning_effort not in ("low", "high", "max"):
+            raise ValueError("reasoning_effort must be null, low, high, or max.")
+        if self.provider != "deepseek" and (self.thinking is not None or self.reasoning_effort is not None):
+            raise ValueError("Explicit thinking and reasoning_effort settings are supported only for DeepSeek.")
+        if self.reasoning_effort is not None and self.thinking != "enabled":
+            raise ValueError("reasoning_effort requires thinking to be enabled.")
+        if self.provider == "deepseek" and self.thinking == "enabled" and self.temperature is not None:
+            raise ValueError("DeepSeek thinking mode ignores temperature; set temperature to null.")
         if self.provider == "openai_subscription" and (
             self.temperature is not None or self.max_tokens is not None
         ):
             raise ValueError(
                 "ChatGPT plan usage does not support temperature or max_tokens; set both to null."
             )
+
+
+def deepseek_flash_config(seat, name, personality="", language="en"):
+    """A frozen real-AI preset; inference is invoked only by an explicit caller."""
+    return PlayerConfig(
+        seat=seat, name=name, provider="deepseek", model=DEEPSEEK_FLASH_MODEL,
+        personality=personality or "Thoughtful, concise, and willing to revise a suspicion.",
+        temperature=None, max_tokens=4096, language=language,
+        thinking="enabled", reasoning_effort="low",
+    )
 
 
 class DecisionResult(dict):
@@ -166,7 +189,12 @@ def wire_request(config, player_request):
             ],
             "response_format": {"type": "json_object"},
             "stream": False,
+            # The provider defaults to thinking/high, which would silently ignore
+            # temperature. Pin the effective mode even for older configurations.
+            "thinking": {"type": config.thinking or "disabled"},
         }
+        if config.thinking == "enabled":
+            body["reasoning_effort"] = config.reasoning_effort or "low"
         if config.temperature is not None:
             body["temperature"] = config.temperature
         if config.max_tokens is not None:
@@ -260,7 +288,16 @@ def _live(config, player_request):
             if attempt == 0 and (code == 429 or 500 <= code <= 599):
                 time.sleep(0.25)
                 continue
-            raise ProviderError(f"Provider rejected inference (HTTP {code}); check access, model, and usage.") from None
+            name = "DeepSeek" if config.provider == "deepseek" else "OpenAI"
+            if code == 401:
+                message = f"{name} authentication failed (HTTP 401); check {env_name} and reconnect or restart the server."
+            elif code == 402:
+                message = f"{name} account has insufficient balance (HTTP 402); check billing or add API credits."
+            elif code == 429:
+                message = f"{name} rate or usage limit reached (HTTP 429); check account usage and retry later."
+            else:
+                message = f"{name} rejected inference (HTTP {code}); check access, model, and usage."
+            raise ProviderError(message) from None
         except (error.URLError, TimeoutError, OSError):
             if attempt == 0:
                 time.sleep(0.25)
@@ -272,13 +309,22 @@ def _live(config, player_request):
         if config.provider == "deepseek":
             choice = response_data["choices"][0]
             if choice.get("finish_reason") != "stop":
-                raise ProviderError("Provider output was interrupted or truncated; game paused.")
+                if choice.get("finish_reason") == "length":
+                    raise ProviderError(
+                        "DeepSeek output reached its token limit; game paused. "
+                        "Use a larger max_tokens setting when configuring a new game."
+                    )
+                raise ProviderError("DeepSeek output was interrupted or incomplete; game paused.")
             raw_text = choice["message"]["content"]
+            if not isinstance(raw_text, str) or not raw_text.strip():
+                raise ProviderError("DeepSeek returned blank action content; game paused. Retry the request or start a new game with a larger token budget.")
         else:
             if response_data.get("status") != "completed":
                 raise ProviderError("Provider inference did not complete; game paused.")
             raw_text = _output_text(response_data)
         action = json.loads(raw_text)
+        if not isinstance(action, dict):
+            raise ValueError("Expected a JSON object.")
         return DecisionResult(action, model=response_data.get("model"),
                               usage=_number_usage(response_data.get("usage")), raw_text=raw_text)
     except (ValueError, KeyError, IndexError, TypeError, AttributeError):
@@ -340,3 +386,32 @@ def _demo(config, player_request):
 def decide(config, player_request):
     result = _demo(config, player_request) if config.provider == "demo" else _live(config, player_request)
     return validate_action(result, player_request["input"]["decision"])
+
+
+def check_deepseek(language="en"):
+    """One explicit real inference, containing only a synthetic public observation.
+
+    Never call this automatically during game creation. It consumes provider
+    usage and intentionally does not receive an engine or runner instance.
+    """
+    config = deepseek_flash_config(1, "Connection check", language=language)
+    check_credentials(config)
+    decision = {"kind": "speech", "options": [{"type": "speak"}]}
+    observation = {
+        "seat": 1, "role": "villager", "day": 1, "phase": "day", "language": language,
+        "players": [], "history": [],
+        "notice": ("这是独立的连接测试，不是真实对局。请简短说明连接正常。" if language == "zh" else
+                   "This is a standalone connection check, not a real game. Briefly confirm the connection works."),
+    }
+    assembled = build_request(config, observation, decision)
+    assembled["instructions"] += (
+        "\nConnection-check override: this is not a game turn. Return only the speak action "
+        "with a brief connection confirmation in the requested language. Do not discuss roles, "
+        "seats, strategy, or claim that a real game was played."
+    )
+    answer = decide(config, assembled)
+    return {
+        "ok": True, "provider": config.provider, "model": config.model,
+        "reported_model": getattr(answer, "reported_model", None),
+        "usage": getattr(answer, "usage", {}), "text": answer["text"],
+    }
