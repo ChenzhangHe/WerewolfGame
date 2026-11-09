@@ -5,12 +5,42 @@ spectator server; it never reads credentials or sends archives to a model.
 """
 
 import argparse
+from http.client import IncompleteRead
 import json
 from pathlib import Path
 import sys
+from tempfile import TemporaryDirectory
 import time
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
+
+
+def download_archive(base, output):
+    """Stream a large local archive; retry transfer only, never game actions."""
+    output = Path(output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with TemporaryDirectory(prefix=".archive-download-", dir=output.parent) as directory:
+        temporary = Path(directory) / "archive.private.json"
+        for attempt in range(2):
+            try:
+                with urlopen(base + "/api/export", timeout=120) as response, temporary.open("wb") as target:
+                    expected = response.headers.get("Content-Length")
+                    count = 0
+                    while True:
+                        chunk = response.read(1024 * 1024)
+                        if not chunk:
+                            break
+                        target.write(chunk)
+                        count += len(chunk)
+                    if expected is not None and count != int(expected):
+                        raise OSError("Archive download ended before its declared length.")
+                with temporary.open(encoding="utf-8") as source:
+                    archive = json.load(source)
+                temporary.replace(output)
+                return archive
+            except (IncompleteRead, OSError, ValueError):
+                if attempt:
+                    raise
 
 
 def main():
@@ -79,9 +109,7 @@ def main():
         # Pause respects atomic in-flight batches. Wait for that one batch only.
         while api("/api/state").get("busy"):
             time.sleep(0.5)
-        archive = api("/api/export")
-        args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(json.dumps(archive, ensure_ascii=False), encoding="utf-8")
+        archive = download_archive(base, args.output)
         records = archive.get("inference", [])
         print(json.dumps({"archive": str(args.output), "requests": len(records),
                           "accepted": sum(bool(r.get("accepted")) for r in records),
