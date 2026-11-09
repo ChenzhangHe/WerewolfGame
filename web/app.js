@@ -408,7 +408,7 @@
       }
       provider.addEventListener('change', () => {
         config.provider = provider.value;
-        config.model = provider.value === 'demo' ? 'scripted-v1' : provider.value === 'deepseek' ? 'deepseek-chat' : '';
+        config.model = provider.value === 'demo' ? 'scripted-v1' : '';
         config.temperature = provider.value === 'openai_subscription' ? null : 0.7;
         config.max_tokens = provider.value === 'openai_subscription' ? null : 500;
         renderSetup();
@@ -422,10 +422,11 @@
       const budgets = node('div', 'budget-row');
       if (config.provider === 'openai_subscription') budgets.append(node('span', '', t('subscriptionBudget')));
       else {
-        const tempLabel = node('label', '', `${t('temperature')} `); const temp = node('input'); temp.type = 'number'; temp.min = '0'; temp.max = '2'; temp.step = '.1'; temp.value = config.temperature ?? 0.7;
-        temp.addEventListener('input', () => { config.temperature = Number(temp.value); }); tempLabel.append(temp);
-        const tokenLabel = node('label', '', `${t('tokens')} `); const tokens = node('input'); tokens.type = 'number'; tokens.min = '128'; tokens.max = '8192'; tokens.step = '1'; tokens.value = config.max_tokens ?? 500;
-        tokens.addEventListener('input', () => { config.max_tokens = Number(tokens.value); }); tokenLabel.append(tokens);
+        const providerDefault = state.locale === 'zh' ? '留空使用模型默认值' : 'Blank uses model default';
+        const tempLabel = node('label', '', `${t('temperature')} `); const temp = node('input'); temp.type = 'number'; temp.min = '0'; temp.max = '2'; temp.step = '.1'; temp.value = config.temperature ?? ''; temp.placeholder = providerDefault; temp.title = providerDefault;
+        temp.addEventListener('input', () => { config.temperature = temp.value === '' ? null : Number(temp.value); }); tempLabel.append(temp);
+        const tokenLabel = node('label', '', `${t('tokens')} `); const tokens = node('input'); tokens.type = 'number'; tokens.min = '128'; tokens.max = '8192'; tokens.step = '1'; tokens.value = config.max_tokens ?? ''; tokens.placeholder = providerDefault; tokens.title = providerDefault;
+        tokens.addEventListener('input', () => { config.max_tokens = tokens.value === '' ? null : Number(tokens.value); }); tokenLabel.append(tokens);
         budgets.append(tempLabel, tokenLabel);
       }
       row.append(budgets); container.append(row);
