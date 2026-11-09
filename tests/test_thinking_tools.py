@@ -46,6 +46,7 @@ class ThinkingToolsTests(unittest.TestCase):
             self.assertEqual({'attempts': 1}, kwargs)
             self.assertEqual({'type': 'enabled'}, body['thinking'])
             self.assertEqual('high', body['reasoning_effort'])
+            self.assertEqual('auto', body['tool_choice'])
             assistants = [m for m in body['messages'] if m['role'] == 'assistant']
             for index, message in enumerate(assistants):
                 self.assertEqual(f'PRIVATE_REASONING_SEAT_{config.seat}_HOP_{index}', message['reasoning_content'])

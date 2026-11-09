@@ -143,7 +143,7 @@ class ToolAuditTests(unittest.TestCase):
     def test_whole_wire_comparison_rejects_model_settings_and_extra_context(self):
         original = self.archive()
         for field, value in [('model', 'DIFFERENT_MODEL'), ('temperature', 1.9),
-                             ('tool_choice', 'auto'), ('unexpected_context', {'private': 'NOT_ALLOWED'})]:
+                             ('tool_choice', 'none'), ('unexpected_context', {'private': 'NOT_ALLOWED'})]:
             archive = copy.deepcopy(original)
             archive['inference'][0]['tool_trace'][0]['wire_request'][field] = value
             with self.subTest(field=field), self.assertRaisesRegex(AssertionError, 'Wire body'):

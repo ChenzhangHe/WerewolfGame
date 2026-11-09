@@ -78,7 +78,11 @@ discarded when that decision ends. The archive retains only hashes, character
 lengths, and numeric usage for these states. All other wire fields, action
 content and tool transcripts remain private archive material. The setup UI no
 longer switches tools to JSON when thinking is enabled, and supports 32768 output
-tokens. Ordinary Flash presets remain non-thinking for comparison.
+tokens. The fast Flash preset remains non-thinking for comparison; the high-thinking
+button configures all twelve seats with tools, enabled/high, temperature null
+and 32768 output tokens. The compatible v11 native protocol uses auto tool choice
+in both modes because the provider rejects required with thinking enabled.
+The host still rejects missing or invalid terminal tool actions.
 
 Consult [DeepSeek's API quickstart](https://api-docs.deepseek.com/) for current
 model names and [JSON output instructions](https://api-docs.deepseek.com/guides/json_mode/)

@@ -99,7 +99,7 @@ class ProviderToolsTests(unittest.TestCase):
         original = self.assembled("player-tools-v4")
         stored = json.loads(json.dumps(original))
         body = p.wire_request(self.config, original)
-        self.assertEqual("player-tools-v10", p.TOOLS_PROMPT_VERSION)
+        self.assertEqual("player-tools-v11", p.TOOLS_PROMPT_VERSION)
         self.assertEqual("player-tools-v4", stored["prompt_version"])
         self.assertEqual(body, p.wire_request(self.config, stored))
         self.assertNotIn("win_conditions", json.loads(body["messages"][1]["content"]))
@@ -207,11 +207,14 @@ class ProviderToolsTests(unittest.TestCase):
         self.assertIn("PRIVATE_RESULT_ONLY_ON_READ", json.dumps(assembled["tool_context"]))
         body = p.wire_request(self.config, assembled)
         encoded = json.dumps(body)
-        for hidden in ("tool_context", "PRIVATE_RESULT_ONLY_ON_READ", "PRIVATE_NOTES_ONLY_ON_READ",
+        for hidden in ("tool_context", "PRIVATE_RESULT_ONLY_ON_READ",
                        "OLD_PUBLIC_ONLY_ON_READ", "INTERNAL_ROUTING_ID"):
             self.assertNotIn(hidden, encoded)
+        self.assertIn("PRIVATE_NOTES_ONLY_ON_READ", encoded)
+        self.assertNotIn("PRIVATE_NOTES_ONLY_ON_READ", json.dumps(p.wire_request(self.config, self.assembled("player-tools-v10"))))
         self.assertNotIn("response_format", body)
-        self.assertEqual("required", body["tool_choice"])
+        self.assertEqual("auto", body["tool_choice"])
+        self.assertEqual("required", p.wire_request(self.config, self.assembled("player-tools-v10"))["tool_choice"])
         self.assertEqual({"type": "disabled"}, body["thinking"])
         names = {t["function"]["name"] for t in body["tools"]}
         self.assertIn("action_speak", names)
@@ -295,7 +298,7 @@ class ProviderToolsTests(unittest.TestCase):
                 p.decide(self.config, self.assembled("player-tools-v6"))
             self.assertEqual(1, network.call_count)
             self.assertEqual("tool_read_budget", failure.exception.validation_details["category"])
-        with patch.object(p, "MAX_TOOL_MESSAGE_CHARS", 20), patch.object(p.http, "urlopen") as network:
+        with patch.object(p, "V6_MAX_TOOL_MESSAGE_CHARS", 20), patch.object(p.http, "urlopen") as network:
             with self.assertRaises(p.ProviderError) as failure:
                 p.decide(self.config, self.assembled("player-tools-v6"))
             self.assertEqual("tool_message_budget", failure.exception.validation_details["category"])

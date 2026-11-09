@@ -173,7 +173,7 @@ not evidence that a model will never misreason or betray its team again.
 
 ## V10 self-claims versus Idiot ability activation
 
-New games use `player-tools-v10`, retaining v9 budgets and legal actions.
+Protocol `player-tools-v10` retains v9 budgets and legal actions.
 `public_state` adds `idiot_protection_activated_seats` (public ability reveals) and
 `ordinary_exile_voters` (living seats before runoff exclusions, excluding only
 formally revealed Idiots). A self-claim never changes these lists. Current action
@@ -200,3 +200,41 @@ wire fields and passback metadata against preceding assistant states in that
 same attempt. It cannot reconstruct or semantically inspect redacted reasoning.
 Synthetic tests inspect actual outbound payloads for isolation and full passback.
 Non-thinking archives preserve their original exact-wire representation.
+
+
+## V11 decision support and thinking-compatible invocation
+
+New games use `player-tools-v11`. The same native protocol uses `tool_choice:
+auto` in both off/high modes: a live synthetic check established that DeepSeek
+rejects `required` with thinking enabled (HTTP 400). The application still accepts
+only one legal terminal native call; prose is never converted into an action or
+silently repaired. The final action-only stage also uses the compatible choice.
+
+The briefing now includes core public rules and the actor's prior notes, labeled
+as beliefs. Its bound is 24,000 characters, while individual read outputs remain
+12,000. No public history is eagerly loaded; large recent events remain whole
+entries or explicitly omitted with continuation pointers. V11 has a 384,000
+character request cap and 5,000,000 cumulative character budget, including
+reasoning passback, with twelve model requests/twelve read calls. V6–v10 retain
+128,000/1,000,000 budgets and all earlier profiles retain their manifests.
+
+The old explosion task is presented as a routine `daytime_continuation` check.
+It encourages maintaining a private plan and reconsidering on new evidence,
+without removing any legal action or window. Pass/explode are both model choices.
+There is no hard self-explosion rate limit or automatic pass.
+
+Two pure read tools support arithmetic:
+
+- `calculate_exile_votes`: user-proposed ordinary ballots, public Sheriff weight,
+  tied leaders, and unspecified voters. It never queries pending votes; runoff
+  exclusions are explicitly outside this calculation.
+- `check_win_hypothesis`: a complete user-supplied role assignment and proposed
+  additional deaths. Checks public lineup counts and the actor's already-known
+  facts, then computes remaining factions. All unverified assignments remain
+  labeled hypotheses, not referee confirmations. It does not simulate night
+  abilities, priorities, or future player behavior.
+
+Both tools consume only detached seat observations and caller arguments. Tests
+cover a living Idiot blocking a false all-specials-dead win, self-claims versus
+formal reveals, duplicate/ineligible votes, Sheriff weight, own wolf roster
+conflicts, and independence from other unrevealed assignments.

@@ -59,7 +59,7 @@ class SeatToolHarness:
     """Immutable seat-local input, bounded reads, and exact terminal proposals."""
 
     def __init__(self, observation, decision, notes='', language='en', *, fixed_pages=False, explicit_consequences=False,
-                 explicit_output_limits=False, explicit_state_facts=False, explicit_vote_facts=False):
+                 explicit_output_limits=False, explicit_state_facts=False, explicit_vote_facts=False, decision_support=False):
         if not isinstance(observation, dict) or not isinstance(decision, dict):
             raise ValueError('Invalid player context.')
         if language not in RULES or observation.get('language', language) != language:
@@ -84,6 +84,7 @@ class SeatToolHarness:
         self._explicit_output_limits = explicit_output_limits
         self._explicit_state_facts = explicit_state_facts
         self._explicit_vote_facts = explicit_vote_facts
+        self._decision_support = decision_support
         self._notes = notes
         # Explicit metadata allowlist avoids forwarding opaque engine-global fields.
         self._metadata = deepcopy({k: observation[k] for k in
@@ -115,13 +116,13 @@ class SeatToolHarness:
             self._actions.setdefault(name, []).append(deepcopy(option))
 
     @staticmethod
-    def _bounded(value):
+    def _bounded(value, max_chars=MAX_TOOL_OUTPUT_CHARS):
         result = deepcopy(value)
         try:
             size = len(json.dumps(result, ensure_ascii=False, allow_nan=False))
         except (ValueError, TypeError):
             raise ValueError('Tool result is not valid JSON.') from None
-        if size > MAX_TOOL_OUTPUT_CHARS:
+        if size > max_chars:
             raise ValueError('Tool result exceeds its supported size.')
         return result
 
@@ -180,13 +181,21 @@ class SeatToolHarness:
             result['output_limits'] = {'speech_max_chars': 1200, 'speech_target_chars': [400, 700],
                                        'notes_max_chars': 2000,
                                        'counting': 'Decoded Unicode characters, including spaces, punctuation and newlines; not tokens or words.'}
+        if self._decision_support:
+            from .briefing_rules import CORE_RULES
+            result['core_public_rules'] = deepcopy(CORE_RULES[self._language])
+            result['prior_private_notes'] = self._notes
+            result['notes_status'] = 'Own prior beliefs and plan, not referee-confirmed facts.'
+            if self._decision['kind'] == 'explosion':
+                result['current_task'] = 'daytime_continuation'
+                result['decision_notice'] = 'Routine opportunity to continue ordinary play or legally interrupt; being asked is not evidence of danger. Both offered actions are available.'
         if self._metadata.get('role') == 'wolf':
             result['log_counts']['wolf_chat'] = len(self._wolf)
         # Large recent events are omitted as whole entries, with explicit pointers
         # to their authorized paginated log; no event text is silently truncated.
         while True:
             try:
-                return self._bounded(result)
+                return self._bounded(result, 24_000 if self._decision_support else MAX_TOOL_OUTPUT_CHARS)
             except ValueError:
                 if not result['recent_public']:
                     raise
@@ -215,6 +224,25 @@ class SeatToolHarness:
         ]
         if self._metadata.get('role') == 'wolf':
             definitions.insert(3, self._tool('read_wolf_chat', 'Read wolf-only night discussion and attack decisions already delivered to you. Continue at next_offset.', page))
+        if self._decision_support:
+            from .calculations import ROLE_COUNTS
+            ordinary = [p['seat'] for p in self._metadata.get('players', []) if p['alive'] and p.get('revealed_role') != 'idiot']
+            definitions.extend([
+                self._tool('calculate_exile_votes', 'Check user-proposed ordinary exile ballots, with public Sheriff weight. Does not read unpublished votes or apply runoff exclusions. Use all proposed voters to get a full hypothetical tally.',
+                           {'ballots': {'type': 'array', 'maxItems': 12, 'items': {'type': 'object',
+                               'properties': {'seat': {'type': 'integer', 'enum': ordinary},
+                                              'target': {'type': ['integer', 'null'], 'enum': ordinary + [None]}},
+                               'required': ['seat', 'target'], 'additionalProperties': False}}}, ['ballots']),
+                self._tool('check_win_hypothesis', 'Check victory arithmetic for your explicit role assumptions and additional deaths. This is not a hidden-role oracle or a night/death-ability simulation. Requires a complete role hypothesis; conflicts return feedback without confirming unknown roles.',
+                           {'assignments': {'type': 'array', 'minItems': 12, 'maxItems': 12,
+                                'items': {'type': 'object', 'properties': {
+                                    'seat': {'type': 'integer', 'minimum': 1, 'maximum': 12},
+                                    'role': {'type': 'string', 'enum': list(ROLE_COUNTS)}},
+                                'required': ['seat', 'role'], 'additionalProperties': False}},
+                            'additional_deaths': {'type': 'array', 'maxItems': 12,
+                                'items': {'type': 'integer', 'minimum': 1, 'maximum': 12}}},
+                           ['assignments', 'additional_deaths']),
+            ])
         for name, options in self._actions.items():
             properties = {}
             keys = list(dict.fromkeys(k for option in options for k in option if k != 'type'))
@@ -239,6 +267,10 @@ class SeatToolHarness:
             if (self._explicit_consequences and self._decision['kind'] == 'explosion'
                     and options[0]['type'] in ('pass', 'explode')):
                 description = EXPLICIT_CONSEQUENCES[self._language][options[0]['type']]
+                if self._decision_support and options[0]['type'] == 'pass':
+                    description = ('继续正常白天流程，保留自己的生命和后续合法发言、投票机会；其他狼人仍可独立打断。此行动只完成本次检查。'
+                                   if self._language == 'zh' else
+                                   'Continue ordinary daytime play, preserving your life and later legal speech/votes; other Wolves can still independently interrupt. Completes only this checkpoint.')
             definitions.append(self._tool(name, description, properties, required))
         if self._fixed_pages:
             for definition in definitions:
@@ -318,6 +350,18 @@ class SeatToolHarness:
                     failure.validation_details = deepcopy(details)
                 raise failure from None
             return deepcopy(action)
+        if self._decision_support and name == 'calculate_exile_votes':
+            if set(args) != {'ballots'}:
+                raise ValueError('Supply proposed ballots only.')
+            from .calculations import exile_votes
+            return self._bounded(exile_votes(self._metadata.get('players', []), args['ballots']))
+        if self._decision_support and name == 'check_win_hypothesis':
+            if set(args) != {'assignments', 'additional_deaths'}:
+                raise ValueError('Supply role assumptions and additional deaths only.')
+            from .calculations import win_hypothesis
+            return self._bounded(win_hypothesis(self._metadata.get('players', []),
+                self._metadata['seat'], self._metadata['role'], self._metadata.get('wolf_teammates', []),
+                args['assignments'], args['additional_deaths'], self._metadata.get('role_counts')))
         if name == 'read_public_log':
             return self._page(self._public, args)
         if name == 'read_my_results':

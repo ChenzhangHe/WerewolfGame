@@ -132,12 +132,12 @@ def audit(archive):
             limits = p.tool_protocol_limits(request['prompt_version'])
             action_phase = limits['final_action_stage'] and (
                 hop_index == limits['model_requests'] - 1 or
-                (request['prompt_version'] in {'player-tools-v7', 'player-tools-v8', 'player-tools-v9', 'player-tools-v10'} and record_reads >= limits['read_calls']))
+                (request['prompt_version'] in {'player-tools-v7', 'player-tools-v8', 'player-tools-v9', 'player-tools-v10', 'player-tools-v11'} and record_reads >= limits['read_calls']))
             if action_phase:
                 # Verify the versioned action-only stage and host transition notice.
                 expected_body['tools'] = [tool for tool in expected_body['tools']
                                           if tool['function']['name'].startswith('action_')]
-                if request['prompt_version'] in {'player-tools-v7', 'player-tools-v8', 'player-tools-v9', 'player-tools-v10'}:
+                if request['prompt_version'] in {'player-tools-v7', 'player-tools-v8', 'player-tools-v9', 'player-tools-v10', 'player-tools-v11'}:
                     tool_names = ", ".join(tool['function']['name'] for tool in expected_body['tools'])
                     expected_body['messages'][0]['content'] += (
                         "\nACTION PHASE: Reading is now closed for this decision. "
