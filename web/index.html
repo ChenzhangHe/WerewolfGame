@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101514">
+  <title>Werewolf — The village is listening</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="Werewolf home"><span class="brand-mark" aria-hidden="true">◒</span><span>WEREWOLF<span class="brand-caption" data-i18n="brandCaption">AN AI SOCIAL EXPERIMENT</span></span></a>
+      <div class="topbar-end"><span class="local-badge"><i></i><span data-i18n="localSession">LOCAL SESSION</span></span><div class="locale-switch" aria-label="Interface language"><button id="locale-en" type="button" lang="en">EN</button><button id="locale-zh" type="button" lang="zh">中文</button></div><button class="button secondary compact" id="setup-open" data-i18n="newGame">New game</button></div>
+    </header>
+
+    <main>
+      <section class="intro" aria-labelledby="headline">
+        <div><p class="eyebrow"><span class="short-rule"></span><span data-i18n="eyebrow">TWELVE MINDS. ONE HIDDEN TRUTH.</span></p><h1 id="headline" data-i18n="headline">The village is listening.</h1><p class="intro-copy" data-i18n="introCopy">Watch alliances form, stories unravel, and every word become evidence.</p></div>
+        <div class="session-stamp"><span id="game-language">ENGLISH GAME</span><strong>12<span data-i18n="players">PLAYERS</span></strong><span data-i18n="rulesTag">STANDARD · RULES V1</span></div>
+      </section>
+
+      <div id="notice" class="notice" role="status" hidden></div>
+      <div id="demo-notice" class="demo-notice"><span class="demo-dot"></span><strong data-i18n="demoTitle">Scripted demonstration</strong><span data-i18n="demoCopy">These players are smoke-test scripts, not a measure of AI capability.</span></div>
+
+      <section class="control-bar" aria-label="Game controls">
+        <div class="transport"><button class="button primary" id="play"><span aria-hidden="true">▶</span><span data-i18n="play">Play</span></button><button class="icon-button" id="step" title="Advance one decision batch" aria-label="Advance one decision batch">▸│</button><span class="transport-state"><i id="status-dot"></i><span id="status-label">Paused</span></span></div>
+        <div class="perspective-control"><label for="perspective" data-i18n="perspective">Perspective</label><select id="perspective"><option value="mystery" data-i18n="mystery">Mystery</option><option value="omniscient" data-i18n="omniscient">Omniscient</option><option value="player" data-i18n="follow">Follow a player</option></select><select id="follow-seat" aria-label="Follow seat" hidden></select></div>
+      </section>
+
+      <div class="main-grid">
+        <section class="panel village-panel" aria-labelledby="village-heading">
+          <div class="panel-heading"><h2 id="village-heading" data-i18n="village">The village</h2><span class="muted small" id="alive-count">12 / 12 alive</span></div>
+          <div class="village" id="village"><div class="orbit orbit-outer"></div><div class="orbit orbit-inner"></div><div class="compass north">N</div><div class="village-center"><div class="moon" aria-hidden="true"></div><p class="eyebrow" id="day-label">NIGHT 1</p><h3 id="phase-label">The village sleeps</h3><p id="center-caption" data-i18n="centerCaption">Secrets move in the dark.</p></div><div id="seats"></div></div>
+          <div class="village-legend"><span><i class="legend-dot speaking-dot"></i><span data-i18n="speaking">Speaking / acting</span></span><span><i class="legend-dot sheriff-dot"></i><span data-i18n="sheriff">Sheriff</span></span><span><i class="legend-dot eliminated-dot"></i><span data-i18n="eliminated">Eliminated</span></span></div>
+          <div class="perspective-note" id="perspective-note"></div>
+        </section>
+
+        <section class="panel transcript-panel" aria-labelledby="transcript-heading">
+          <div class="panel-heading"><h2 id="transcript-heading" data-i18n="transcript">The conversation</h2><button class="text-button" id="autoscroll" aria-pressed="true" data-i18n="autoScroll">Follow latest ↓</button></div>
+          <div class="transcript" id="transcript" tabindex="0" aria-label="Game event transcript"><div class="empty-state"><span aria-hidden="true">◌</span><h3 data-i18n="waitingTitle">Before the first whisper</h3><p data-i18n="waitingCopy">Start the game to watch the village come alive.</p></div></div>
+          <div class="transcript-footer"><span class="small muted" id="event-count">0 events</span><span class="small muted" data-i18n="transcriptNote">Claims are not confirmed roles.</span></div>
+        </section>
+      </div>
+
+      <section class="replay-bar panel" aria-label="Replay controls"><button class="icon-button" id="replay-back" aria-label="Previous checkpoint">‹</button><div class="replay-label"><strong data-i18n="timeline">TIMELINE</strong><span id="replay-position">0 / 0</span></div><input id="replay-range" type="range" min="0" max="0" value="0" aria-label="Replay checkpoint"><button class="text-button live-button" id="go-live"><i></i><span data-i18n="live">LIVE</span></button></section>
+
+      <div class="details-grid">
+        <section class="panel dossier-panel"><div class="panel-heading"><h2 data-i18n="playerDetail">Player dossier</h2><select id="detail-seat" aria-label="Player dossier seat"></select></div><div id="dossier"></div></section>
+        <section class="panel ledger-panel"><div class="panel-heading"><h2 data-i18n="voteLedger">Voting record</h2><span class="eyebrow" data-i18n="publicRecord">PUBLIC RECORD</span></div><div id="vote-ledger" class="ledger"></div></section>
+      </div>
+
+      <footer class="footer"><span data-i18n="footer">A game of imperfect information. A window into artificial minds.</span><button class="text-button" id="export" data-i18n="export">Export full archive ↗</button></footer>
+    </main>
+  </div>
+
+  <dialog id="setup-dialog" aria-labelledby="setup-title">
+    <form id="setup-form">
+      <div class="dialog-header"><div><p class="eyebrow" data-i18n="nextSession">THE NEXT SESSION</p><h2 id="setup-title" data-i18n="setupTitle">Gather the village.</h2></div><button type="button" class="icon-button" id="setup-close" aria-label="Close setup">×</button></div>
+      <p class="muted" data-i18n="setupCopy">Choose the players before the first night. Their configurations and speech language remain fixed throughout the game.</p>
+      <div class="setup-basics"><label><span data-i18n="gameLanguage">Game & player speech language</span><select id="setup-language"><option value="en">English</option><option value="zh">中文</option></select></label><label><span data-i18n="seed">Game seed</span><input id="setup-seed" type="number" value="1" min="0" max="2147483647" required></label></div>
+      <div class="setup-callout" data-i18n="credentialsNote">Live providers read credentials from the server environment. No API keys are entered or stored in this interface.</div>
+      <details class="player-settings" open><summary><span data-i18n="configurePlayers">Configure twelve players</span><span class="muted small" data-i18n="fixedAtStart">FIXED AT START</span></summary><div id="setup-players"></div></details>
+      <p class="small muted" data-i18n="newGameWarning">Starting a new game replaces the current session. Export its archive first if you want to keep it.</p>
+      <div id="setup-error" class="notice" role="alert" hidden></div>
+      <div class="dialog-actions"><button type="button" class="button secondary" id="setup-cancel" data-i18n="cancel">Cancel</button><button type="submit" class="button primary" id="setup-create" data-i18n="createGame">Create game</button></div>
+    </form>
+  </dialog>
+  <dialog id="export-dialog" aria-labelledby="export-title"><div class="dialog-header"><h2 id="export-title" data-i18n="exportTitle">Reveal the full archive?</h2><button class="icon-button" id="export-close" aria-label="Close">×</button></div><p data-i18n="exportWarning">This download contains every hidden role, private action, player note, and provider request. It will spoil a mystery game. Keep it away from active players.</p><div class="dialog-actions"><button class="button secondary" id="export-cancel" data-i18n="cancel">Cancel</button><button class="button primary" id="export-download" data-i18n="downloadArchive">Download archive</button></div></dialog>
+</body>
+</html>
