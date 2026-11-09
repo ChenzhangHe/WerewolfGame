@@ -48,11 +48,20 @@ budgets pause the game and retain a diagnostic trace. Tool mode never invokes
 format repair, including when JSON-mode repair is enabled for the game. An
 explicit retry preserves settings and cached successful decisions.
 
-Protocol `player-tools-v3` allows at most six model requests and twelve read calls
-per decision, with a 60,000-character cumulative message budget. Each request also
-retains the player's frozen output-token cap. These bounds prevent an unbounded
-agent loop; retrieving too much evidence is a visible evaluation failure rather
-than silent context truncation.
+Protocol `player-tools-v4` allows at most six model requests and twelve read calls
+per decision. Each request has a 24,000-character message-context limit, and the
+decision has a 144,000-character cumulative message budget. The sixth request
+exposes only current action tools, so the model chooses an action within the
+remaining budget. No action is fabricated. Reads all use the same frozen
+snapshot; repeated reads cannot produce new events. Each request retains the
+player's frozen output-token cap. Exceeding a limit is a visible evaluation
+failure rather than silent truncation.
+
+Earlier v1–v3 games retain their 60,000-character cumulative budget and original
+manifests on restore. A v3 live run paused on that cumulative budget after the
+Witch spent five requests reading, including a repeated private-results read.
+The v4 final action stage and separate context limit address that orchestration
+failure in a fresh game without altering the failed game's settings.
 
 ## Transport and diagnostics
 

@@ -37,7 +37,10 @@ class ProviderToolsTests(unittest.TestCase):
         }
         self.decision = {"id": "INTERNAL_ROUTING_ID", "seat": 1, "kind": "speech", "options": [{"type": "speak"}]}
 
-    def assembled(self):
+    def assembled(self, version=None):
+        if version is not None:
+            return p._build_tools_request(self.config, self.observation, self.decision,
+                                          "PRIVATE_NOTES_ONLY_ON_READ", "en", version=version)
         return p.build_request(self.config, self.observation, self.decision, "PRIVATE_NOTES_ONLY_ON_READ")
 
     def infer(self, responses, assembled=None):
@@ -141,7 +144,7 @@ class ProviderToolsTests(unittest.TestCase):
         with patch.dict(os.environ, {"DEEPSEEK_API_KEY": "SECRET"}), \
              patch.object(p.http, "urlopen", side_effect=encoded) as network:
             with self.assertRaises(p.ProviderError) as failure:
-                p.decide(self.config, self.assembled())
+                p.decide(self.config, self.assembled("player-tools-v3"))
             self.assertEqual(6, network.call_count)
             self.assertEqual("tool_model_budget", failure.exception.validation_details["category"])
         excessive = response([call("read_my_notes", {}, f"read-{i}") for i in range(13)])
@@ -156,6 +159,66 @@ class ProviderToolsTests(unittest.TestCase):
                 p.decide(self.config, self.assembled())
             self.assertEqual("tool_message_budget", failure.exception.validation_details["category"])
             network.assert_not_called()
+
+    def test_v4_sixth_request_offers_only_actions_and_model_can_finish(self):
+        responses = [response([call("read_my_notes", {}, f"read-{i}")]) for i in range(5)]
+        responses.append(response([call("action_speak", {"text": "I am ready to vote."}, "finish")]))
+        result, network = self.infer(responses)
+        self.assertEqual("speak", result["type"])
+        self.assertEqual(6, network.call_count)
+        for sent in network.call_args_list[:5]:
+            names = {tool["function"]["name"] for tool in json.loads(sent.args[0].data)["tools"]}
+            self.assertIn("read_my_notes", names)
+        final = json.loads(network.call_args_list[-1].args[0].data)
+        self.assertEqual({"action_speak"}, {tool["function"]["name"] for tool in final["tools"]})
+        self.assertEqual("required", final["tool_choice"])
+        self.assertEqual(final, result.tool_trace[-1]["wire_request"])
+        self.assertIn("repeated reads cannot produce new events", self.assembled()["instructions"])
+
+    def test_v4_rejects_revoked_read_on_final_step_without_executing_it(self):
+        responses = [io.BytesIO(json.dumps(response([call("read_my_notes", {}, f"read-{i}")])).encode())
+                     for i in range(6)]
+        with patch.dict(os.environ, {"DEEPSEEK_API_KEY": "SECRET"}), \
+             patch.object(p.http, "urlopen", side_effect=responses) as network:
+            with self.assertRaises(p.ProviderError) as failure:
+                p.decide(self.config, self.assembled())
+        self.assertEqual(6, network.call_count)
+        self.assertEqual("invalid_tool_read", failure.exception.validation_details["category"])
+        self.assertEqual([], failure.exception.tool_trace[-1]["tool_results"])
+        self.assertEqual({"action_speak"}, {tool["function"]["name"]
+                         for tool in failure.exception.tool_trace[-1]["wire_request"]["tools"]})
+
+    def test_v4_context_cap_stops_before_http_but_legacy_has_no_request_cap(self):
+        with patch.object(p, "MAX_TOOL_CONTEXT_CHARS", 20), patch.object(p.http, "urlopen") as network:
+            with self.assertRaises(p.ProviderError) as failure:
+                p.decide(self.config, self.assembled())
+            self.assertEqual("tool_context_budget", failure.exception.validation_details["category"])
+            network.assert_not_called()
+        with patch.object(p, "MAX_TOOL_CONTEXT_CHARS", 20):
+            result, network = self.infer([response([call("action_speak", {"text": "Legacy action."})])],
+                                         assembled=self.assembled("player-tools-v3"))
+        self.assertEqual("speak", result["type"])
+        self.assertEqual(1, network.call_count)
+
+    def test_legacy_cumulative_limit_is_preserved_while_v4_can_reach_final_action(self):
+        observation = copy.deepcopy(self.observation)
+        for event in observation["history"]:
+            if event["audience"] == "public":
+                event["text"] = "Public statement. " + "x" * 1000
+        def assembled(version):
+            return p._build_tools_request(self.config, observation, self.decision, "n" * 2000, "en", version=version)
+        replies = [response([call("read_my_notes", {}, f"read-{i}")]) for i in range(5)]
+        replies.append(response([call("action_speak", {"text": "Final decision."}, "finish")]))
+        encoded = [io.BytesIO(json.dumps(item).encode()) for item in replies]
+        with patch.dict(os.environ, {"DEEPSEEK_API_KEY": "SECRET"}), \
+             patch.object(p.http, "urlopen", side_effect=encoded) as network:
+            with self.assertRaises(p.ProviderError) as failure:
+                p.decide(self.config, assembled("player-tools-v3"))
+        self.assertEqual("tool_message_budget", failure.exception.validation_details["category"])
+        self.assertLess(network.call_count, 6)
+        result, network = self.infer(replies, assembled=assembled("player-tools-v4"))
+        self.assertEqual("speak", result["type"])
+        self.assertEqual(6, network.call_count)
 
     def test_tool_transport_failure_has_no_retry_and_safe_diagnostics(self):
         def fail(*args, **kwargs):

@@ -15,10 +15,12 @@ from urllib import error, request as http
 
 
 PROMPT_VERSION = "player-v3"
-TOOLS_PROMPT_VERSION = "player-tools-v3"
+TOOLS_PROMPT_VERSION = "player-tools-v4"
 MAX_TOOL_MODEL_REQUESTS = 6
 MAX_TOOL_READ_CALLS = 12
-MAX_TOOL_MESSAGE_CHARS = 60_000
+MAX_TOOL_MESSAGE_CHARS = 144_000
+MAX_TOOL_CONTEXT_CHARS = 24_000
+LEGACY_MAX_TOOL_MESSAGE_CHARS = 60_000
 DEEPSEEK_FLASH_MODEL = "deepseek-flash"
 DEEPSEEK_FLASH_MAX_TOKENS = 8192
 MAX_SPEECH_CHARS = 1200
@@ -190,12 +192,23 @@ def _seat_harness(player_request):
     context = player_request["tool_context"]
     return SeatToolHarness(copy.deepcopy(context["observation"]), copy.deepcopy(context["decision"]),
                            notes=context["private_notes"], language=player_request["language"],
-                           fixed_pages=player_request.get("prompt_version") == "player-tools-v3")
+                           fixed_pages=player_request.get("prompt_version") in {"player-tools-v3", "player-tools-v4"})
+
+
+def tool_protocol_limits(version):
+    """Protocol versions pin resource limits and final-stage capabilities."""
+    if version not in {"player-tools-v1", "player-tools-v2", "player-tools-v3", "player-tools-v4"}:
+        raise ProviderError("Unsupported player tool protocol.")
+    current = version == "player-tools-v4"
+    return {"model_requests": MAX_TOOL_MODEL_REQUESTS, "read_calls": MAX_TOOL_READ_CALLS,
+            "message_chars": MAX_TOOL_MESSAGE_CHARS if current else LEGACY_MAX_TOOL_MESSAGE_CHARS,
+            "context_chars": MAX_TOOL_CONTEXT_CHARS if current else None,
+            "final_action_stage": current}
 
 
 def _build_tools_request(config, observation, decision, notes, language, version=None):
     version = version or TOOLS_PROMPT_VERSION
-    if version not in {"player-tools-v1", "player-tools-v2", "player-tools-v3"}:
+    if version not in {"player-tools-v1", "player-tools-v2", "player-tools-v3", "player-tools-v4"}:
         raise ProviderError("Unsupported player tool protocol.")
     result = {
         "prompt_version": version, "provider": config.provider,
@@ -227,6 +240,15 @@ def _build_tools_request(config, observation, decision, notes, language, version
            if language == "zh" else "All speech, wolf discussion, and private notes must be in English. ")
         + "Keep tool names and enum values exactly as declared. Your fixed personality: " + config.personality
     )
+    if version == "player-tools-v4":
+        result["instructions"] += (
+            "\nUse targeted public-log search instead of repeatedly retrieving broad history. "
+            "All reads are from this same frozen snapshot; repeated reads cannot produce new events. "
+            "Previously returned results remain visible in this conversation. Do not reread unchanged "
+            "private results or notes; use the information you already retrieved. The sixth and final "
+            "model request exposes only your current action_ functions, with tool choice required. "
+            "Choose exactly one of those actions on that final step; no read tools are available then."
+        )
     if len(json.dumps(result, ensure_ascii=False)) > MAX_CONTEXT_CHARS:
         raise ProviderError("Player context exceeded the configured limit; game paused without truncation.")
     return result
@@ -503,6 +525,7 @@ def _tools_live(config, player_request):
     read_calls = 0
     total_usage = {}
     reported_model = None
+    limits = tool_protocol_limits(player_request.get("prompt_version", "player-tools-v1"))
 
     def fail(message, category, entry=None):
         if entry is not None:
@@ -514,11 +537,17 @@ def _tools_live(config, player_request):
         failure.repairable = False
         return failure
 
-    for _ in range(MAX_TOOL_MODEL_REQUESTS):
+    for hop in range(limits["model_requests"]):
         body = copy.deepcopy(base)
         body["messages"] = copy.deepcopy(messages)
-        used_chars += len(json.dumps(messages, ensure_ascii=False))
-        if used_chars > MAX_TOOL_MESSAGE_CHARS:
+        if limits["final_action_stage"] and hop == limits["model_requests"] - 1:
+            body["tools"] = [tool for tool in body["tools"] if harness.is_action(tool["function"]["name"])]
+            body["tool_choice"] = "required"
+        context_chars = len(json.dumps(messages, ensure_ascii=False))
+        if limits["context_chars"] is not None and context_chars > limits["context_chars"]:
+            raise fail("Player tool conversation exceeded its per-request context budget; game paused.", "tool_context_budget")
+        used_chars += context_chars
+        if used_chars > limits["message_chars"]:
             raise fail("Player tool conversation exceeded its message budget; game paused.", "tool_message_budget")
         entry = {"wire_request": body, "assistant": None, "tool_results": [],
                  "reported_model": None, "usage": {}}
@@ -574,7 +603,7 @@ def _tools_live(config, player_request):
             # Retain assistant final content and function calls, never reasoning_content.
             entry["assistant"] = copy.deepcopy(assistant)
             used_chars += len(json.dumps(assistant, ensure_ascii=False))
-            if used_chars > MAX_TOOL_MESSAGE_CHARS:
+            if used_chars > limits["message_chars"]:
                 raise fail("Player tool conversation exceeded its message budget; game paused.", "tool_message_budget", entry)
             if choice.get("finish_reason") not in ("tool_calls", "stop"):
                 raise fail("Native tool output was interrupted or truncated; game paused.", "output_truncated", entry)
@@ -586,6 +615,11 @@ def _tools_live(config, player_request):
         if not calls:
             raise fail("Tool mode requires an offered native action call; plain-text answers are not actions.",
                        "missing_tool_call", entry)
+        if limits["final_action_stage"]:
+            offered = {tool["function"]["name"] for tool in body["tools"]}
+            if any(call["function"]["name"] not in offered for call in calls):
+                raise fail("Player called a tool that was not offered for this step; game paused.",
+                           "invalid_tool_read", entry)
         action_calls = [call for call in calls if harness.is_action(call["function"]["name"])]
         if action_calls:
             if len(action_calls) != 1 or len(calls) != 1:
@@ -602,7 +636,7 @@ def _tools_live(config, player_request):
             entry["tool_results"].append({"name": name, "arguments": arguments, "result": copy.deepcopy(action)})
             return DecisionResult(action, model=reported_model, usage=total_usage,
                                   raw_text=json.dumps(action, ensure_ascii=False), tool_trace=trace)
-        if read_calls + len(calls) > MAX_TOOL_READ_CALLS:
+        if read_calls + len(calls) > limits["read_calls"]:
             raise fail("Player exceeded its read-tool call budget; game paused.", "tool_read_budget", entry)
         messages.append(assistant)
         for call in calls:
@@ -619,7 +653,7 @@ def _tools_live(config, player_request):
             entry["tool_results"].append({"name": name, "arguments": arguments, "result": copy.deepcopy(result)})
             encoded = json.dumps(result, ensure_ascii=False)
             used_chars += len(encoded)
-            if used_chars > MAX_TOOL_MESSAGE_CHARS:
+            if used_chars > limits["message_chars"]:
                 raise fail("Player tool conversation exceeded its message budget; game paused.", "tool_message_budget", entry)
             messages.append({"role": "tool", "tool_call_id": call["id"], "content": encoded})
     raise fail("Player exhausted its native tool model-request budget without an action; game paused.",

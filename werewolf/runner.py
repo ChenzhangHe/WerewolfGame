@@ -297,7 +297,7 @@ class Runner:
         result.configs = configs
         result.language = language
         result._tool_prompt_version = archive.get("tool_prompt_version", "player-tools-v1")
-        if result._tool_prompt_version not in {"player-tools-v1", "player-tools-v2", "player-tools-v3"}:
+        if result._tool_prompt_version not in {"player-tools-v1", "player-tools-v2", "player-tools-v3", "player-tools-v4"}:
             raise ValueError("Unsupported player tool protocol.")
         # Earlier archives predate this explicit policy and always repaired.
         policy = archive.get("allow_format_repair", True)
