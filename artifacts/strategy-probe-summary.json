@@ -1,0 +1,44 @@
+{
+  "profile": "strategy-probe-v1-json",
+  "source_game": "supervised-v9",
+  "cases": 4,
+  "repeats_per_mode_per_case": 2,
+  "matched_fields": [
+    "messages",
+    "model",
+    "max_tokens",
+    "response_format"
+  ],
+  "max_tokens": 32768,
+  "temperature": null,
+  "modes": {
+    "off": {
+      "requests": 8,
+      "actions": {
+        "pass": 8
+      },
+      "errors": 0,
+      "mean_seconds": 2.43,
+      "reported_models": [
+        "deepseek-flash"
+      ],
+      "prompt_tokens": 93614,
+      "completion_tokens": 1139,
+      "reasoning_tokens": 0
+    },
+    "high": {
+      "requests": 8,
+      "actions": {
+        "pass": 8
+      },
+      "errors": 0,
+      "mean_seconds": 11.56,
+      "reported_models": [
+        "deepseek-flash"
+      ],
+      "prompt_tokens": 93814,
+      "completion_tokens": 9641,
+      "reasoning_tokens": 9182
+    }
+  }
+}
