@@ -177,3 +177,14 @@ node tests/election-ui.test.cjs
 
 See [the repeated-explosion diagnosis](docs/explosion-diagnostics.md) for the
 evidence and the new v5 prompt changes.
+
+
+For a thinking-enabled native-tool game, open setup and choose **Use Flash · high
+thinking / 十二席 Flash · 高思考**. This sets all twelve seats to `thinking:
+"enabled"`, `reasoning_effort: "high"`, `temperature: null`, `max_tokens: 32768`,
+and `interaction_mode: "tools"`. Settings apply to the next game and stay frozen.
+The fast preset remains available. Thinking is passed back only inside one
+seat's current decision; reasoning text is not exported or played to spectators.
+New games also supply own prior notes, core rules, and hypothetical arithmetic
+tools. See [the harness protocol](docs/tool-harness.md) for their information
+boundaries and versioned budgets.

@@ -220,8 +220,8 @@ function createSpeechPlayer({ synth, Utterance, onState = () => {} } = {}) {
       voteTitle: 'Day {day} · {kind}', replayHint: 'Historical checkpoint · original speech is preserved',
       noData: 'No public voting details.', inspect: 'Inspect seat {seat}',
       historyControls: 'Viewing history. Return to LIVE to control the current game.',
-      deepseekPreset: 'Use DeepSeek Flash for all 12', testConnection: 'Test connection', testConnectionBusy: 'Testing…',
-      deepseekPresetCopy: 'Tool harness · thinking disabled · 8,192 output tokens. Applies to the next game only.',
+      deepseekPreset: 'Use Flash · fast', deepseekHighPreset: 'Use Flash · high thinking', testConnection: 'Test connection', testConnectionBusy: 'Testing…',
+      deepseekPresetCopy: 'Fast: thinking off, 8,192 tokens. High: thinking high, 32,768 tokens. Applies to the next game only.',
       deepseekKeyHelp: 'Set DEEPSEEK_API_KEY in your local .env file, then restart the server. Keep the key out of this interface.',
       connectionCost: 'Testing sends one small API request. It does not start or change a game.',
       keyChecking: 'Checking key setup…', keyConfigured: 'KEY CONFIGURED', keyMissing: 'KEY NOT CONFIGURED', keyUnknown: 'SETUP STATUS UNAVAILABLE',
@@ -280,8 +280,8 @@ function createSpeechPlayer({ synth, Utterance, onState = () => {} } = {}) {
       voteTitle: '第 {day} 天 · {kind}', replayHint: '历史回放节点 · 发言保留原始语言',
       noData: '暂无公开票型详情。', inspect: '查看 {seat} 号玩家',
       historyControls: '正在查看历史回放。返回“实时”后可控制当前对局。',
-      deepseekPreset: '十二席全部使用 DeepSeek Flash', testConnection: '测试连接', testConnectionBusy: '正在测试…',
-      deepseekPresetCopy: '工具交互 · 关闭思考 · 8,192 输出 token。仅应用于新对局。',
+      deepseekPreset: '十二席 Flash · 快速', deepseekHighPreset: '十二席 Flash · 高思考', testConnection: '测试连接', testConnectionBusy: '正在测试…',
+      deepseekPresetCopy: '快速：关闭思考，8,192 token；高思考：high，32,768 token。均使用工具，仅应用于新对局。',
       deepseekKeyHelp: '在本地 .env 文件中设置 DEEPSEEK_API_KEY，然后重启服务器。请勿在此界面输入密钥。',
       connectionCost: '测试会发送一次小型 API 请求，不会开始或更改任何对局。',
       keyChecking: '正在检查密钥配置…', keyConfigured: '密钥已配置', keyMissing: '尚未配置密钥', keyUnknown: '无法获取配置状态',
@@ -736,6 +736,9 @@ function createSpeechPlayer({ synth, Utterance, onState = () => {} } = {}) {
   function flashConfig(config) {
     return { ...config, provider: 'deepseek', model: 'deepseek-flash', thinking: 'disabled', reasoning_effort: null, temperature: 0.7, max_tokens: 8192, interaction_mode: 'tools' };
   }
+  function flashHighConfig(config) {
+    return { ...flashConfig(config), thinking: 'enabled', reasoning_effort: 'high', temperature: null, max_tokens: 32768 };
+  }
   function renderProviderSetup() {
     const configured = state.providerInfo?.deepseek?.configured;
     const keyStatus = $('deepseek-key-status');
@@ -931,6 +934,9 @@ function createSpeechPlayer({ synth, Utterance, onState = () => {} } = {}) {
   $('setup-form').addEventListener('submit', createGame);
   $('deepseek-preset').addEventListener('click', () => {
     state.draft = state.draft.map(flashConfig); state.flashApplied = true; state.connectionResult = null; renderSetup();
+  });
+  $('deepseek-high-preset').addEventListener('click', () => {
+    state.draft = state.draft.map(flashHighConfig); state.flashApplied = true; state.connectionResult = null; renderSetup();
   });
   $('deepseek-check').addEventListener('click', checkDeepSeek);
   $('export').addEventListener('click', () => openDialog('export-dialog'));
