@@ -25,7 +25,7 @@ def response(calls):
 
 
 class ToolAuditTests(unittest.TestCase):
-    def archive(self, *, invalid_read=False, partial=False, prompt_version=None):
+    def archive(self, *, invalid_read=False, partial=False, prompt_version=None, read_hops=1):
         configs = [p.deepseek_flash_config(i, f'Player {i}') for i in range(1, 13)]
         with patch.object(p, 'check_credentials'):
             runner = Runner(configs)
@@ -34,7 +34,7 @@ class ToolAuditTests(unittest.TestCase):
         failed_seat = runner.game.pending()[0]['seat']
 
         def send(config, body, **kwargs):
-            if len(body['messages']) == 2:
+            if sum(message.get('role') == 'tool' for message in body['messages']) < read_hops:
                 if invalid_read and config.seat == failed_seat:
                     calls = [native_call('read_public_log', {'seat': 2}, 'invalid-read')]
                     if partial:
@@ -136,6 +136,34 @@ class ToolAuditTests(unittest.TestCase):
         hop['tool_results'].append(copy.deepcopy(hop['tool_results'][0]))
         with self.assertRaises(AssertionError):
             AUDIT(changed)
+
+    def test_v4_sixth_model_request_offers_only_actions_and_audits_successfully(self):
+        archive = self.archive(prompt_version='player-tools-v4', read_hops=5)
+        for record in archive['inference']:
+            self.assertEqual(6, len(record['tool_trace']))
+            earlier = record['tool_trace'][4]['wire_request']
+            final = record['tool_trace'][5]['wire_request']
+            self.assertTrue(any(t['function']['name'].startswith('read_') for t in earlier['tools']))
+            self.assertTrue(all(t['function']['name'].startswith('action_') for t in final['tools']))
+            self.assertEqual('required', final['tool_choice'])
+        report = AUDIT(archive)
+        self.assertEqual(4, report['accepted'])
+        self.assertEqual(24, report['model_requests'])
+        self.assertEqual(20, report['read_calls'])
+        self.assertEqual(4, report['action_calls'])
+        self.assertEqual(6, report['max_hops_per_decision'])
+        changed = copy.deepcopy(archive)
+        first = changed['inference'][0]['tool_trace']
+        read_tool = next(t for t in first[0]['wire_request']['tools'] if t['function']['name'].startswith('read_'))
+        first[5]['wire_request']['tools'].append(copy.deepcopy(read_tool))
+        with self.assertRaisesRegex(AssertionError, 'Wire body'):
+            AUDIT(changed)
+
+    def test_v3_sixth_model_request_preserves_its_historical_read_manifest(self):
+        archive = self.archive(prompt_version='player-tools-v3', read_hops=5)
+        final = archive['inference'][0]['tool_trace'][5]['wire_request']
+        self.assertTrue(any(t['function']['name'].startswith('read_') for t in final['tools']))
+        self.assertEqual(4, AUDIT(archive)['accepted'])
 
     def test_legacy_v1_auto_is_explicitly_supported_but_v2_auto_rejected(self):
         archive = self.archive(prompt_version='player-tools-v1')

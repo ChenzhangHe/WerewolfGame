@@ -87,6 +87,11 @@ def audit(archive):
             # tool_choice and absence of unexpected context-bearing fields.
             expected_body = deepcopy(expected)
             expected_body['messages'] = deepcopy(expected_messages)
+            if request.get('prompt_version') == 'player-tools-v4' and hop_index == 5:
+                # V4's final model request still lets the model choose, but
+                # offers terminal actions only after five opportunities to read.
+                expected_body['tools'] = [tool for tool in expected_body['tools']
+                                          if tool['function']['name'].startswith('action_')]
             require(body == expected_body, 'Wire body differs from the seat-local request.')
             require(all('reasoning_content' not in m for m in body['messages']))
             failed_hop = bool(hop.get('error'))
@@ -127,6 +132,8 @@ def audit(archive):
                             'Invalid read is not recorded as an explicit safe failure.')
                     invalid_reads += 1
                     continue
+                require(name in {tool['function']['name'] for tool in body['tools']},
+                        'Executed tool was not offered for this model request.')
                 require(reconstructed == result['result'], 'Tool result differs from its authorized seat-local data.')
                 names[name] = names.get(name, 0) + 1
                 if h.is_action(name):
