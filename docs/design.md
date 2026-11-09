@@ -1,6 +1,6 @@
 # Werewolf simulator design
 
-Status: initial design agreed on 2026-11-08; no implementation yet.
+Status: initial design agreed on 2026-11-08; first implementation in progress.
 
 ## Purpose
 
@@ -23,6 +23,11 @@ Run one complete game under [rules-v1](rules-v1.md), with:
 - Pause, step, and replay from recorded events.
 - Automated verification of information boundaries and rule resolution.
 - No memory carried from previous games.
+
+Support English and Simplified Chinese. Freeze the game language at setup:
+player speech, wolf coordination, private notes, and referee announcements use
+that language. Viewers may independently change interface language at any time;
+recorded speeches retain their original language. Voice synthesis is later work.
 
 Tournament management, voice, elaborate animation, and cross-game learning are
 later work. The initial application can run as one process with clear module

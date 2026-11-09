@@ -42,9 +42,11 @@ passive-role confirmation is private and does not expose assignments. Do not
 publicly skip phases because a role is absent, dead, or out of resources.
 
 - Wolves privately coordinate and submit one attack on a living seat, including
-  a teammate or themselves, or choose no attack. The AI coordination protocol
-  must have a fixed budget and deterministic disagreement handling; its exact
-  implementation remains to be specified before playable code is complete.
+  a teammate or themselves, or choose no attack. Each living Wolf gives one
+  simultaneous private discussion message, then sees those messages before a
+  simultaneous attack ballot. The positive target with most votes wins, with
+  the lowest target seat breaking ties. Abstentions do not count; all abstentions
+  mean no attack. This fixed protocol does not depend on provider response speed.
 - Witch starts with one antidote and one poison for the entire game and may use
   at most one potion each night. Antidote saves the current wolf attack target;
   poison targets one living seat. Witch cannot save herself on any night. While
@@ -95,7 +97,7 @@ death abilities and badge handling, then applicable last words before discussion
   speaking turn to the end without changing the relative order of other seats.
 - Without Sheriff, the referee selects a starting living seat and direction
   using seeded randomness independent of hidden assignments, and announces them.
-- Speech is turn-based, with a fixed text allowance set before play. No ordinary
+- Speech is turn-based, with a fixed allowance of 1200 characters. No ordinary
   interruptions, extra response round, private daytime chat, or changing budgets.
 - After speeches, eligible living voters simultaneously vote for one eligible
   living seat or abstain. Self-voting is legal. Publish each vote and the tally
@@ -162,8 +164,9 @@ does not end the game. Eliminated teammates share their team's eventual outcome.
 Use wolf-attack-first resolution, 狼刀在先:
 
 1. Apply antidote to the wolf attack, then resolve any unsaved attack.
-2. If that attack completes a Wolf victory, end immediately, before poison or a
-   Hunter shot can reverse the outcome.
+2. If that attack completes a victory for either team, end immediately, before
+   election, poison, or a Hunter shot can reverse the outcome. This includes the
+   last Wolf dying from its own team's attack.
 3. Otherwise resolve poison and any permitted Hunter shot. Poison disables Hunter
    shooting before a shot is offered, even if the same Hunter was attacked.
 4. Check victory after each subsequent elimination or ability resolution and stop
