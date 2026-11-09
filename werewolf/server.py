@@ -61,7 +61,8 @@ def parse_setup(body):
         raise ValueError("Exactly twelve player configurations are required.")
     configs = []
     allowed = {"seat", "name", "provider", "model", "personality",
-               "temperature", "max_tokens", "language", "thinking", "reasoning_effort"}
+               "temperature", "max_tokens", "language", "thinking", "reasoning_effort",
+               "interaction_mode"}
     for index, player in enumerate(players, 1):
         if not isinstance(player, dict) or set(player) - allowed:
             raise ValueError("Player configuration has unsupported fields.")
@@ -82,6 +83,11 @@ def parse_setup(body):
             raise ValueError("Personality must be text of at most 2000 characters.")
         thinking = player.get("thinking")
         reasoning_effort = player.get("reasoning_effort")
+        interaction_mode = player.get("interaction_mode", "json")
+        if not isinstance(interaction_mode, str) or interaction_mode not in {"json", "tools"}:
+            raise ValueError("Interaction mode must be json or tools.")
+        if interaction_mode == "tools" and (provider != "deepseek" or thinking == "enabled"):
+            raise ValueError("Tool interaction is supported only for DeepSeek with thinking disabled.")
         temperature = player.get("temperature", None if provider == "openai_subscription" or
                                  thinking == "enabled" else 0.7)
         max_tokens = player.get("max_tokens", None if provider == "openai_subscription" else
@@ -96,7 +102,8 @@ def parse_setup(body):
                                     model=model.strip(), personality=personality,
                                     temperature=temperature, max_tokens=max_tokens,
                                     language=language, thinking=thinking,
-                                    reasoning_effort=reasoning_effort))
+                                    reasoning_effort=reasoning_effort,
+                                    interaction_mode=interaction_mode))
     return configs, seed, language
 
 
