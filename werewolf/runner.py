@@ -12,9 +12,12 @@ from . import providers
 
 
 class Runner:
-    def __init__(self, configs, seed=1, language="en"):
+    def __init__(self, configs, seed=1, language="en", *, allow_format_repair=False):
         if language not in {"en", "zh"}:
             raise ValueError("Language must be en or zh.")
+        if type(allow_format_repair) is not bool:
+            raise ValueError("allow_format_repair must be a boolean.")
+        self._allow_format_repair = allow_format_repair
         configs = tuple(configs)
         if len(configs) != 12 or sorted(c.seat for c in configs) != list(range(1, 13)):
             raise ValueError("Configure exactly one player for each seat 1–12.")
@@ -49,6 +52,11 @@ class Runner:
     def max_step(self):
         return len(self._checkpoints) - 1
 
+    @property
+    def allow_format_repair(self):
+        """Frozen game policy, separate from the information sent to players."""
+        return self._allow_format_repair
+
     def snapshot(self, mode="mystery", seat=None):
         return self.replay(self.max_step, mode, seat)
 
@@ -64,6 +72,7 @@ class Runner:
         result.update({
             "language": self.language, "step": index, "max_step": self.max_step,
             "configs": [asdict(c) for c in self.configs],
+            "allow_format_repair": self.allow_format_repair,
             "status": self.status if index == self.max_step else "paused",
             "error": self.error if index == self.max_step else None,
         })
@@ -105,6 +114,9 @@ class Runner:
                 record.update(self._response_fields(answer))
             except providers.ProviderError as exc:
                 record["error"] = str(exc)
+                details = getattr(exc, "validation_details", None)
+                if isinstance(details, dict):
+                    record["validation_details"] = copy.deepcopy(details)
                 rejected = getattr(exc, "rejected_result", None)
                 rejected_text = getattr(exc, "rejected_text", None)
                 if isinstance(rejected, dict):
@@ -124,7 +136,7 @@ class Runner:
                 else:
                     repair_input = None
                 records.append(record)
-                if repair_input is not None and not repair_used:
+                if self.allow_format_repair and repair_input is not None and not repair_used:
                     repair_used = True
                     try:
                         assembled = providers.build_repair_request(original_request, repair_input)
@@ -223,6 +235,7 @@ class Runner:
         return copy.deepcopy({
             "format": "werewolf-archive-v1", "ruleset": "rules-v1",
             "prompt_version": providers.PROMPT_VERSION, "language": self.language,
+            "allow_format_repair": self.allow_format_repair,
             "configs": [asdict(c) for c in self.configs],
             "inference": self._records, "game": self.game.export(),
             "checkpoints": self._checkpoints, "private_notes": self._notes,
@@ -272,6 +285,11 @@ class Runner:
         result = cls.__new__(cls)
         result.configs = configs
         result.language = language
+        # Earlier archives predate this explicit policy and always repaired.
+        policy = archive.get("allow_format_repair", True)
+        if type(policy) is not bool:
+            raise ValueError("Invalid format-repair policy.")
+        result._allow_format_repair = policy
         result.game = Game(seed=game_data["seed"], names=[c.name for c in configs],
                            roles=[p["role"] for p in players], language=language)
         result.status = "paused"
@@ -337,6 +355,8 @@ class Runner:
                 raise ValueError("Invalid inference record.")
             if "response" in record and not isinstance(record["response"], dict):
                 raise ValueError("Invalid parsed response.")
+            if not result.allow_format_repair and record.get("repair"):
+                raise ValueError("Recorded format repair contradicts the archived game policy.")
         result._records = copy.deepcopy(records)
         result._restore_pending(archive.get("pending_batch"))
         result.status = "finished" if result.game.view("mystery").get("winner") else "paused"
@@ -368,6 +388,8 @@ class Runner:
                 if entry["kind"] != decision["kind"] or self._canonical(entry["request"]["input"]) != self._canonical(fresh["input"]):
                     raise ValueError("Pending request disagrees with player context.")
                 if entry.get("repair_used"):
+                    if not self.allow_format_repair:
+                        raise ValueError("Pending format repair contradicts the archived game policy.")
                     self._batch_repair_used.add(decision["id"])
                 if type(entry.get("repair_used")) is not bool:
                     raise ValueError("Invalid pending repair flag.")

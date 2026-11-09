@@ -98,7 +98,7 @@ class RunnerTests(unittest.TestCase):
         self.assertNotIn("SECRET", json.dumps(runner.export()))
 
     def test_rejected_action_is_recorded_and_repaired_once_privately(self):
-        runner = Runner(configs())
+        runner = Runner(configs(), allow_format_repair=True)
         first = runner.game.pending()[0]
         first_seat = first["seat"]
         real_decide = __import__("werewolf.providers", fromlist=["decide"]).decide
@@ -136,7 +136,7 @@ class RunnerTests(unittest.TestCase):
         self.assertNotIn("PRIVATE_BAD_ACTION", json.dumps(runner.snapshot("player", 1 if first_seat != 1 else 2)))
 
     def test_repair_failure_is_bounded_and_does_not_commit_or_replace_notes(self):
-        runner = Runner(configs())
+        runner = Runner(configs(), allow_format_repair=True)
         before = runner.game.export()
         def reject(config, request):
             failure = ProviderError("Invalid action.")
@@ -192,7 +192,7 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(len(pending), sum(r["accepted"] for r in restored.export()["inference"]))
 
     def _archive_with_pending_successes(self, *, repair=False, raw_repair=False):
-        runner = Runner(configs())
+        runner = Runner(configs(), allow_format_repair=repair)
         pending = runner.game.pending()
         successful, failing = pending[0]["seat"], pending[1]["seat"]
         real_decide = __import__("werewolf.providers", fromlist=["decide"]).decide
@@ -249,6 +249,7 @@ class RunnerTests(unittest.TestCase):
         self.assertTrue(restored._batch_repair_used)
         rejected_index = index - 1
         mutations = [
+            lambda a: a.update(allow_format_repair=False),
             lambda a: a["inference"][rejected_index].update(seat=12),
             lambda a: a["inference"][rejected_index].update(kind="wolf_attack"),
             lambda a: a["inference"][rejected_index].update(batch_index=99),
@@ -279,7 +280,7 @@ class RunnerTests(unittest.TestCase):
         changed["inference"][index - 1]["rejected_text"] = "Someone else's rejected output"
         with self.assertRaises(ValueError):
             Runner.from_archive(changed)
-        runner = Runner(configs())
+        runner = Runner(configs(), allow_format_repair=True)
         before = runner.game.export()
         pending_count = len(runner.game.pending())
         def truncated(config, request):
@@ -384,10 +385,59 @@ class RunnerTests(unittest.TestCase):
         runner.step()
         archived = runner.export()
         del archived["pending_batch"]
+        del archived["allow_format_repair"]
         restored = Runner.from_archive(archived)
+        self.assertTrue(restored.allow_format_repair)
         self.assertEqual(runner.game.observe(1), restored.game.observe(1))
         restored.step()
         self.assertEqual(2, restored.max_step)
+
+    def test_new_games_pause_on_invalid_output_by_default_and_archive_diagnostics(self):
+        runner = Runner(configs())
+        self.assertFalse(runner.allow_format_repair)
+        before = runner.game.export()
+        count = len(runner.game.pending())
+        def reject(config, request):
+            failure = ProviderError("Invalid action shape.")
+            failure.rejected_result = DecisionResult({"type": "invalid"}, raw_text='{"type":"invalid"}')
+            failure.validation_details = {"category": "illegal_action", "expected_types": ["discuss"],
+                                          "returned_type": "invalid", "missing_fields": [],
+                                          "extra_fields": [], "invalid_fields": ["type"]}
+            raise failure
+        with patch("werewolf.runner.providers.decide", side_effect=reject) as called, \
+             patch("werewolf.runner.providers.build_repair_request") as repair:
+            result = runner.step()
+            self.assertEqual(count, called.call_count)
+            repair.assert_not_called()
+        self.assertEqual("error", result["status"])
+        self.assertEqual(before, runner.game.export())
+        records = runner.export()["inference"]
+        self.assertTrue(all(r["validation_details"]["category"] == "illegal_action" for r in records))
+        self.assertNotIn("validation_details", json.dumps(runner.snapshot("mystery")))
+        self.assertNotIn("validation_details", json.dumps(runner.snapshot("player", 1)))
+        self.assertFalse(runner._batch_repair_used)
+
+    def test_format_repair_policy_is_strict_frozen_preserved_and_not_a_model_input(self):
+        for value in (0, 1, None, "true", [], {}):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                Runner(configs(), allow_format_repair=value)
+        for enabled in (False, True):
+            runner = Runner(configs(), allow_format_repair=enabled)
+            with self.assertRaises(AttributeError):
+                runner.allow_format_repair = not enabled
+            for decision in runner.game.pending():
+                request = build_request(runner.configs[decision["seat"] - 1], runner.game.observe(decision["seat"]), decision)
+                self.assertNotIn("allow_format_repair", json.dumps(request))
+            runner.step()
+            archive = runner.export()
+            self.assertIs(enabled, archive["allow_format_repair"])
+            restored = Runner.from_archive(archive)
+            self.assertIs(enabled, restored.allow_format_repair)
+            self.assertIs(enabled, restored.snapshot()["allow_format_repair"])
+            self.assertIs(enabled, restored.replay(0)["allow_format_repair"])
+            archive["allow_format_repair"] = "false"
+            with self.assertRaises(ValueError):
+                Runner.from_archive(archive)
 
     def test_restore_rejects_tampered_roles_actions_checkpoints_and_configs(self):
         runner = Runner(configs())

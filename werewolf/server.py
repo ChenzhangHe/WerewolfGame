@@ -33,8 +33,10 @@ def parse_setup(body):
     """Validate local setup without accepting secrets, endpoints, or code."""
     if not isinstance(body, dict):
         raise ValueError("Setup must be a JSON object.")
-    if set(body) - {"seed", "language", "players", "preset"}:
+    if set(body) - {"seed", "language", "players", "preset", "allow_format_repair"}:
         raise ValueError("Unknown setup field.")
+    if type(body.get("allow_format_repair", False)) is not bool:
+        raise ValueError("allow_format_repair must be a boolean.")
     preset = body.get("preset", "demo")
     if preset not in {"demo", "deepseek_flash"}:
         raise ValueError("Unknown game preset.")
@@ -101,7 +103,9 @@ def parse_setup(body):
 class Controller:
     """A single inference worker with detached, nonblocking spectator snapshots."""
 
-    def __init__(self, initial_setup=None, restored_runner=None):
+    def __init__(self, initial_setup=None, restored_runner=None, *, allow_format_repair=False):
+        if type(allow_format_repair) is not bool:
+            raise ValueError("allow_format_repair must be a boolean.")
         self.condition = threading.Condition(threading.RLock())
         self.runner = None
         self.views = {}
@@ -112,7 +116,9 @@ class Controller:
         self.stopped = False
         self.failure = None
         if restored_runner is None:
-            self.create(initial_setup or {})
+            setup = deepcopy(initial_setup or {})
+            setup.setdefault("allow_format_repair", allow_format_repair)
+            self.create(setup)
         else:
             self.runner = restored_runner
             self._capture()
@@ -140,7 +146,8 @@ class Controller:
         with self.condition:
             if self.busy or self.playing or self.step_requested:
                 raise RuntimeError("Pause and wait for the current turn before starting a new game.")
-            runner = Runner(configs, seed=seed, language=language)
+            runner = Runner(configs, seed=seed, language=language,
+                            allow_format_repair=body.get("allow_format_repair", False))
             self.runner = runner
             self.history = []
             self.failure = None
@@ -343,6 +350,8 @@ class Handler(BaseHTTPRequestHandler):
                 load_local_credentials()
                 result = providers.check_deepseek(body.get("language", "en"))
             elif path in {"/api/step", "/api/play", "/api/pause"}:
+                if body:
+                    raise ValueError("Game controls accept no settings; configure a new game to change its policy.")
                 result = self.server.controller.control(path.rsplit("/", 1)[1])
             else:
                 self._error(404, "Not found.")
@@ -365,11 +374,13 @@ def main(argv=None):
                         help="Verify one real Flash speech request without creating a game.")
     parser.add_argument("--resume", type=Path,
                         help="Restore a trusted local private archive, paused, without inference.")
+    parser.add_argument("--allow-format-repair", action="store_true",
+                        help="Opt a new game into one automatic format-correction attempt per decision (default: off).")
     args = parser.parse_args(argv)
     try:
         load_local_credentials()
-        if args.resume and (args.check_deepseek or args.preset != "demo"):
-            parser.error("--resume cannot be combined with --check-deepseek or --preset.")
+        if args.resume and (args.check_deepseek or args.preset != "demo" or args.allow_format_repair):
+            parser.error("--resume preserves the archived policy and cannot be combined with --check-deepseek, --preset, or --allow-format-repair.")
         if args.check_deepseek:
             result = providers.check_deepseek(args.language)
             print(json.dumps(result, ensure_ascii=False), flush=True)
@@ -378,7 +389,8 @@ def main(argv=None):
             controller = Controller(restored_runner=Runner.from_archive(
                 json.loads(args.resume.read_text(encoding="utf-8"))))
         else:
-            controller = Controller({"preset": args.preset, "language": args.language})
+            controller = Controller({"preset": args.preset, "language": args.language,
+                                     "allow_format_repair": args.allow_format_repair})
     except (ValueError, providers.ProviderError) as exc:
         parser.exit(1, f"{exc}\n")
     server = LocalServer(("127.0.0.1", args.port), controller)

@@ -7,7 +7,7 @@ import unittest
 import os
 from unittest.mock import patch
 
-from werewolf.server import Handler, parse_setup
+from werewolf.server import Controller, Handler, main, parse_setup
 
 
 class FakeController:
@@ -69,6 +69,40 @@ def request(method="GET", path="/api/state", body=None, headers=None):
 
 
 class SetupTests(unittest.TestCase):
+    def test_format_repair_setup_accepts_only_explicit_boolean(self):
+        for value in (False, True):
+            self.assertEqual(12, len(parse_setup({"allow_format_repair": value})[0]))
+        for value in (0, 1, None, "true", [], {}):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                parse_setup({"allow_format_repair": value})
+
+    def test_controller_default_policy_is_off_and_explicit_policy_is_frozen(self):
+        for value in (False, True):
+            controller = Controller(allow_format_repair=value)
+            try:
+                self.assertIs(value, controller.runner.allow_format_repair)
+                self.assertIs(value, controller.snapshot()["allow_format_repair"])
+                self.assertIs(value, controller.export()["allow_format_repair"])
+            finally:
+                controller.close()
+        controller = Controller({"allow_format_repair": True})
+        try:
+            self.assertTrue(controller.runner.allow_format_repair)
+        finally:
+            controller.close()
+
+    def test_cli_format_repair_is_explicit_and_cannot_override_resume_policy(self):
+        for args, expected in (([], False), (["--allow-format-repair"], True)):
+            with patch("werewolf.server.Controller") as controller, \
+                 patch("werewolf.server.LocalServer") as server, \
+                 patch("werewolf.server.load_local_credentials"), patch("builtins.print"):
+                server.return_value.server_address = ("127.0.0.1", 8765)
+                main(args)
+                self.assertIs(expected, controller.call_args.args[0]["allow_format_repair"])
+        with patch("werewolf.server.load_local_credentials"), patch("sys.stderr", io.StringIO()), \
+             self.assertRaises(SystemExit):
+            main(["--resume", "archive.json", "--allow-format-repair"])
+
     def test_flash_preset_freezes_all_twelve_seats(self):
         configs, seed, language = parse_setup({"preset": "deepseek_flash", "language": "zh", "seed": 42})
         self.assertEqual((seed, language), (42, "zh"))
@@ -127,6 +161,12 @@ class SetupTests(unittest.TestCase):
 
 
 class HTTPBoundaryTests(unittest.TestCase):
+    def test_controls_cannot_mutate_format_repair_policy(self):
+        for action in ("step", "play", "pause"):
+            status, _, _, calls = request("POST", "/api/" + action, {"allow_format_repair": True})
+            self.assertEqual(400, status)
+            self.assertEqual([], calls)
+
     def test_provider_status_returns_presence_without_secret(self):
         with patch("werewolf.server.load_local_credentials"), \
              patch.dict(os.environ, {"DEEPSEEK_API_KEY": "PRIVATE_TEST_CREDENTIAL"}):
