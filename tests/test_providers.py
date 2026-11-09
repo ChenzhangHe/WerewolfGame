@@ -1,5 +1,5 @@
 import copy
-from dataclasses import FrozenInstanceError
+from dataclasses import FrozenInstanceError, replace
 import io
 import json
 import os
@@ -59,7 +59,7 @@ class ProvidersTests(unittest.TestCase):
         self.assertNotIn("id", corrected["input"]["decision"])
 
     def test_malformed_and_truncated_content_keep_only_safe_diagnostics(self):
-        config = p.deepseek_flash_config(1, "Test")
+        config = replace(p.deepseek_flash_config(1, "Test"), interaction_mode="json")
         for content, finish_reason, repairable in (("not JSON", "stop", True),
                 ("[]", "stop", True), ("   ", "stop", True), ('{"type":', "length", False)):
             wire = {"model": "deepseek-flash", "choices": [{"finish_reason": finish_reason,
@@ -133,7 +133,7 @@ class ProvidersTests(unittest.TestCase):
                 self.assertIn(field, details["extra_fields"] + details["invalid_fields"])
 
     def test_json_diagnostics_keep_exact_bad_text_and_parser_location(self):
-        config = p.deepseek_flash_config(1, "Synthetic player")
+        config = replace(p.deepseek_flash_config(1, "Synthetic player"), interaction_mode="json")
         samples = ('{"type":"pass","notes":"example")} ',
                    '{"type":"pass"}\n<simulated-message>example</simulated-message>')
         for raw in samples:
@@ -201,7 +201,9 @@ class ProvidersTests(unittest.TestCase):
         self.assertNotIn("reasoning_effort", body)
         self.assertEqual(8192, body["max_tokens"])
         self.assertEqual(0.7, body["temperature"])
-        self.assertNotIn("tools", body)
+        self.assertIn("tools", body)
+        self.assertEqual("tools", config.interaction_mode)
+        self.assertNotIn("response_format", body)
         with self.assertRaises(FrozenInstanceError):
             config.thinking = "disabled"
 
@@ -254,7 +256,7 @@ class ProvidersTests(unittest.TestCase):
         self.assertIn("简体中文", body["messages"][0]["content"])
 
     def test_deepseek_blank_truncated_and_malformed_actions_fail_closed(self):
-        config = p.deepseek_flash_config(1, "Ada")
+        config = replace(p.deepseek_flash_config(1, "Ada"), interaction_mode="json")
         cases = [("stop", "   ", "blank"), ("length", '{"type":"speak"', "token limit"),
                  ("stop", "not JSON", "complete JSON action"), ("stop", "[]", "complete JSON action")]
         for finish_reason, content, message in cases:
@@ -265,7 +267,7 @@ class ProvidersTests(unittest.TestCase):
                     p.decide(config, self.request(config))
 
     def test_deepseek_actionable_errors_do_not_echo_secrets(self):
-        config = p.deepseek_flash_config(1, "Ada")
+        config = replace(p.deepseek_flash_config(1, "Ada"), interaction_mode="json")
         for status, expected in [(401, "authentication"), (402, "balance"), (429, "usage limit")]:
             def fail(*args, **kwargs):
                 raise HTTPError("https://api.deepseek.com", status, "SECRET RAW BODY", {}, io.BytesIO(b"SECRET"))

@@ -91,6 +91,7 @@ class Runner:
             "reported_model": getattr(answer, "reported_model", None),
             "usage": copy.deepcopy(getattr(answer, "usage", {})),
             "raw_text": getattr(answer, "raw_text", None),
+            "tool_trace": copy.deepcopy(getattr(answer, "tool_trace", [])),
         }
 
     def _infer_decision(self, decision):
@@ -114,6 +115,8 @@ class Runner:
                 record.update(self._response_fields(answer))
             except providers.ProviderError as exc:
                 record["error"] = str(exc)
+                if hasattr(exc, "tool_trace"):
+                    record["tool_trace"] = copy.deepcopy(exc.tool_trace)
                 details = getattr(exc, "validation_details", None)
                 if isinstance(details, dict):
                     record["validation_details"] = copy.deepcopy(details)
@@ -135,8 +138,13 @@ class Runner:
                     repair_input = rejected_text if record["repairable"] else None
                 else:
                     repair_input = None
+                # A rejected parsed action can have less metadata than the
+                # enclosing tool failure. Keep the actual failed conversation.
+                if hasattr(exc, "tool_trace"):
+                    record["tool_trace"] = copy.deepcopy(exc.tool_trace)
                 records.append(record)
-                if self.allow_format_repair and repair_input is not None and not repair_used:
+                if (config.interaction_mode == "json" and self.allow_format_repair
+                        and repair_input is not None and not repair_used):
                     repair_used = True
                     try:
                         assembled = providers.build_repair_request(original_request, repair_input)
@@ -235,6 +243,7 @@ class Runner:
         return copy.deepcopy({
             "format": "werewolf-archive-v1", "ruleset": "rules-v1",
             "prompt_version": providers.PROMPT_VERSION, "language": self.language,
+            "tool_prompt_version": providers.TOOLS_PROMPT_VERSION,
             "allow_format_repair": self.allow_format_repair,
             "configs": [asdict(c) for c in self.configs],
             "inference": self._records, "game": self.game.export(),
@@ -385,7 +394,9 @@ class Runner:
             requests[decision["id"]] = fresh
             entry = by_seat.get(seat)
             if entry is not None:
-                if entry["kind"] != decision["kind"] or self._canonical(entry["request"]["input"]) != self._canonical(fresh["input"]):
+                if (entry["kind"] != decision["kind"]
+                        or self._canonical(entry["request"]["input"]) != self._canonical(fresh["input"])
+                        or self._canonical(entry["request"].get("tool_context")) != self._canonical(fresh.get("tool_context"))):
                     raise ValueError("Pending request disagrees with player context.")
                 if entry.get("repair_used"):
                     if not self.allow_format_repair:
@@ -442,6 +453,7 @@ class Runner:
             and record.get("accepted") is False
             and isinstance(stored, dict)
             and all(stored.get(key) == fresh.get(key) for key in ("provider", "model", "language"))
+            and stored.get("tool_context") == fresh.get("tool_context")
         )
 
     def _validate_cached_record(self, index, decision, fresh):
