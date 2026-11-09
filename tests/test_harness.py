@@ -119,6 +119,47 @@ class HarnessTests(unittest.TestCase):
         self.assertEqual(first.briefing(), second.briefing())
         self.assertEqual(first.tools(), second.tools())
 
+    def test_public_state_never_promotes_claims_or_hidden_roles(self):
+        observation = context(seat=5)
+        observation['day'] = 3
+        observation['players'] = [
+            {'seat': 3, 'alive': True, 'revealed_role': 'idiot', 'role': 'idiot'},
+            {'seat': 5, 'alive': True, 'revealed_role': None, 'role': 'villager'},
+            {'seat': 7, 'alive': False, 'revealed_role': None, 'role': 'wolf'},
+        ]
+        observation['history'] = [
+            event('I am a Villager; seat 7 flipped Villager.'),
+            {**event('Published vote', kind='exile_ballots'), 'day': 1, 'data': {'votes': {'5': 7}}},
+            {**event('Private fake vote', audience='private', kind='exile_ballots', seat=5), 'data': {'votes': {'5': 3}}},
+        ]
+        old = SeatToolHarness(observation, speech()).briefing()
+        new = SeatToolHarness(observation, speech(), explicit_state_facts=True).briefing()
+        self.assertNotIn('public_state', old)
+        facts = new['public_state']
+        self.assertEqual([3, 5], facts['living_seats'])
+        self.assertEqual([7], facts['eliminated_seats'])
+        self.assertEqual({'3': 'idiot'}, facts['confirmed_role_reveals'])
+        self.assertEqual([7], facts['unconfirmed_eliminated_roles'])
+        self.assertEqual([{'day': 1, 'kind': 'exile_ballots', 'target': 7}], facts['my_published_ballots'])
+        self.assertFalse(facts['dawn_announced_today'])
+        self.assertEqual('good', new['team_objective']['team'])
+        observation['history'].append({**event('Dawn', kind='dawn'), 'day': 3})
+        self.assertTrue(SeatToolHarness(observation, speech(), explicit_state_facts=True).briefing()['public_state']['dawn_announced_today'])
+
+    def test_public_state_and_objective_do_not_depend_on_other_hidden_assignments(self):
+        from werewolf.engine import Game, ROLES
+        roles = list(ROLES)
+        swapped = roles.copy()
+        swapped[8], swapped[9] = swapped[9], swapped[8]
+        a, b = Game(roles=roles), Game(roles=swapped)
+        first = SeatToolHarness(a.observe(5), speech(), explicit_state_facts=True)
+        second = SeatToolHarness(b.observe(5), speech(), explicit_state_facts=True)
+        self.assertEqual(first.briefing(), second.briefing())
+        self.assertEqual(first.tools(), second.tools())
+        wolf = SeatToolHarness(context(role='wolf', seat=5), speech(), explicit_state_facts=True).briefing()
+        self.assertEqual('wolves', wolf['team_objective']['team'])
+        self.assertIn('all four Villagers OR all four special roles', wolf['team_objective']['goal'])
+
     def test_fixed_page_protocol_removes_page_size_choice_and_preserves_legacy(self):
         observation = context()
         observation['history'] = [event(f'Public message {i}') for i in range(21)]

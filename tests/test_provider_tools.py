@@ -100,7 +100,7 @@ class ProviderToolsTests(unittest.TestCase):
         original = self.assembled("player-tools-v4")
         stored = json.loads(json.dumps(original))
         body = p.wire_request(self.config, original)
-        self.assertEqual("player-tools-v8", p.TOOLS_PROMPT_VERSION)
+        self.assertEqual("player-tools-v9", p.TOOLS_PROMPT_VERSION)
         self.assertEqual("player-tools-v4", stored["prompt_version"])
         self.assertEqual(body, p.wire_request(self.config, stored))
         self.assertNotIn("win_conditions", json.loads(body["messages"][1]["content"]))
@@ -186,6 +186,22 @@ class ProviderToolsTests(unittest.TestCase):
                              details["action_validation"])
             self.assertEqual(reply["choices"][0]["message"]["tool_calls"], failure.exception.tool_trace[0]["assistant"]["tool_calls"])
             self.assertEqual([], failure.exception.tool_trace[0]["tool_results"])
+
+    def test_v9_facts_and_team_goal_are_upfront_with_unchanged_tools(self):
+        for role in ('wolf', 'villager', 'seer', 'witch', 'hunter', 'idiot'):
+            for language in ('en', 'zh'):
+                observation = {**copy.deepcopy(self.observation), 'role': role, 'language': language}
+                def assembled(version):
+                    return p._build_tools_request(self.config, observation, self.decision, '', language, version=version)
+                old, new = assembled('player-tools-v8'), assembled('player-tools-v9')
+                self.assertNotIn('public_state', old['input'])
+                self.assertIn('public_state', new['input'])
+                self.assertEqual('wolves' if role == 'wolf' else 'good', new['input']['team_objective']['team'])
+                self.assertEqual(old['input'], {k:v for k,v in new['input'].items() if k not in ('public_state', 'team_objective')})
+                self.assertEqual(p.wire_request(self.config, old)['tools'], p.wire_request(self.config, new)['tools'])
+                self.assertIn('this lineup has no Guard', new['instructions'])
+                self.assertIn('Private notes are your past beliefs', new['instructions'])
+                self.assertIn('The last Wolf', new['instructions'])
 
     def test_initial_wire_is_compact_and_host_context_is_not_sent(self):
         assembled = self.assembled()

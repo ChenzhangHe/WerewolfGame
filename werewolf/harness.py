@@ -59,7 +59,7 @@ class SeatToolHarness:
     """Immutable seat-local input, bounded reads, and exact terminal proposals."""
 
     def __init__(self, observation, decision, notes='', language='en', *, fixed_pages=False, explicit_consequences=False,
-                 explicit_output_limits=False):
+                 explicit_output_limits=False, explicit_state_facts=False):
         if not isinstance(observation, dict) or not isinstance(decision, dict):
             raise ValueError('Invalid player context.')
         if language not in RULES or observation.get('language', language) != language:
@@ -82,6 +82,7 @@ class SeatToolHarness:
         self._fixed_pages = fixed_pages
         self._explicit_consequences = explicit_consequences
         self._explicit_output_limits = explicit_output_limits
+        self._explicit_state_facts = explicit_state_facts
         self._notes = notes
         # Explicit metadata allowlist avoids forwarding opaque engine-global fields.
         self._metadata = deepcopy({k: observation[k] for k in
@@ -123,6 +124,27 @@ class SeatToolHarness:
             raise ValueError('Tool result exceeds its supported size.')
         return result
 
+    def _public_state(self):
+        """Mechanical public facts only; never promote claims or hidden role fields."""
+        players = self._metadata.get('players', [])
+        ballots = []
+        for event in self._public:
+            if event.get('kind') not in ('sheriff_ballots', 'exile_ballots'):
+                continue
+            votes = event.get('data', {}).get('votes', {})
+            seat = self._metadata['seat']
+            if str(seat) in votes or seat in votes:
+                ballots.append({'day': event.get('day'), 'kind': event['kind'],
+                                'target': votes.get(str(seat), votes.get(seat))})
+        return {
+            'living_seats': [p['seat'] for p in players if p['alive']],
+            'eliminated_seats': [p['seat'] for p in players if not p['alive']],
+            'confirmed_role_reveals': {str(p['seat']): p['revealed_role'] for p in players if p.get('revealed_role')},
+            'unconfirmed_eliminated_roles': [p['seat'] for p in players if not p['alive'] and not p.get('revealed_role')],
+            'my_published_ballots': ballots,
+            'dawn_announced_today': any(e.get('kind') == 'dawn' and e.get('day') == self._metadata.get('day') for e in self._public),
+        }
+
     def briefing(self):
         result = deepcopy(self._metadata)
         result.update(language=self._language, current_task=self._decision['kind'],
@@ -137,6 +159,18 @@ class SeatToolHarness:
             facts = EXPLICIT_CONSEQUENCES[self._language]
             result['win_conditions'] = facts['win_conditions']
             result['death_consequences'] = facts['death_consequences']
+        if self._explicit_state_facts:
+            result['public_state'] = self._public_state()
+            wolf = self._metadata['role'] == 'wolf'
+            result['team_objective'] = {
+                'team': 'wolves' if wolf else 'good',
+                'goal': ('Eliminate all four Villagers OR all four special roles.' if wolf else 'Eliminate all four Wolves.'),
+                'shared_outcome': 'You share your team outcome even after your own elimination.',
+            }
+            if wolf:
+                roster = self._metadata.get('wolf_teammates', [self._metadata['seat']])
+                living = result['public_state']['living_seats']
+                result['team_objective']['known_living_wolf_seats'] = [s for s in roster if s in living]
         if self._explicit_output_limits:
             result['output_limits'] = {'speech_max_chars': 1200, 'speech_target_chars': [400, 700],
                                        'notes_max_chars': 2000,

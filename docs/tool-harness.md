@@ -136,7 +136,7 @@ evaluation run.
 
 ## V8 explicit output length
 
-New games use `player-tools-v8`, retaining v7 read/action budgets and information
+Protocol `player-tools-v8` retains v7 read/action budgets and information
 permissions. The host instructions, initial briefing, and speech tool field
 description now explicitly state the unchanged 1,200-character speech limit,
 a recommended 400–700-character target, and 2,000-character notes limit. Counts
@@ -150,3 +150,22 @@ terminal actions retain a nested `action_validation` diagnosis with the field,
 actual length and maximum. The original call is preserved; no truncation,
 correction retry, or fabricated action is introduced. A prompt improves guidance
 but cannot guarantee that a model obeys every constraint.
+
+
+## V9 authoritative public facts and faction goal
+
+New games use `player-tools-v9`, retaining v8 budgets, output limits and legal
+actions. The briefing includes a seat-local faction goal and `public_state`:
+living and eliminated seats, confirmed public ability reveals, unconfirmed dead
+roles, the actor's published ballots, and whether today's dawn has been announced.
+These fields derive only from already-visible roster state and public events,
+never speech claims, private notes, unrevealed roles or unsubmitted ballots.
+Wolves also receive the intersection of their existing known roster and living
+seats. No new information capability or model-selected action is introduced.
+
+The instructions clarify rules and evidence boundaries exposed by the completed
+[2026-11-08 game audit](game-audit-2026-11-08.md), including no Guard, living
+revealed Idiot, potion visibility, private Seer results, and continued allegiance
+after elimination. V1–v8 archives remain pinned on normal restore. Regression
+tests cover hidden-state noninterference and unchanged action schemas; this is
+not evidence that a model will never misreason or betray its team again.
