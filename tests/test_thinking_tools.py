@@ -107,7 +107,9 @@ class ThinkingToolsTests(unittest.TestCase):
             self.assertNotEqual('error', runner.step()['status'])
         archive = runner.export()
         self.assertNotIn('SECRET_SEAT_', json.dumps(archive))
-        self.assertEqual(4, AUDIT(archive)['accepted'])
+        report = AUDIT(archive)
+        self.assertEqual(4, report['accepted'])
+        self.assertEqual(32, report['reasoning_tokens'])
         archive['inference'][0]['tool_trace'][1]['reasoning_passback'][0]['sha256'] = '0' * 64
         with self.assertRaisesRegex(AssertionError, 'Reasoning passback'):
             AUDIT(archive)

@@ -78,6 +78,7 @@ def audit(archive):
     initial, baseline, peak, cumulative = [], [], [], []
     reads = invalid_reads = actions = hops = failures = prompt_tokens = completion_tokens = max_hops = 0
     accepted = 0
+    reasoning_tokens = 0
     names = {}
     speech_boundary_findings = []
     for record in archive['inference']:
@@ -122,6 +123,7 @@ def audit(archive):
             hops += 1
             prompt_tokens += hop.get("usage", {}).get("prompt_tokens", 0)
             completion_tokens += hop.get("usage", {}).get("completion_tokens", 0)
+            reasoning_tokens += hop.get("usage", {}).get("reasoning_tokens", 0)
             body = hop['wire_request']
             if thinking:
                 require(hop.get('reasoning_passback') == expected_reasoning,
@@ -245,7 +247,8 @@ def audit(archive):
             'initial_wire_reduction_percent': round(100*(1-sum(initial)/sum(baseline)), 1),
             'max_hop_wire_chars': max(peak), 'mean_cumulative_wire_chars': round(statistics.mean(cumulative)),
             'cumulative_wire_reduction_percent': round(100*(1-sum(cumulative)/sum(baseline)), 1),
-            'prompt_tokens': prompt_tokens, 'completion_tokens': completion_tokens, 'max_hops_per_decision': max_hops,
+            'prompt_tokens': prompt_tokens, 'completion_tokens': completion_tokens, 'reasoning_tokens': reasoning_tokens,
+            'max_hops_per_decision': max_hops,
             'day': archive['game']['events'][-1]['day'], 'batches': len(archive['game']['submitted_batches']),
             'winner': archive['game']['winner']}
 
