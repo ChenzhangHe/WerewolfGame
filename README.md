@@ -138,3 +138,4 @@ Archive files contain hidden information; do not give them to active players.
 - [Shared implementation interfaces](docs/implementation-contract.md)
 - [Work breakdown and remaining tasks](docs/work-breakdown.md)
 - [Provider connections and limitations](docs/provider-setup.md)
+- [Live DeepSeek validation results](docs/live-validation.md)
