@@ -72,3 +72,7 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;gap:10px;padding:10p
 /* Keep history immediately readable; reserve motion for the speaking indicator. */
 .event{animation:none;opacity:1}.speaker-bars{display:flex}
 @media(max-width:760px){.speaker-bars{display:none}}
+
+/* Anchor seat labels to the avatar itself, without inline baseline spacing. */
+.seat .avatar-wrap{display:inline-flex;align-self:center;line-height:1}
+.seat-number{left:14.645%;top:85.355%;bottom:auto;transform:translate(-50%,-50%);display:grid;place-items:center;padding:0;line-height:1;text-align:center;font-variant-numeric:tabular-nums}
