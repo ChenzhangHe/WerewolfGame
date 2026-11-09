@@ -104,6 +104,30 @@ replay, provider transports with mocked HTTP, local HTTP boundaries, and complet
 scripted games in both languages. Node is needed only for the JavaScript syntax
 check, not for running the application.
 
+To explicitly run the current server game for up to three additional day/night
+rounds (or until victory), consuming real usage for configured AI players:
+
+```sh
+python3 scripts/verify_live.py --rounds 3 --output artifacts/live-check.private.json
+```
+
+The script leaves the game paused and saves a private diagnostic archive. It
+does not change providers, roles, or player settings. If a player returns an
+invalid action shape, the runner records it privately and allows one format
+correction using only that player's unchanged observation and legal options.
+A second invalid response pauses the game; no substitute action is invented.
+
+To continue an interrupted game after restarting the server, use a trusted local
+archive downloaded with **Export full archive** or saved by the verifier:
+
+```sh
+python3 -m werewolf --resume artifacts/live-check.private.json
+```
+
+Restore validates and replays accepted actions without new inference and starts
+paused. It preserves player configurations, private notes, and historical views.
+Archive files contain hidden information; do not give them to active players.
+
 ## Design and work areas
 
 - [System design and milestone](docs/design.md)

@@ -122,6 +122,38 @@ simultaneous batch are retained for an explicit retry; no partial batch reaches
 the referee and no player sees another uncommitted action. A referee rejection
 discards the batch for a clean explicit retry without automatic substitutions.
 
+Parsed but invalid actions are retained in the private inference log with
+`rejected: true`. Each decision permits at most one automatic format-repair
+request using that player's unchanged observation, the same legal options, and
+its own rejected action. Both attempts are recorded, and only the accepted
+response can update the game or private notes. Authentication/network failures
+do not trigger format repair. These invalid attempts remain visible to evaluation
+instead of being silently normalized into legal choices.
+
+Malformed, non-object, or blank action text is also retained with safe model and
+usage metadata and can receive that one repair attempt. Token-truncated output
+is recorded but pauses without an automatic retry at the same insufficient
+budget. Provider reasoning and transport response bodies are never attached.
+
+Requests in one simultaneous batch run with up to four workers, each receiving
+only its own frozen input. Results are recorded in decision order, not network
+completion order. A failed seat does not discard other successful paid responses,
+and the referee cannot see or apply a partial batch.
+
+The earlier `player-v1` adapter did not retain action content rejected inside the
+provider validator. Such old failures identify the decision stage but cannot
+prove which field was wrong. The `player-v2` protocol adds decision-specific JSON
+examples and explicitly disallows wrappers and extra keys.
+Subsequent live testing captured a concrete protocol confusion: an AI returned
+`{"type":"json_object"}` as its action. `json_object` describes serialization,
+not a legal game action; it must never replace the task's supplied action type.
+
+Trusted local archives can be restored with `python3 -m werewolf --resume PATH`.
+The engine reconstructs state from accepted actions and checks historical views;
+it never calls a provider during restore. Valid cached responses are remapped to
+the restored batch, so completed actions are not inferred again. New requests
+continue through the current protocol with frozen model/player settings.
+
 Trusted local exports contain provider-neutral player requests, exact JSON wire
 bodies, parsed actions, returned model identifiers, numeric usage, and action
 text. They exclude authorization headers and provider reasoning fields. Do not
