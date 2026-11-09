@@ -35,14 +35,61 @@ It is a trusted local spectator application, not a multi-user hosting service.
 
 ## Connect AI players
 
-See [provider setup](docs/provider-setup.md). Secrets come from the server's
-environment, never player configuration or the browser. Available adapters are
-DeepSeek API, OpenAI API, and authorized OpenAI subscription token transport.
+### DeepSeek Flash
 
-Live provider calls have not been exercised in this implementation. Subscription
-browser sign-in, token refresh, and account model discovery are still outstanding;
-its current adapter requires a token from an authorized integration. No model or
-provider is silently substituted after the game starts.
+1. Obtain an API key from the [DeepSeek platform](https://platform.deepseek.com/).
+2. In the repository root, copy [.env.example](.env.example) to a file named
+   **`.env`** if you do not already have one. Put your own key in that local file:
+
+   ```dotenv
+   DEEPSEEK_API_KEY=your_deepseek_api_key
+   ```
+
+   `.env` is ignored by Git. Keep the real key out of source files, screenshots,
+   player personalities, and shared archives. Existing `DEEPSEEK_API_KEY` process
+   environment values take precedence over the file. Restart the server after
+   changing a previously loaded key. The loader reads literal values; it does not
+   execute shell expressions or load arbitrary settings.
+
+3. Verify a real, small Flash request. This consumes API usage:
+
+   ```sh
+   python3 -m werewolf --check-deepseek --language en
+   ```
+
+4. Launch twelve real Flash players with Chinese or English gameplay:
+
+   ```sh
+   python3 -m werewolf --preset deepseek_flash --language zh
+   # For English gameplay, use --language en instead.
+   ```
+
+   Open [the local spectator](http://127.0.0.1:8765) and press **Play**. Startup
+   leaves the game paused. Alternatively, start normally, open **New game**, and
+   select **Use DeepSeek Flash for all 12**. **Test connection** makes one explicit
+   request without revealing or changing the current game.
+
+The preset selects `deepseek-flash`, thinking **enabled**, effort **low**, and a
+4096-token response limit. Temperature is unset because DeepSeek ignores it in
+thinking mode. Change these settings before creating a game; they remain fixed
+during play. Each player uses only its own authorized context. API failures pause
+the game without silently replacing a player with a script or another model.
+See [DeepSeek's model documentation](https://api-docs.deepseek.com/) and the
+[detailed provider setup](docs/provider-setup.md).
+
+**中文说明：** 在项目根目录创建名为 `.env` 的文件，填入自己的
+`DEEPSEEK_API_KEY=你的密钥`。不要提交或分享真实密钥；项目已忽略 `.env`。
+先运行 `python3 -m werewolf --check-deepseek --language zh` 测试连接，再运行
+`python3 -m werewolf --preset deepseek_flash --language zh`，打开本地页面并点击开始。
+修改已加载的密钥后请重启服务器。
+
+### Other providers
+
+Available adapters also include OpenAI API and authorized OpenAI subscription
+token transport. Those live connections have not been verified. Subscription
+browser sign-in, token refresh, and account model discovery remain outstanding;
+its current adapter requires a token from an authorized integration. See
+[provider setup](docs/provider-setup.md).
 
 ## Verify
 

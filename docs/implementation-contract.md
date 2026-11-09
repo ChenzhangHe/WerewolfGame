@@ -45,10 +45,11 @@ All returned objects are detached copies. Game completion means no pending actio
 
 `werewolf.providers.PlayerConfig` is a frozen dataclass with `seat`, `name`,
 `provider` (`demo`, `deepseek`, `openai`, `openai_subscription`), `model`,
-`personality`, `temperature`, `max_tokens`, `language`. Game language is `en` or
+`personality`, `temperature`, `max_tokens`, `language`, and optional DeepSeek
+`thinking` / `reasoning_effort` settings. Game language is `en` or
 `zh` and is fixed at creation, independent of the viewer's interface language.
-Secrets come only from environment
-variables and never appear in configuration, requests archives, or UI payloads.
+Secrets come from environment variables, optionally loaded from the git-ignored
+project `.env` file, and never appear in configuration, request archives, or UI payloads.
 
 `werewolf.providers.build_request(config, observation, decision, notes='')` returns
 a JSON-compatible provider-neutral player request. Strip engine-global decision
@@ -82,6 +83,13 @@ never model tools. State-changing APIs accept JSON and enforce same-origin acces
   omit `at` for current state. Replay does not mutate the running game.
 - `POST /api/game` body `{seed: 1, language: 'en'|'zh', players?: [PlayerConfig fields x12]}` creates
   a paused game. Default seats use scripted demo players with distinct names.
+  Alternatively omit `players` and supply `preset: 'deepseek_flash'` to select
+  twelve Flash players with explicit fixed thinking settings.
+- `GET /api/providers` returns credential presence and default model identifiers,
+  never credential values or unverified account entitlements.
+- `POST /api/providers/deepseek/check` body `{language: 'en'|'zh'}` explicitly
+  tests one real synthetic speech request. It does not receive the active game or
+  mutate game state and is protected by the same origin checks as other writes.
 - `POST /api/step` advances one batch while paused.
 - `POST /api/play` and `POST /api/pause` control a server-side background loop.
 - `GET /api/export` downloads the full trusted archive as JSON. Warn the viewer

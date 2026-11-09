@@ -16,8 +16,9 @@ The browser uses ordinary HTML, CSS, and JavaScript with no external assets.
 
 ## Remaining before live AI milestone sign-off
 
-- Exercise actual model inference with the user's configured accounts and verify
-  model availability, JSON behavior, game-language compliance, latency, and usage.
+- Expand live game evaluation beyond DeepSeek Flash's verified connection path:
+  check complete-game strategic quality, long-context behavior, latency, and
+  usage across providers. OpenAI transports have not had live validation.
 - Implement authorized subscription browser sign-in, token refresh, and model
   discovery. The token transport alone is not a complete connection experience.
 - Review real-game transcripts for strategic quality and tune fixed prompts and

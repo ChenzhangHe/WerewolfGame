@@ -1,7 +1,8 @@
 # Werewolf simulator design
 
 Status: initial design agreed on 2026-11-08; local prototype implemented.
-Live model validation and subscription sign-in remain outstanding; see
+DeepSeek Flash's live connection is verified; broader live-game evaluation and
+subscription sign-in remain outstanding. See
 [work breakdown](work-breakdown.md).
 
 ## Purpose

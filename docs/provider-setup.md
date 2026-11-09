@@ -2,13 +2,14 @@
 
 The default `demo` provider is a deterministic scripted smoke-test player. It
 does not call an AI model and must not be used as evidence of AI capability.
-Real inference uses one of the adapters below. These adapters have mocked HTTP
-coverage; they have not been validated against a live paid account in this work.
+Real inference uses one of the adapters below. Adapters have mocked HTTP coverage.
+DeepSeek Flash has also passed a real connection check with a locally supplied
+key. OpenAI API and subscription transports remain unverified with live accounts.
 
 ## Configuration and language
 
 Configure all twelve seats before starting the game. `provider`, `model`,
-`personality`, `temperature`, and `max_tokens` are frozen for that game. Game
+`personality`, `temperature`, `max_tokens`, `thinking`, and `reasoning_effort` are frozen for that game. Game
 language is `en` (English) or `zh` (Simplified Chinese), and is copied into every
 seat's frozen configuration. Referee announcements and player speech use that
 language. Changing the interface language does not translate old speech or alter
@@ -22,7 +23,10 @@ assignment seed, global decision IDs, tools, and provider conversation/session
 continuations are never supplied. All requests for a simultaneous batch are built
 before any batch action is committed.
 
-Secrets are read from the server process environment only. Do not put credentials
+Secrets are read from the server process environment or the local, git-ignored
+project `.env` file. The `.env` loader supports literal `DEEPSEEK_API_KEY` values
+only, does not execute shell expressions, and preserves existing process values.
+Restart after changing an already loaded key. Do not put credentials
 in player configuration JSON, URLs, personalities, source files, or commits.
 Credential presence is checked when creating a game. Presence does not establish
 validity, account entitlement, or model availability; successful inference is the
@@ -30,12 +34,35 @@ real access check. No automatic provider, model, or billing-path fallback occurs
 
 ## DeepSeek API
 
-Set `DEEPSEEK_API_KEY` in the terminal that starts the server. Select
-`provider: "deepseek"` and an explicit model name available to the account. The
+Set `DEEPSEEK_API_KEY` in the terminal that starts the server or in `.env` at the
+repository root, using the committed `.env.example` as a template. Select
+`provider: "deepseek"` and model `deepseek-flash`. The
 adapter calls `https://api.deepseek.com/chat/completions` with JSON output enabled.
 It passes the configured temperature and token budget when they are not null.
 The prompt explicitly requests JSON; incomplete, blank, invalid, or illegal
 responses pause the game rather than creating a substitute action.
+
+Use `python3 -m werewolf --check-deepseek --language en` for one explicit live
+speech request using synthetic public information. The UI's **Test connection**
+does the same without sending the active game's state. Neither check runs
+automatically, and both consume API usage. Check success verifies access to the
+requested model for that request, not a guarantee of future availability.
+
+The `deepseek_flash` game preset and the UI's twelve-seat Flash button use
+`thinking: "enabled"`, `reasoning_effort: "low"`, `temperature: null`, and
+`max_tokens: 4096`. Thinking-enabled configurations reject non-null temperature
+because the provider would ignore it. Disabled thinking omits effort and permits
+temperature. Existing unspecified thinking settings explicitly send `disabled`
+instead of inheriting DeepSeek's provider-side enabled/high default. All fields
+are part of the frozen configuration snapshot and credential-free wire archive.
+
+The public model ID `deepseek-flash` is documented as served by
+DeepSeek-V4.1-Flash-1017 as of 2026-11-08. Provider-side aliases can change; preserve
+the returned model identifier alongside the requested model. See
+[thinking controls](https://api-docs.deepseek.com/guides/thinking_mode/). No tools,
+shared provider conversations, or provider `reasoning_content` enter another
+player's context; only parsed action content and optional private self-reports
+are recorded.
 
 Consult [DeepSeek's API quickstart](https://api-docs.deepseek.com/) for current
 model names and [JSON output instructions](https://api-docs.deepseek.com/guides/json_mode/)
