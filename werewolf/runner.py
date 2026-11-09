@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, replace
 import json
 
@@ -83,6 +84,49 @@ class Runner:
             "raw_text": getattr(answer, "raw_text", None),
         }
 
+    def _infer_decision(self, decision):
+        """Run one seat in isolation; only the calling step mutates runner state."""
+        decision_id = decision["id"]
+        seat = decision["seat"]
+        config = self.configs[seat - 1]
+        original_request = copy.deepcopy(self._batch_requests[decision_id])
+        assembled = original_request
+        repair_used = decision_id in self._batch_repair_used
+        repair = False
+        records = []
+        while True:
+            record = {"seat": seat, "kind": decision["kind"], "batch_index": self.max_step,
+                      "request": copy.deepcopy(assembled), "repair": repair,
+                      "accepted": False}
+            try:
+                record["wire_request"] = providers.wire_request(config, assembled) if config.provider != "demo" else None
+                answer = providers.decide(config, assembled)
+                providers.validate_action(answer, decision)
+                record.update(self._response_fields(answer))
+            except providers.ProviderError as exc:
+                record["error"] = str(exc)
+                rejected = getattr(exc, "rejected_result", None)
+                if isinstance(rejected, dict):
+                    record.update(self._response_fields(rejected))
+                    record["rejected"] = True
+                records.append(record)
+                if isinstance(rejected, dict) and not repair_used:
+                    repair_used = True
+                    try:
+                        assembled = providers.build_repair_request(original_request, rejected)
+                    except Exception:
+                        return records, None, "Could not assemble a safe action-format repair; game paused.", repair_used
+                    repair = True
+                    continue
+                return records, None, str(exc), repair_used
+            except Exception:
+                # Raw exceptions can contain headers, tokens, or response bodies.
+                record["error"] = "Player inference failed; inspect local provider configuration."
+                records.append(record)
+                return records, None, record["error"], repair_used
+            records.append(record)
+            return records, copy.deepcopy(dict(answer)), None, repair_used
+
     def step(self):
         pending = self.game.pending()
         if not pending:
@@ -100,51 +144,28 @@ class Runner:
             except providers.ProviderError as exc:
                 return self._pause_error(str(exc))
             self._batch_requests = requests
-        for decision in pending:
-            decision_id = decision["id"]
-            if decision_id in self._batch_responses:
-                continue
-            seat = decision["seat"]
-            config = self.configs[seat - 1]
-            original_request = self._batch_requests[decision_id]
-            assembled = original_request
-            repair = False
-            while True:
-                record = {"seat": seat, "kind": decision["kind"], "batch_index": self.max_step,
-                          "request": copy.deepcopy(assembled), "repair": repair,
-                          "wire_request": providers.wire_request(config, assembled) if config.provider != "demo" else None,
-                          "accepted": False}
-                try:
-                    answer = providers.decide(config, assembled)
-                    providers.validate_action(answer, decision)
-                    record.update(self._response_fields(answer))
-                    self._batch_responses[decision_id] = copy.deepcopy(dict(answer))
-                except providers.ProviderError as exc:
-                    record["error"] = str(exc)
-                    rejected = getattr(exc, "rejected_result", None)
-                    if isinstance(rejected, dict):
-                        record.update(self._response_fields(rejected))
-                        record["rejected"] = True
-                    self._records.append(record)
-                    if isinstance(rejected, dict) and decision_id not in self._batch_repair_used:
-                        # One automatic format correction for this private task,
-                        # not a new turn and not a change to the frozen settings.
+        unresolved = [d for d in pending if d["id"] not in self._batch_responses]
+        failures = []
+        if unresolved:
+            # All requests already exist. Workers receive only their own copy;
+            # they cannot submit actions or inspect another worker's response.
+            with ThreadPoolExecutor(max_workers=min(4, len(unresolved)), thread_name_prefix="werewolf-player") as pool:
+                futures = [pool.submit(self._infer_decision, decision) for decision in unresolved]
+                # Process completed results in decision order, not network order.
+                # Even if one seat fails, finish/cache every other paid response.
+                for decision, future in zip(unresolved, futures):
+                    records, answer, failure, repair_used = future.result()
+                    self._records.extend(records)
+                    decision_id = decision["id"]
+                    if repair_used:
                         self._batch_repair_used.add(decision_id)
-                        try:
-                            assembled = providers.build_repair_request(original_request, rejected)
-                        except Exception:
-                            return self._pause_error("Could not assemble a safe action-format repair; game paused.")
-                        repair = True
-                        continue
-                    return self._pause_error(str(exc))
-                except Exception:
-                    # Raw exceptions can contain headers, tokens, or response bodies.
-                    record["error"] = "Player inference failed; inspect local provider configuration."
-                    self._records.append(record)
-                    return self._pause_error(record["error"])
-                self._records.append(record)
-                self._batch_record_indices[decision_id] = len(self._records) - 1
-                break
+                    if answer is not None:
+                        self._batch_responses[decision_id] = answer
+                        self._batch_record_indices[decision_id] = len(self._records) - 1
+                    if failure is not None:
+                        failures.append(failure)
+            if failures:
+                return self._pause_error(failures[0])
         responses = copy.deepcopy(self._batch_responses)
         try:
             # Notes live only in the runner. Engine accepts only action/speech fields.

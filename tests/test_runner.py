@@ -1,5 +1,6 @@
 import copy
 import json
+import threading
 import unittest
 from unittest.mock import patch
 
@@ -143,10 +144,10 @@ class RunnerTests(unittest.TestCase):
             raise failure
         with patch("werewolf.runner.providers.decide", side_effect=reject) as call:
             result = runner.step()
-            self.assertEqual(2, call.call_count)
+            self.assertEqual(2 * len(runner.game.pending()), call.call_count)
             self.assertEqual("error", result["status"])
             runner.step()  # Explicit retry does not add another automatic repair.
-            self.assertEqual(3, call.call_count)
+            self.assertEqual(3 * len(runner.game.pending()), call.call_count)
         self.assertEqual(before, runner.game.export())
         self.assertTrue(all(not note for note in runner._notes.values()))
 
@@ -183,12 +184,94 @@ class RunnerTests(unittest.TestCase):
             runner.step()
         archived = json.loads(json.dumps(runner.export()))
         restored = Runner.from_archive(archived)
-        self.assertEqual(1, len(restored._batch_responses))
+        self.assertEqual(len(pending) - 1, len(restored._batch_responses))
         with patch("werewolf.runner.providers.decide", wraps=real_decide) as resumed:
             restored.step()
         self.assertNotIn(first, [call.args[0].seat for call in resumed.call_args_list])
         self.assertEqual(1, restored.max_step)
         self.assertEqual(len(pending), sum(r["accepted"] for r in restored.export()["inference"]))
+
+    def test_parallel_batch_has_four_worker_limit_and_no_early_submit(self):
+        runner = Runner(configs())
+        # Reach the simultaneous public nomination batch with twelve decisions.
+        while runner.game.pending()[0]["kind"] != "nominate":
+            runner.step()
+        pending = runner.game.pending()
+        self.assertEqual(12, len(pending))
+        before = runner.game.export()
+        gate = threading.Event()
+        four_started = threading.Event()
+        guard = threading.Lock()
+        active = 0
+        peak = 0
+        called = []
+        real_decide = __import__("werewolf.providers", fromlist=["decide"]).decide
+        def decide(config, request):
+            nonlocal active, peak
+            with guard:
+                active += 1
+                peak = max(peak, active)
+                called.append(config.seat)
+                if active == 4:
+                    four_started.set()
+            try:
+                if not gate.wait(5):
+                    raise AssertionError("Test inference gate timed out")
+                return real_decide(config, request)
+            finally:
+                with guard:
+                    active -= 1
+        step_results = []
+        with patch("werewolf.runner.providers.decide", side_effect=decide), \
+             patch.object(runner.game, "submit", wraps=runner.game.submit) as submit:
+            worker = threading.Thread(target=lambda: step_results.append(runner.step()))
+            worker.start()
+            try:
+                self.assertTrue(four_started.wait(5), "Four calls should start concurrently")
+                self.assertEqual(4, len(called))
+                self.assertEqual(before, runner.game.export())
+                submit.assert_not_called()
+                # Every request was frozen before the first group started.
+                self.assertEqual(12, len(runner._batch_requests))
+            finally:
+                gate.set()
+                worker.join(10)
+            self.assertFalse(worker.is_alive())
+            submit.assert_called_once()
+        self.assertEqual(4, peak)
+        self.assertEqual(12, len(called))
+        self.assertNotEqual("error", step_results[0]["status"])
+
+    def test_parallel_failure_retains_later_successes_and_deterministic_archive_order(self):
+        runner = Runner(configs())
+        pending = runner.game.pending()
+        before = runner.game.export()
+        first_seat = pending[0]["seat"]
+        started = threading.Barrier(len(pending))
+        real_decide = __import__("werewolf.providers", fromlist=["decide"]).decide
+        completed = []
+        guard = threading.Lock()
+        def decide(config, request):
+            started.wait(timeout=5)
+            if config.seat == first_seat:
+                raise ProviderError("Synthetic first-seat failure.")
+            answer = real_decide(config, request)
+            with guard:
+                completed.append(config.seat)
+            return answer
+        with patch("werewolf.runner.providers.decide", side_effect=decide):
+            result = runner.step()
+        self.assertEqual("error", result["status"])
+        self.assertEqual(before, runner.game.export())
+        self.assertEqual(len(pending) - 1, len(runner._batch_responses))
+        self.assertEqual(len(pending) - 1, len(completed))
+        records = runner.export()["inference"]
+        self.assertEqual([d["seat"] for d in pending], [r["seat"] for r in records])
+        self.assertTrue(all(not r["accepted"] for r in records))
+        with patch("werewolf.runner.providers.decide", wraps=real_decide) as retry:
+            runner.step()
+        self.assertEqual([first_seat], [c.args[0].seat for c in retry.call_args_list])
+        self.assertEqual(1, runner.max_step)
 
     def test_restore_legacy_archive_without_pending_cache(self):
         runner = Runner(configs())
