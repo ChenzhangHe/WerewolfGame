@@ -59,7 +59,7 @@ class SeatToolHarness:
     """Immutable seat-local input, bounded reads, and exact terminal proposals."""
 
     def __init__(self, observation, decision, notes='', language='en', *, fixed_pages=False, explicit_consequences=False,
-                 explicit_output_limits=False, explicit_state_facts=False):
+                 explicit_output_limits=False, explicit_state_facts=False, explicit_vote_facts=False):
         if not isinstance(observation, dict) or not isinstance(decision, dict):
             raise ValueError('Invalid player context.')
         if language not in RULES or observation.get('language', language) != language:
@@ -83,6 +83,7 @@ class SeatToolHarness:
         self._explicit_consequences = explicit_consequences
         self._explicit_output_limits = explicit_output_limits
         self._explicit_state_facts = explicit_state_facts
+        self._explicit_vote_facts = explicit_vote_facts
         self._notes = notes
         # Explicit metadata allowlist avoids forwarding opaque engine-global fields.
         self._metadata = deepcopy({k: observation[k] for k in
@@ -136,7 +137,7 @@ class SeatToolHarness:
             if str(seat) in votes or seat in votes:
                 ballots.append({'day': event.get('day'), 'kind': event['kind'],
                                 'target': votes.get(str(seat), votes.get(seat))})
-        return {
+        result = {
             'living_seats': [p['seat'] for p in players if p['alive']],
             'eliminated_seats': [p['seat'] for p in players if not p['alive']],
             'confirmed_role_reveals': {str(p['seat']): p['revealed_role'] for p in players if p.get('revealed_role')},
@@ -144,6 +145,10 @@ class SeatToolHarness:
             'my_published_ballots': ballots,
             'dawn_announced_today': any(e.get('kind') == 'dawn' and e.get('day') == self._metadata.get('day') for e in self._public),
         }
+        if self._explicit_vote_facts:
+            result['idiot_protection_activated_seats'] = [p['seat'] for p in players if p.get('revealed_role') == 'idiot']
+            result['ordinary_exile_voters'] = [p['seat'] for p in players if p['alive'] and p.get('revealed_role') != 'idiot']
+        return result
 
     def briefing(self):
         result = deepcopy(self._metadata)

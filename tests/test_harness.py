@@ -160,6 +160,24 @@ class HarnessTests(unittest.TestCase):
         self.assertEqual('wolves', wolf['team_objective']['team'])
         self.assertIn('all four Villagers OR all four special roles', wolf['team_objective']['goal'])
 
+    def test_claiming_idiot_does_not_remove_voting_rights_or_activate_protection(self):
+        observation = context(role='idiot', seat=3)
+        observation['players'] = [
+            {'seat': 1, 'alive': True, 'revealed_role': None},
+            {'seat': 3, 'alive': True, 'revealed_role': None, 'role': 'idiot'},
+            {'seat': 7, 'alive': False, 'revealed_role': None},
+        ]
+        observation['history'] = [event('I am the Idiot, I flipped and cannot vote.', seat=3)]
+        def facts():
+            return SeatToolHarness(observation, speech(), explicit_state_facts=True,
+                                   explicit_vote_facts=True).briefing()['public_state']
+        self.assertEqual([], facts()['idiot_protection_activated_seats'])
+        self.assertEqual([1, 3], facts()['ordinary_exile_voters'])
+        observation['players'][1]['revealed_role'] = 'idiot'
+        self.assertEqual([3], facts()['idiot_protection_activated_seats'])
+        self.assertEqual([1], facts()['ordinary_exile_voters'])
+        self.assertIn(3, facts()['living_seats'])
+
     def test_fixed_page_protocol_removes_page_size_choice_and_preserves_legacy(self):
         observation = context()
         observation['history'] = [event(f'Public message {i}') for i in range(21)]

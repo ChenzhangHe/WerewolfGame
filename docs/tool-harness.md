@@ -154,7 +154,7 @@ but cannot guarantee that a model obeys every constraint.
 
 ## V9 authoritative public facts and faction goal
 
-New games use `player-tools-v9`, retaining v8 budgets, output limits and legal
+Protocol `player-tools-v9` retains v8 budgets, output limits and legal
 actions. The briefing includes a seat-local faction goal and `public_state`:
 living and eliminated seats, confirmed public ability reveals, unconfirmed dead
 roles, the actor's published ballots, and whether today's dawn has been announced.
@@ -169,3 +169,16 @@ revealed Idiot, potion visibility, private Seer results, and continued allegianc
 after elimination. V1–v8 archives remain pinned on normal restore. Regression
 tests cover hidden-state noninterference and unchanged action schemas; this is
 not evidence that a model will never misreason or betray its team again.
+
+
+## V10 self-claims versus Idiot ability activation
+
+New games use `player-tools-v10`, retaining v9 budgets and legal actions.
+`public_state` adds `idiot_protection_activated_seats` (public ability reveals) and
+`ordinary_exile_voters` (living seats before runoff exclusions, excluding only
+formally revealed Idiots). A self-claim never changes these lists. Current action
+tools remain authoritative for runoff and other task-specific eligibility.
+The instructions explicitly distinguish claiming Idiot from its triggered
+protection, and reiterate that a living Idiot is not a dead special role.
+V1–v9 restore profiles are unchanged. See the fixed-v9 rerun in the game audit
+for the exact evidence and the limits of that validation.
