@@ -11,13 +11,13 @@
       demoCopy: 'These players are smoke-test scripts, not a measure of AI capability.',
       mixedDemoTitle: 'Includes scripted players', mixedDemoCopy: 'Some seats use demonstration scripts. Treat this as a mixed test, not a controlled AI comparison.',
       play: 'Play', pause: 'Pause', perspective: 'Perspective', mystery: 'Mystery', omniscient: 'Omniscient',
-      follow: 'Follow a player', village: 'The village', speaking: 'Speaking / acting', sheriff: 'Sheriff',
+      follow: 'Follow a player', village: 'The village', speaking: 'Speaking', speakingNow: 'Speaking', currentSpeaker: '{name} is speaking', closeDetails: 'Close details', details: 'Game details', sheriff: 'Sheriff',
       eliminated: 'Eliminated', alive: 'alive', hiddenRole: 'Unknown role', transcript: 'The conversation',
       autoScroll: 'Follow latest ↓', autoScrollOff: 'Follow latest', waitingTitle: 'Before the first whisper',
       waitingCopy: 'Start the game to watch the village come alive.', transcriptNote: 'Claims are not confirmed roles.',
       timeline: 'TIMELINE', live: 'LIVE', playerDetail: 'Player dossier', voteLedger: 'Voting record',
       publicRecord: 'PUBLIC RECORD', footer: 'A game of imperfect information. A window into artificial minds.',
-      export: 'Export full archive ↗', nextSession: 'THE NEXT SESSION', setupTitle: 'Gather the village.',
+      export: 'Export archive ↗', nextSession: 'THE NEXT SESSION', setupTitle: 'Gather the village.',
       setupCopy: 'Choose the players before the first night. Their configurations and speech language remain fixed throughout the game.',
       gameLanguage: 'Game & player speech language', seed: 'Game seed',
       credentialsNote: 'Live providers read credentials from the server environment. No API keys are entered or stored in this interface.',
@@ -30,7 +30,7 @@
       omniscientNote: 'ALL-SEING VIEW · You can see secrets that the players cannot. This view never feeds back into play.',
       playerNote: 'PLAYER VIEW · Only information available to seat {seat} at this point in the game.',
       paused: 'Paused', running: 'Playing', finished: 'Finished', error: 'Needs attention', replay: 'Replay',
-      night: 'NIGHT', day: 'DAY', englishGame: 'ENGLISH GAME', chineseGame: '中文 GAME',
+      night: 'NIGHT', day: 'DAY', englishGame: 'ENGLISH GAME', chineseGame: 'CHINESE GAME',
       goodWins: 'The village prevails.', wolvesWin: 'The wolves prevail.', endCaption: 'Every secret has a story.',
       nightTitle: 'The village sleeps', dayTitle: 'Every word matters',
       dayCaption: 'Listen closely. Trust carefully.', events: '{count} events',
@@ -72,13 +72,13 @@
       demoCopy: '当前玩家由测试脚本驱动，演示结果不代表 AI 能力。',
       mixedDemoTitle: '包含脚本玩家', mixedDemoCopy: '部分席位使用演示脚本。本局属于混合测试，不能视为受控的 AI 能力对比。',
       play: '开始', pause: '暂停', perspective: '观战视角', mystery: '悬疑视角', omniscient: '全知视角',
-      follow: '跟随玩家', village: '村庄席位', speaking: '发言 / 行动中', sheriff: '警长',
+      follow: '跟随玩家', village: '村庄席位', speaking: '当前发言', speakingNow: '发言中', currentSpeaker: '{name} 正在发言', closeDetails: '关闭详情', details: '对局详情', sheriff: '警长',
       eliminated: '已出局', alive: '存活', hiddenRole: '身份未知', transcript: '场上记录',
       autoScroll: '跟随最新 ↓', autoScrollOff: '跟随最新', waitingTitle: '第一声低语之前',
       waitingCopy: '开始对局，静候村庄苏醒。', transcriptNote: '身份宣称不等于身份确认。',
       timeline: '时间线', live: '实时', playerDetail: '玩家档案', voteLedger: '投票记录',
       publicRecord: '公开信息', footer: '不完全信息的博弈，观察人工智能的窗口。',
-      export: '导出完整档案 ↗', nextSession: '下一场对局', setupTitle: '让村庄集结。',
+      export: '导出存档 ↗', nextSession: '下一场对局', setupTitle: '让村庄集结。',
       setupCopy: '首夜前配置所有玩家。玩家配置与发言语言在本局开始后保持不变。',
       gameLanguage: '游戏与玩家发言语言', seed: '对局随机种子',
       credentialsNote: '在线模型从服务器环境变量读取凭据。此界面不输入、也不保存任何 API 密钥。',
@@ -132,6 +132,7 @@
     at: null, snapshot: null, busy: false, autoScroll: true, requestVersion: 0,
     lastEventSignature: '', draft: null, providerInfo: null, providerLoading: false,
     connectionChecking: false, connectionResult: null, flashApplied: false,
+    detailsPanel: 'dossier', drawerReturnSeat: null,
   };
   const names = {
     en: ['Rowan', 'Iris', 'Ash', 'Juniper', 'Sage', 'Wren', 'Hazel', 'Reed', 'Laurel', 'Finch', 'Briar', 'Clover'],
@@ -162,17 +163,19 @@
     state.locale = locale;
     try { localStorage.setItem('werewolf-locale', locale); } catch (_) { /* No persistence required. */ }
     document.documentElement.lang = locale === 'zh' ? 'zh-CN' : 'en';
-    document.title = locale === 'zh' ? '狼人杀 — 村庄正在倾听' : 'Werewolf — The village is listening';
+    document.title = locale === 'zh' ? '狼人杀 — 观战' : 'Werewolf — Spectator';
     document.querySelectorAll('[data-i18n]').forEach((element) => { element.textContent = t(element.dataset.i18n); });
     $('locale-en').classList.toggle('active', locale === 'en');
     $('locale-zh').classList.toggle('active', locale === 'zh');
     $('locale-en').setAttribute('aria-pressed', String(locale === 'en'));
     $('locale-zh').setAttribute('aria-pressed', String(locale === 'zh'));
-    for (const [id, key] of [['step', 'advanceTitle'], ['replay-back', 'previousCheckpoint'], ['follow-seat', 'followSeat'], ['setup-close', 'closeSetup'], ['detail-seat', 'dossierSeat']]) {
+    for (const [id, key] of [['step', 'advanceTitle'], ['replay-back', 'previousCheckpoint'], ['follow-seat', 'followSeat'], ['setup-close', 'closeSetup'], ['detail-seat', 'dossierSeat'], ['details-close', 'closeDetails']]) {
       $(id).setAttribute('aria-label', t(key)); $(id).title = t(key);
     }
     $('replay-range').setAttribute('aria-label', t('timeline'));
     $('transcript').setAttribute('aria-label', t('transcript'));
+    document.querySelector('.drawer-tabs').setAttribute('aria-label', t('details'));
+    setDetailsPanel(state.detailsPanel);
     if (state.draft) renderSetup();
     state.lastEventSignature = '';
     render();
@@ -285,10 +288,13 @@
     $('village').classList.toggle('is-day', !night && Boolean(snapshot));
     $('day-label').textContent = `${t(night || !snapshot ? 'night' : 'day')} ${snapshot?.day || 1}`;
     $('phase-label').textContent = snapshot?.winner ? t(snapshot.winner === 'wolves' ? 'wolvesWin' : 'goodWins') : snapshot ? phaseName(snapshot.phase) : t('nightTitle');
-    $('center-caption').textContent = t(snapshot?.winner ? 'endCaption' : night || !snapshot ? 'centerCaption' : 'dayCaption');
     $('perspective-note').textContent = t(state.mode === 'player' ? 'playerNote' : state.mode === 'omniscient' ? 'omniscientNote' : 'mysteryNote', { seat: state.followSeat }) + (state.at !== null ? ` ${t('historyControls')}` : '');
+    $('perspective-note').title = $('perspective-note').textContent;
     fillSeatSelect($('follow-seat'), state.followSeat);
     fillSeatSelect($('detail-seat'), state.detailSeat);
+    const speakers = (snapshot?.current_speakers || []).map((seat) => playerName(typeof seat === 'object' ? seat.seat : seat));
+    $('current-speaker').hidden = speakers.length === 0;
+    $('current-speaker').textContent = speakers.length ? t('currentSpeaker', { name: speakers.join(' · ') }) : '';
     renderSeats(players);
     renderEvents(snapshot?.events || []);
     renderDossier();
@@ -303,18 +309,24 @@
   }
   function renderSeats(players) {
     const acting = (state.snapshot?.current_speakers || []).map((seat) => Number(typeof seat === 'object' ? seat.seat : seat));
-    $('seats').replaceChildren(...players.map((player, index) => {
-      const angle = (index * 30 - 90) * Math.PI / 180;
+    const focusedSeat = $('seats').contains(document.activeElement) ? document.activeElement.dataset.seat : null;
+    $('seats').replaceChildren(...[...players].sort((a, b) => a.seat - b.seat).map((player, index) => {
       const seat = node('button', 'seat'); seat.type = 'button';
-      seat.style.setProperty('--x', `${50 + Math.cos(angle) * 39}%`);
-      seat.style.setProperty('--y', `${50 + Math.sin(angle) * 40}%`);
+      seat.dataset.seat = String(player.seat);
       seat.style.setProperty('--avatar-bg', avatarColors[index % avatarColors.length]);
       seat.classList.toggle('dead', !player.alive);
       seat.classList.toggle('active', acting.includes(Number(player.seat)));
-      seat.classList.toggle('selected', Number(player.seat) === state.detailSeat);
+      seat.classList.toggle('selected', $('details-dialog').open && state.detailsPanel === 'dossier' && Number(player.seat) === state.detailSeat);
+      if (acting.includes(Number(player.seat))) seat.setAttribute('aria-current', 'true');
       seat.setAttribute('aria-label', `${t('inspect', { seat: player.seat })}: ${player.name}, ${roleName(permittedRole(player))}, ${t(player.alive ? 'alive' : 'eliminated')}`);
+      seat.title = `${player.seat} · ${player.name}${acting.includes(Number(player.seat)) ? ` · ${t('speakingNow')}` : ''}`;
       const wrap = node('span', 'avatar-wrap');
       wrap.append(node('span', 'avatar', [...String(player.name)][0] || '?'), node('span', 'seat-number', player.seat));
+      if (acting.includes(Number(player.seat))) {
+        const indicator = node('span', 'speaker-indicator'); indicator.setAttribute('aria-hidden', 'true');
+        const bars = node('span', 'speaker-bars'); bars.append(node('i'), node('i'), node('i'));
+        indicator.append(bars, node('span', '', t('speakingNow'))); seat.append(indicator);
+      }
       if (player.sheriff) { const badge = node('span', 'sheriff-badge', '✦'); badge.title = t('sheriff'); wrap.append(badge); }
       const role = permittedRole(player);
       seat.append(wrap, node('span', 'seat-name', player.name), node('span', `seat-role ${role === 'wolf' ? 'wolf' : ''}`, player.alive ? roleName(role) : `${t('eliminated')} · ${roleName(role)}`));
@@ -322,9 +334,12 @@
         state.detailSeat = Number(player.seat);
         if (state.mode === 'player') { state.followSeat = Number(player.seat); refresh(); }
         else render();
+        state.drawerReturnSeat = Number(player.seat);
+        openDetails('dossier');
       });
       return seat;
     }));
+    if (focusedSeat) $('seats').querySelector(`[data-seat="${focusedSeat}"]`)?.focus({ preventScroll: true });
   }
   function isPrivate(event) {
     return event.audience !== undefined && event.audience !== null && event.audience !== 'public' && event.audience !== 'all';
@@ -529,6 +544,20 @@
   }
   function openDialog(id) { $(id).showModal(); document.body.classList.add('dialog-open'); }
   function closeDialog(id) { $(id).close(); document.body.classList.remove('dialog-open'); }
+  function setDetailsPanel(panel) {
+    state.detailsPanel = panel;
+    const dossier = panel === 'dossier';
+    $('details-title').textContent = t(dossier ? 'playerDetail' : 'voteLedger');
+    $('dossier-panel').hidden = !dossier; $('ledger-panel').hidden = dossier;
+    for (const [id, selected] of [['dossier-tab', dossier], ['votes-tab', !dossier]]) {
+      $(id).setAttribute('aria-selected', String(selected)); $(id).tabIndex = selected ? 0 : -1;
+    }
+  }
+  function openDetails(panel) {
+    setDetailsPanel(panel);
+    if (!$('details-dialog').open) openDialog('details-dialog');
+    renderSeats(getPlayers());
+  }
   function openSetup() {
     const language = state.snapshot?.language || state.locale;
     $('setup-language').value = language;
@@ -553,6 +582,27 @@
     finally { state.busy = false; $('setup-create').disabled = false; renderControls(); }
   }
 
+  $('dossier-open').addEventListener('click', () => { state.drawerReturnSeat = null; openDetails('dossier'); });
+  $('votes-open').addEventListener('click', () => { state.drawerReturnSeat = null; openDetails('votes'); });
+  $('details-close').addEventListener('click', () => closeDialog('details-dialog'));
+  for (const panel of ['dossier', 'votes']) {
+    $(`${panel}-tab`).addEventListener('click', () => { setDetailsPanel(panel); renderSeats(getPlayers()); });
+    $(`${panel}-tab`).addEventListener('keydown', (event) => {
+      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+      event.preventDefault();
+      const next = event.key === 'Home' ? 'dossier' : event.key === 'End' ? 'votes' : panel === 'dossier' ? 'votes' : 'dossier';
+      setDetailsPanel(next); $(`${next}-tab`).focus(); renderSeats(getPlayers());
+    });
+  }
+  $('details-dialog').addEventListener('click', (event) => {
+    if (event.target !== $('details-dialog')) return;
+    const bounds = event.target.getBoundingClientRect();
+    if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) closeDialog('details-dialog');
+  });
+  $('details-dialog').addEventListener('close', () => {
+    renderSeats(getPlayers());
+    if (state.drawerReturnSeat) $('seats').querySelector(`[data-seat="${state.drawerReturnSeat}"]`)?.focus({ preventScroll: true });
+  });
   $('locale-en').addEventListener('click', () => setLocale('en'));
   $('locale-zh').addEventListener('click', () => setLocale('zh'));
   $('play').addEventListener('click', () => command(state.snapshot?.status === 'running' ? '/api/pause' : '/api/play'));

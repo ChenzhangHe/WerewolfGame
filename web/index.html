@@ -4,23 +4,18 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#101514">
-  <title>Werewolf — The village is listening</title>
+  <title>Werewolf — Spectator</title>
   <link rel="stylesheet" href="/style.css">
   <script src="/app.js" defer></script>
 </head>
 <body>
   <div class="app-shell">
     <header class="topbar">
-      <a class="brand" href="/" aria-label="Werewolf home"><span class="brand-mark" aria-hidden="true">◒</span><span>WEREWOLF<span class="brand-caption" data-i18n="brandCaption">AN AI SOCIAL EXPERIMENT</span></span></a>
-      <div class="topbar-end"><span class="local-badge"><i></i><span data-i18n="localSession">LOCAL SESSION</span></span><div class="locale-switch" aria-label="Interface language"><button id="locale-en" type="button" lang="en">EN</button><button id="locale-zh" type="button" lang="zh">中文</button></div><button class="button secondary compact" id="setup-open" data-i18n="newGame">New game</button></div>
+      <a class="brand" href="/" aria-label="Werewolf home"><span class="brand-mark" aria-hidden="true">◒</span><span>WEREWOLF</span></a>
+      <div class="topbar-end"><span class="game-language" id="game-language">ENGLISH GAME</span><div class="locale-switch" aria-label="Interface language"><button id="locale-en" type="button" lang="en">EN</button><button id="locale-zh" type="button" lang="zh">中文</button></div><button class="button secondary compact" id="setup-open" data-i18n="newGame">New game</button></div>
     </header>
 
     <main>
-      <section class="intro" aria-labelledby="headline">
-        <div><p class="eyebrow"><span class="short-rule"></span><span data-i18n="eyebrow">TWELVE MINDS. ONE HIDDEN TRUTH.</span></p><h1 id="headline" data-i18n="headline">The village is listening.</h1><p class="intro-copy" data-i18n="introCopy">Watch alliances form, stories unravel, and every word become evidence.</p></div>
-        <div class="session-stamp"><span id="game-language">ENGLISH GAME</span><strong>12<span data-i18n="players">PLAYERS</span></strong><span data-i18n="rulesTag">STANDARD · RULES V1</span></div>
-      </section>
-
       <div id="notice" class="notice" role="status" hidden></div>
       <div id="demo-notice" class="demo-notice"><span class="demo-dot"></span><strong data-i18n="demoTitle">Scripted demonstration</strong><span data-i18n="demoCopy">These players are smoke-test scripts, not a measure of AI capability.</span></div>
 
@@ -31,29 +26,29 @@
 
       <div class="main-grid">
         <section class="panel village-panel" aria-labelledby="village-heading">
-          <div class="panel-heading"><h2 id="village-heading" data-i18n="village">The village</h2><span class="muted small" id="alive-count">12 / 12 alive</span></div>
-          <div class="village" id="village"><div class="orbit orbit-outer"></div><div class="orbit orbit-inner"></div><div class="compass north">N</div><div class="village-center"><div class="moon" aria-hidden="true"></div><p class="eyebrow" id="day-label">NIGHT 1</p><h3 id="phase-label">The village sleeps</h3><p id="center-caption" data-i18n="centerCaption">Secrets move in the dark.</p></div><div id="seats"></div></div>
-          <div class="village-legend"><span><i class="legend-dot speaking-dot"></i><span data-i18n="speaking">Speaking / acting</span></span><span><i class="legend-dot sheriff-dot"></i><span data-i18n="sheriff">Sheriff</span></span><span><i class="legend-dot eliminated-dot"></i><span data-i18n="eliminated">Eliminated</span></span></div>
-          <div class="perspective-note" id="perspective-note"></div>
+          <div class="panel-heading village-heading"><div class="table-status"><h2 id="village-heading" data-i18n="village">The village</h2><span id="day-label">NIGHT 1</span><strong id="phase-label">Night actions</strong></div><div class="panel-tools"><span class="muted small" id="alive-count">12 / 12 alive</span><button type="button" class="text-button" id="dossier-open" aria-haspopup="dialog" aria-controls="details-dialog" data-i18n="playerDetail">Player dossier</button></div></div>
+          <div class="village" id="village"><div id="seats"></div></div>
+          <div class="village-bottom"><div class="village-legend"><span><i class="legend-dot speaking-dot"></i><span data-i18n="speaking">Speaking / acting</span></span><span><i class="legend-dot sheriff-dot"></i><span data-i18n="sheriff">Sheriff</span></span><span><i class="legend-dot eliminated-dot"></i><span data-i18n="eliminated">Eliminated</span></span></div><div class="perspective-note" id="perspective-note"></div></div>
         </section>
 
         <section class="panel transcript-panel" aria-labelledby="transcript-heading">
-          <div class="panel-heading"><h2 id="transcript-heading" data-i18n="transcript">The conversation</h2><button class="text-button" id="autoscroll" aria-pressed="true" data-i18n="autoScroll">Follow latest ↓</button></div>
+          <div class="panel-heading"><div class="transcript-title"><h2 id="transcript-heading" data-i18n="transcript">The conversation</h2><span id="current-speaker" class="current-speaker" hidden></span></div><div class="panel-tools"><button type="button" class="text-button" id="votes-open" aria-haspopup="dialog" aria-controls="details-dialog" data-i18n="voteLedger">Voting record</button><button class="text-button" id="autoscroll" aria-pressed="true" data-i18n="autoScroll">Follow latest ↓</button></div></div>
           <div class="transcript" id="transcript" tabindex="0" aria-label="Game event transcript"><div class="empty-state"><span aria-hidden="true">◌</span><h3 data-i18n="waitingTitle">Before the first whisper</h3><p data-i18n="waitingCopy">Start the game to watch the village come alive.</p></div></div>
           <div class="transcript-footer"><span class="small muted" id="event-count">0 events</span><span class="small muted" data-i18n="transcriptNote">Claims are not confirmed roles.</span></div>
         </section>
       </div>
 
-      <section class="replay-bar panel" aria-label="Replay controls"><button class="icon-button" id="replay-back" aria-label="Previous checkpoint">‹</button><div class="replay-label"><strong data-i18n="timeline">TIMELINE</strong><span id="replay-position">0 / 0</span></div><input id="replay-range" type="range" min="0" max="0" value="0" aria-label="Replay checkpoint"><button class="text-button live-button" id="go-live"><i></i><span data-i18n="live">LIVE</span></button></section>
+      <section class="replay-bar panel" aria-label="Replay controls"><button class="icon-button" id="replay-back" aria-label="Previous checkpoint">‹</button><div class="replay-label"><strong data-i18n="timeline">TIMELINE</strong><span id="replay-position">0 / 0</span></div><input id="replay-range" type="range" min="0" max="0" value="0" aria-label="Replay checkpoint"><button class="text-button live-button" id="go-live"><i></i><span data-i18n="live">LIVE</span></button><button class="text-button export-button" id="export" data-i18n="export">Export full archive ↗</button></section>
 
-      <div class="details-grid">
-        <section class="panel dossier-panel"><div class="panel-heading"><h2 data-i18n="playerDetail">Player dossier</h2><select id="detail-seat" aria-label="Player dossier seat"></select></div><div id="dossier"></div></section>
-        <section class="panel ledger-panel"><div class="panel-heading"><h2 data-i18n="voteLedger">Voting record</h2><span class="eyebrow" data-i18n="publicRecord">PUBLIC RECORD</span></div><div id="vote-ledger" class="ledger"></div></section>
-      </div>
-
-      <footer class="footer"><span data-i18n="footer">A game of imperfect information. A window into artificial minds.</span><button class="text-button" id="export" data-i18n="export">Export full archive ↗</button></footer>
     </main>
   </div>
+
+  <dialog id="details-dialog" class="details-drawer" aria-labelledby="details-title">
+    <div class="drawer-header"><h2 id="details-title" data-i18n="playerDetail">Player dossier</h2><button type="button" class="icon-button" id="details-close" aria-label="Close details">×</button></div>
+    <div class="drawer-tabs" role="tablist" aria-label="Game details"><button type="button" id="dossier-tab" role="tab" aria-selected="true" aria-controls="dossier-panel" data-i18n="playerDetail">Player dossier</button><button type="button" id="votes-tab" role="tab" aria-selected="false" aria-controls="ledger-panel" tabindex="-1" data-i18n="voteLedger">Voting record</button></div>
+    <section id="dossier-panel" class="dossier-panel drawer-panel" role="tabpanel" aria-labelledby="dossier-tab"><div class="panel-heading"><label for="detail-seat" data-i18n="selectSeat">Select a seat</label><select id="detail-seat" aria-label="Player dossier seat"></select></div><div id="dossier"></div></section>
+    <section id="ledger-panel" class="ledger-panel drawer-panel" role="tabpanel" aria-labelledby="votes-tab" hidden><div class="panel-heading"><span class="eyebrow" data-i18n="publicRecord">PUBLIC RECORD</span></div><div id="vote-ledger" class="ledger"></div></section>
+  </dialog>
 
   <dialog id="setup-dialog" aria-labelledby="setup-title">
     <form id="setup-form">
