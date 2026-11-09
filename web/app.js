@@ -51,6 +51,16 @@
       voteTitle: 'Day {day} · {kind}', replayHint: 'Historical checkpoint · original speech is preserved',
       noData: 'No public voting details.', inspect: 'Inspect seat {seat}',
       historyControls: 'Viewing history. Return to LIVE to control the current game.',
+      deepseekPreset: 'Use DeepSeek Flash for all 12', testConnection: 'Test connection', testConnectionBusy: 'Testing…',
+      deepseekPresetCopy: 'Thinking enabled · low reasoning effort · 4,096 output tokens. Applies to the next game only.',
+      deepseekKeyHelp: 'Set DEEPSEEK_API_KEY in your local .env file, then restart the server. Keep the key out of this interface.',
+      connectionCost: 'Testing sends one small API request. It does not start or change a game.',
+      keyChecking: 'Checking key setup…', keyConfigured: 'KEY CONFIGURED', keyMissing: 'KEY NOT CONFIGURED', keyUnknown: 'SETUP STATUS UNAVAILABLE',
+      connectionChecking: 'Testing DeepSeek Flash… waiting for the model response.', connectionSuccess: 'DeepSeek Flash connected successfully.',
+      connectionFailure: 'Could not connect to DeepSeek Flash.', flashApplied: 'DeepSeek Flash is selected for all twelve seats. Names and personalities are preserved.',
+      thinking: 'Thinking', thinkingEnabled: 'Enabled', thinkingDisabled: 'Disabled', reasoningEffort: 'Reasoning effort',
+      effortLow: 'Low', effortHigh: 'High', effortMax: 'Maximum', modelDefault: 'Model default',
+      temperatureThinking: 'Temperature is not sent when thinking is enabled.',
       phases: { setup: 'The lineup', night: 'Night actions', day: 'Dawn', election: 'Sheriff election', voting: 'Exile vote', campaign: 'Sheriff campaign', tie_speech: 'Tie speeches', sheriff_ballots: 'Sheriff ballots', exile_ballots: 'Exile ballots', wolf_discussion: 'Wolf council', wolf_vote: 'Night attack', witch: 'Witch acts', seer: 'Seer investigates', hunter_status: 'Hunter status', dawn: 'Dawn', sheriff_nomination: 'Sheriff nominations', sheriff_speech: 'Sheriff campaign', sheriff_withdrawal: 'Candidate withdrawal', sheriff_vote: 'Sheriff election', sheriff_runoff: 'Election runoff', discussion: 'Village discussion', speech: 'Village discussion', exile_vote: 'Exile vote', vote: 'Exile vote', runoff: 'Runoff vote', last_words: 'Last words', badge: 'Sheriff badge', explosion: 'Wolf reveal', finished: 'Game over' },
     },
     zh: {
@@ -100,6 +110,16 @@
       voteTitle: '第 {day} 天 · {kind}', replayHint: '历史回放节点 · 发言保留原始语言',
       noData: '暂无公开票型详情。', inspect: '查看 {seat} 号玩家',
       historyControls: '正在查看历史回放。返回“实时”后可控制当前对局。',
+      deepseekPreset: '十二席全部使用 DeepSeek Flash', testConnection: '测试连接', testConnectionBusy: '正在测试…',
+      deepseekPresetCopy: '开启思考 · 低推理强度 · 4,096 输出 token。仅应用于新对局。',
+      deepseekKeyHelp: '在本地 .env 文件中设置 DEEPSEEK_API_KEY，然后重启服务器。请勿在此界面输入密钥。',
+      connectionCost: '测试会发送一次小型 API 请求，不会开始或更改任何对局。',
+      keyChecking: '正在检查密钥配置…', keyConfigured: '密钥已配置', keyMissing: '尚未配置密钥', keyUnknown: '无法获取配置状态',
+      connectionChecking: '正在测试 DeepSeek Flash…等待模型响应。', connectionSuccess: 'DeepSeek Flash 连接成功。',
+      connectionFailure: '无法连接 DeepSeek Flash。', flashApplied: '十二席已选择 DeepSeek Flash，玩家名称与性格保持不变。',
+      thinking: '思考模式', thinkingEnabled: '开启', thinkingDisabled: '关闭', reasoningEffort: '推理强度',
+      effortLow: '低', effortHigh: '高', effortMax: '最高', modelDefault: '模型默认',
+      temperatureThinking: '开启思考模式时不发送温度参数。',
       phases: { setup: '身份配置', night: '夜间行动', day: '天亮', election: '警长竞选', voting: '放逐投票', campaign: '警上发言', tie_speech: '平票 PK 发言', sheriff_ballots: '警长票型', exile_ballots: '放逐票型', wolf_discussion: '狼队商议', wolf_vote: '狼队落刀', witch: '女巫行动', seer: '预言家查验', hunter_status: '猎人状态', dawn: '天亮', sheriff_nomination: '上警报名', sheriff_speech: '警上发言', sheriff_withdrawal: '退水', sheriff_vote: '警长竞选投票', sheriff_runoff: '警上平票 PK', discussion: '放逐发言', speech: '放逐发言', exile_vote: '放逐投票', vote: '放逐投票', runoff: '平票 PK', last_words: '遗言', badge: '警徽处理', explosion: '狼人自爆', finished: '游戏结束' },
     },
   };
@@ -108,7 +128,8 @@
   const state = {
     locale: readLocale(), mode: 'mystery', followSeat: 1, detailSeat: 1,
     at: null, snapshot: null, busy: false, autoScroll: true, requestVersion: 0,
-    lastEventSignature: '', draft: null,
+    lastEventSignature: '', draft: null, providerInfo: null, providerLoading: false,
+    connectionChecking: false, connectionResult: null, flashApplied: false,
   };
   const names = {
     en: ['Rowan', 'Iris', 'Ash', 'Juniper', 'Sage', 'Wren', 'Hazel', 'Reed', 'Laurel', 'Finch', 'Briar', 'Clover'],
@@ -393,9 +414,44 @@
   }
 
   function freshDraft(language) {
-    return names[language].map((name, i) => ({ seat: i + 1, name, provider: 'demo', model: 'scripted-v1', personality: personalities[language][i], temperature: 0.7, max_tokens: 500 }));
+    return names[language].map((name, i) => ({ seat: i + 1, name, provider: 'demo', model: 'scripted-v1', personality: personalities[language][i], temperature: 0.7, max_tokens: 500, thinking: null, reasoning_effort: null }));
+  }
+  function flashConfig(config) {
+    return { ...config, provider: 'deepseek', model: 'deepseek-flash', thinking: 'enabled', reasoning_effort: 'low', temperature: null, max_tokens: 4096 };
+  }
+  function renderProviderSetup() {
+    const configured = state.providerInfo?.deepseek?.configured;
+    const keyStatus = $('deepseek-key-status');
+    keyStatus.textContent = t(state.providerLoading ? 'keyChecking' : configured === true ? 'keyConfigured' : configured === false ? 'keyMissing' : 'keyUnknown');
+    keyStatus.classList.toggle('configured', configured === true);
+    $('deepseek-check').disabled = state.connectionChecking || state.providerLoading || configured !== true;
+    $('deepseek-check').textContent = t(state.connectionChecking ? 'testConnectionBusy' : 'testConnection');
+    $('deepseek-check').title = t('connectionCost');
+    const result = $('deepseek-check-result');
+    result.hidden = !state.connectionChecking && !state.connectionResult && !state.flashApplied;
+    result.classList.toggle('failed', state.connectionResult?.ok === false);
+    if (state.connectionChecking) result.textContent = t('connectionChecking');
+    else if (state.connectionResult) result.textContent = [t(state.connectionResult.ok ? 'connectionSuccess' : 'connectionFailure'), state.connectionResult.message].filter(Boolean).join(' ');
+    else if (state.flashApplied) result.textContent = t('flashApplied');
+  }
+  async function refreshProviderSetup() {
+    state.providerLoading = true; renderProviderSetup();
+    try { state.providerInfo = await api('/api/providers'); }
+    catch (_) { state.providerInfo = null; }
+    finally { state.providerLoading = false; renderProviderSetup(); }
+  }
+  async function checkDeepSeek() {
+    if (state.connectionChecking || state.providerInfo?.deepseek?.configured !== true) return;
+    state.connectionChecking = true; state.connectionResult = null; state.flashApplied = false; renderProviderSetup();
+    try {
+      const response = await api('/api/providers/deepseek/check', { language: $('setup-language').value });
+      const message = [response.message, response.reply, response.text].find((value) => typeof value === 'string');
+      state.connectionResult = { ok: response.ok !== false && response.success !== false, message: message || '' };
+    } catch (error) { state.connectionResult = { ok: false, message: error.message }; }
+    finally { state.connectionChecking = false; renderProviderSetup(); }
   }
   function renderSetup() {
+    renderProviderSetup();
     const container = $('setup-players'); container.replaceChildren();
     state.draft.forEach((config, index) => {
       const row = node('div', 'player-config'); row.append(node('span', 'config-number', String(index + 1).padStart(2, '0')));
@@ -407,10 +463,14 @@
         const option = node('option', '', label); option.value = value; option.selected = config.provider === value; provider.append(option);
       }
       provider.addEventListener('change', () => {
-        config.provider = provider.value;
-        config.model = provider.value === 'demo' ? 'scripted-v1' : '';
-        config.temperature = provider.value === 'openai_subscription' ? null : 0.7;
-        config.max_tokens = provider.value === 'openai_subscription' ? null : 500;
+        if (provider.value === 'deepseek') Object.assign(config, flashConfig(config));
+        else {
+          config.provider = provider.value;
+          config.model = provider.value === 'demo' ? 'scripted-v1' : '';
+          config.temperature = provider.value === 'openai_subscription' ? null : 0.7;
+          config.max_tokens = provider.value === 'openai_subscription' ? null : 500;
+          config.thinking = null; config.reasoning_effort = null;
+        }
         renderSetup();
       }); row.append(provider);
       const model = node('input', 'config-model'); model.value = config.model || ''; model.placeholder = t('modelId'); model.required = true; model.maxLength = 120;
@@ -420,10 +480,29 @@
       personality.setAttribute('aria-label', `${t('seat', { seat: index + 1 })} ${t('personality')}`);
       personality.addEventListener('input', () => { config.personality = personality.value; }); row.append(personality);
       const budgets = node('div', 'budget-row');
+      if (config.provider === 'deepseek') {
+        const thinkingLabel = node('label', '', `${t('thinking')} `); const thinking = node('select');
+        for (const [value, label] of [['', t('modelDefault')], ['enabled', t('thinkingEnabled')], ['disabled', t('thinkingDisabled')]]) {
+          const option = node('option', '', label); option.value = value; option.selected = value === (config.thinking || ''); thinking.append(option);
+        }
+        thinking.addEventListener('change', () => {
+          config.thinking = thinking.value || null;
+          if (config.thinking === 'enabled') { config.temperature = null; config.reasoning_effort = config.reasoning_effort || 'low'; }
+          else config.reasoning_effort = null;
+          renderSetup();
+        }); thinkingLabel.append(thinking);
+        const effortLabel = node('label', '', `${t('reasoningEffort')} `); const effort = node('select'); effort.disabled = config.thinking !== 'enabled';
+        for (const [value, label] of [['', t('modelDefault')], ['low', t('effortLow')], ['high', t('effortHigh')], ['max', t('effortMax')]]) {
+          const option = node('option', '', label); option.value = value; option.selected = value === (config.reasoning_effort || ''); effort.append(option);
+        }
+        effort.addEventListener('change', () => { config.reasoning_effort = effort.value || null; }); effortLabel.append(effort);
+        const thinkingRow = node('div', 'budget-row thinking-row'); thinkingRow.append(thinkingLabel, effortLabel); row.append(thinkingRow);
+      }
       if (config.provider === 'openai_subscription') budgets.append(node('span', '', t('subscriptionBudget')));
       else {
         const providerDefault = state.locale === 'zh' ? '留空使用模型默认值' : 'Blank uses model default';
         const tempLabel = node('label', '', `${t('temperature')} `); const temp = node('input'); temp.type = 'number'; temp.min = '0'; temp.max = '2'; temp.step = '.1'; temp.value = config.temperature ?? ''; temp.placeholder = providerDefault; temp.title = providerDefault;
+        if (config.provider === 'deepseek' && config.thinking === 'enabled') { config.temperature = null; temp.value = ''; temp.disabled = true; temp.title = t('temperatureThinking'); }
         temp.addEventListener('input', () => { config.temperature = temp.value === '' ? null : Number(temp.value); }); tempLabel.append(temp);
         const tokenLabel = node('label', '', `${t('tokens')} `); const tokens = node('input'); tokens.type = 'number'; tokens.min = '128'; tokens.max = '8192'; tokens.step = '1'; tokens.value = config.max_tokens ?? ''; tokens.placeholder = providerDefault; tokens.title = providerDefault;
         tokens.addEventListener('input', () => { config.max_tokens = tokens.value === '' ? null : Number(tokens.value); }); tokenLabel.append(tokens);
@@ -438,8 +517,9 @@
     const language = state.snapshot?.language || state.locale;
     $('setup-language').value = language;
     const configs = state.snapshot?.configs;
-    state.draft = Array.isArray(configs) && configs.length === 12 ? configs.map((config) => ({ ...config })) : freshDraft(language);
-    $('setup-error').hidden = true; renderSetup(); openDialog('setup-dialog');
+    state.draft = Array.isArray(configs) && configs.length === 12 ? configs.map((config) => ({ thinking: null, reasoning_effort: null, ...config })) : freshDraft(language);
+    state.flashApplied = false;
+    $('setup-error').hidden = true; renderSetup(); openDialog('setup-dialog'); refreshProviderSetup();
   }
   async function createGame(event) {
     event.preventDefault(); if (state.busy) return;
@@ -479,6 +559,10 @@
     }); renderSetup();
   });
   $('setup-form').addEventListener('submit', createGame);
+  $('deepseek-preset').addEventListener('click', () => {
+    state.draft = state.draft.map(flashConfig); state.flashApplied = true; state.connectionResult = null; renderSetup();
+  });
+  $('deepseek-check').addEventListener('click', checkDeepSeek);
   $('export').addEventListener('click', () => openDialog('export-dialog'));
   $('export-close').addEventListener('click', () => closeDialog('export-dialog'));
   $('export-cancel').addEventListener('click', () => closeDialog('export-dialog'));

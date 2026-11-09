@@ -60,6 +60,14 @@
       <div class="dialog-header"><div><p class="eyebrow" data-i18n="nextSession">THE NEXT SESSION</p><h2 id="setup-title" data-i18n="setupTitle">Gather the village.</h2></div><button type="button" class="icon-button" id="setup-close" aria-label="Close setup">×</button></div>
       <p class="muted" data-i18n="setupCopy">Choose the players before the first night. Their configurations and speech language remain fixed throughout the game.</p>
       <div class="setup-basics"><label><span data-i18n="gameLanguage">Game & player speech language</span><select id="setup-language"><option value="en">English</option><option value="zh">中文</option></select></label><label><span data-i18n="seed">Game seed</span><input id="setup-seed" type="number" value="1" min="0" max="2147483647" required></label></div>
+      <section class="provider-setup" aria-labelledby="deepseek-setup-title">
+        <div class="provider-heading"><strong id="deepseek-setup-title">DeepSeek Flash</strong><span id="deepseek-key-status" class="provider-status" role="status"></span></div>
+        <p class="small muted" data-i18n="deepseekPresetCopy">Thinking enabled · low reasoning effort · 4,096 output tokens. Applies to the next game only.</p>
+        <div class="provider-actions"><button class="button secondary compact" type="button" id="deepseek-preset" data-i18n="deepseekPreset">Use DeepSeek Flash for all 12</button><button class="button secondary compact" type="button" id="deepseek-check" data-i18n="testConnection">Test connection</button></div>
+        <p class="provider-credential-help" data-i18n="deepseekKeyHelp">Set DEEPSEEK_API_KEY in your local .env file, then restart the server. Keep the key out of this interface.</p>
+        <p class="small muted" data-i18n="connectionCost">Testing sends one small API request. It does not start or change a game.</p>
+        <p id="deepseek-check-result" class="provider-check-result" role="status" hidden></p>
+      </section>
       <div class="setup-callout" data-i18n="credentialsNote">Live providers read credentials from the server environment. No API keys are entered or stored in this interface.</div>
       <details class="player-settings" open><summary><span data-i18n="configurePlayers">Configure twelve players</span><span class="muted small" data-i18n="fixedAtStart">FIXED AT START</span></summary><div id="setup-players"></div></details>
       <p class="small muted" data-i18n="newGameWarning">Starting a new game replaces the current session. Export its archive first if you want to keep it.</p>
