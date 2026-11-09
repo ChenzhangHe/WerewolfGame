@@ -19,6 +19,7 @@ class ProvidersTests(unittest.TestCase):
         self.assertIn("CURRENT TASK: wolf_attack", instructions)
         self.assertIn('"type": "attack", "target": null', instructions)
         self.assertIn("NOT a speech task", instructions)
+        self.assertIn("Never use json_object or json as the action type", instructions)
         self.assertNotIn('"type":"speak","text"', instructions)
 
     def test_rejected_result_is_captured_without_transport_or_reasoning(self):
@@ -37,6 +38,26 @@ class ProvidersTests(unittest.TestCase):
         self.assertEqual(corrected["input"]["rejected_action"], dict(rejected))
         self.assertNotIn("rejected_action", assembled["input"])
         self.assertNotIn("id", corrected["input"]["decision"])
+
+    def test_malformed_and_truncated_content_keep_only_safe_diagnostics(self):
+        config = p.deepseek_flash_config(1, "Test")
+        for content, finish_reason, repairable in (("not JSON", "stop", True),
+                ("[]", "stop", True), ("   ", "stop", True), ('{"type":', "length", False)):
+            wire = {"model": "deepseek-flash", "choices": [{"finish_reason": finish_reason,
+                    "message": {"content": content, "reasoning_content": "PRIVATE_PROVIDER_REASONING"}}],
+                    "usage": {"total_tokens": 100}}
+            with self.subTest(content=content), patch.dict(os.environ, {"DEEPSEEK_API_KEY": "TEST_TOKEN"}), \
+                 patch.object(p.http, "urlopen", return_value=io.BytesIO(json.dumps(wire).encode())):
+                with self.assertRaises(p.ProviderError) as failure:
+                    p.decide(config, self.request(config))
+                exc = failure.exception
+                self.assertEqual(exc.rejected_text, content)
+                self.assertEqual(exc.repairable, repairable)
+                self.assertEqual(exc.usage, {"total_tokens": 100})
+                self.assertNotIn("PRIVATE_PROVIDER_REASONING", json.dumps(exc.__dict__))
+                repair = p.build_repair_request(self.request(config), content)
+                self.assertEqual(repair["input"]["rejected_output"], content)
+                self.assertEqual(repair["input"]["observation"], self.observation)
 
     def setUp(self):
         self.config = p.PlayerConfig(1, "Ada")

@@ -121,7 +121,9 @@ def _action_contract(decision, language):
         f"\nCURRENT TASK: {decision['kind']}. Allowed type values: {json.dumps(kinds)}. "
         "Choose ONE complete object from input.decision.options, copying its keys, enum values, "
         "and numeric/null value types exactly. Return that object at the top level, not inside "
-        "an action/decision wrapper. Do not add seat, reason, reasoning, explanation, confidence, "
+        "an action/decision wrapper. Do not return an array, a quoted JSON string, or null. "
+        "Never use json_object or json as the action type: those describe serialization, "
+        "not a legal game action. Do not add seat, reason, reasoning, explanation, confidence, "
         "or any other fields. Optional private strategy belongs only in notes. "
         + ("This is a speech task: add a text string. " if speech else
            "This is NOT a speech task: do not return speak/discuss and do not add text. ")
@@ -170,7 +172,12 @@ def build_request(config, observation, decision, notes=""):
 def build_repair_request(player_request, rejected_result):
     """One player's own formatting feedback, with no new game information."""
     repaired = copy.deepcopy(player_request)
-    repaired["input"]["rejected_action"] = copy.deepcopy(dict(rejected_result))
+    if isinstance(rejected_result, dict):
+        repaired["input"]["rejected_action"] = copy.deepcopy(dict(rejected_result))
+    elif isinstance(rejected_result, str):
+        repaired["input"]["rejected_output"] = rejected_result
+    else:
+        raise ProviderError("Unsupported rejected action content; game paused.")
     repaired["instructions"] += (
         "\nPROTOCOL CORRECTION (one retry): your previous action was rejected by the output "
         "validator and has NOT changed the game. The observation and legal options are unchanged. "
@@ -292,6 +299,17 @@ def _read_stream(response):
     raise ProviderError("Provider stream ended before completed inference.")
 
 
+def _action_content_error(message, content, response, repairable=True):
+    """Attach only model action text and safe metadata, never the transport body."""
+    exc = ProviderError(message)
+    if isinstance(content, str):
+        exc.rejected_text = content
+        exc.reported_model = response.get("model") if isinstance(response.get("model"), str) else None
+        exc.usage = _number_usage(response.get("usage"))
+        exc.repairable = repairable
+    return exc
+
+
 def _live(config, player_request):
     env_name = TOKEN_ENV[config.provider]
     endpoint = ("https://api.deepseek.com/chat/completions" if config.provider == "deepseek"
@@ -341,19 +359,23 @@ def _live(config, player_request):
             raise ProviderError("Provider connection failed after two attempts; game paused.") from None
         except (ValueError, KeyError, TypeError):
             raise ProviderError("Provider returned an unreadable response; game paused.") from None
+    raw_text = None
     try:
         if config.provider == "deepseek":
             choice = response_data["choices"][0]
+            raw_text = choice.get("message", {}).get("content")
             if choice.get("finish_reason") != "stop":
                 if choice.get("finish_reason") == "length":
-                    raise ProviderError(
+                    raise _action_content_error(
                         "DeepSeek output reached its token limit; game paused. "
-                        "Use a larger max_tokens setting when configuring a new game."
+                        "Use a larger max_tokens setting when configuring a new game.",
+                        raw_text, response_data, repairable=False,
                     )
-                raise ProviderError("DeepSeek output was interrupted or incomplete; game paused.")
-            raw_text = choice["message"]["content"]
+                raise _action_content_error("DeepSeek output was interrupted or incomplete; game paused.",
+                                            raw_text, response_data, repairable=False)
             if not isinstance(raw_text, str) or not raw_text.strip():
-                raise ProviderError("DeepSeek returned blank action content; game paused. Retry the request or start a new game with a larger token budget.")
+                raise _action_content_error("DeepSeek returned blank action content; game paused. Retry the request or start a new game with a larger token budget.",
+                                            raw_text, response_data)
         else:
             if response_data.get("status") != "completed":
                 raise ProviderError("Provider inference did not complete; game paused.")
@@ -364,7 +386,8 @@ def _live(config, player_request):
         return DecisionResult(action, model=response_data.get("model"),
                               usage=_number_usage(response_data.get("usage")), raw_text=raw_text)
     except (ValueError, KeyError, IndexError, TypeError, AttributeError):
-        raise ProviderError("Provider did not return a complete JSON action; game paused.") from None
+        raise _action_content_error("Provider did not return a complete JSON action; game paused.",
+                                    raw_text, response_data) from None
 
 
 def _demo(config, player_request):
