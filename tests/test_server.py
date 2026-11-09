@@ -79,7 +79,7 @@ class SetupTests(unittest.TestCase):
             self.assertEqual(config.thinking, "enabled")
             self.assertEqual(config.reasoning_effort, "low")
             self.assertIsNone(config.temperature)
-            self.assertEqual(config.max_tokens, 4096)
+            self.assertEqual(config.max_tokens, 8192)
             self.assertEqual(config.language, "zh")
 
     def test_explicit_player_thinking_and_effort_survive_setup(self):

@@ -70,7 +70,9 @@ It is a trusted local spectator application, not a multi-user hosting service.
    request without revealing or changing the current game.
 
 The preset selects `deepseek-flash`, thinking **enabled**, effort **low**, and a
-4096-token response limit. Temperature is unset because DeepSeek ignores it in
+8192-token response limit. This gives thinking more headroom than the original
+4096-token preset, which hit the limit in live voting tests. Existing games keep
+their original budgets. Temperature is unset because DeepSeek ignores it in
 thinking mode. Change these settings before creating a game; they remain fixed
 during play. Each player uses only its own authorized context. API failures pause
 the game without silently replacing a player with a script or another model.

@@ -52,7 +52,7 @@
       noData: 'No public voting details.', inspect: 'Inspect seat {seat}',
       historyControls: 'Viewing history. Return to LIVE to control the current game.',
       deepseekPreset: 'Use DeepSeek Flash for all 12', testConnection: 'Test connection', testConnectionBusy: 'Testing…',
-      deepseekPresetCopy: 'Thinking enabled · low reasoning effort · 4,096 output tokens. Applies to the next game only.',
+      deepseekPresetCopy: 'Thinking enabled · low reasoning effort · 8,192 output tokens. Applies to the next game only.',
       deepseekKeyHelp: 'Set DEEPSEEK_API_KEY in your local .env file, then restart the server. Keep the key out of this interface.',
       connectionCost: 'Testing sends one small API request. It does not start or change a game.',
       keyChecking: 'Checking key setup…', keyConfigured: 'KEY CONFIGURED', keyMissing: 'KEY NOT CONFIGURED', keyUnknown: 'SETUP STATUS UNAVAILABLE',
@@ -111,7 +111,7 @@
       noData: '暂无公开票型详情。', inspect: '查看 {seat} 号玩家',
       historyControls: '正在查看历史回放。返回“实时”后可控制当前对局。',
       deepseekPreset: '十二席全部使用 DeepSeek Flash', testConnection: '测试连接', testConnectionBusy: '正在测试…',
-      deepseekPresetCopy: '开启思考 · 低推理强度 · 4,096 输出 token。仅应用于新对局。',
+      deepseekPresetCopy: '开启思考 · 低推理强度 · 8,192 输出 token。仅应用于新对局。',
       deepseekKeyHelp: '在本地 .env 文件中设置 DEEPSEEK_API_KEY，然后重启服务器。请勿在此界面输入密钥。',
       connectionCost: '测试会发送一次小型 API 请求，不会开始或更改任何对局。',
       keyChecking: '正在检查密钥配置…', keyConfigured: '密钥已配置', keyMissing: '尚未配置密钥', keyUnknown: '无法获取配置状态',
@@ -417,7 +417,7 @@
     return names[language].map((name, i) => ({ seat: i + 1, name, provider: 'demo', model: 'scripted-v1', personality: personalities[language][i], temperature: 0.7, max_tokens: 500, thinking: null, reasoning_effort: null }));
   }
   function flashConfig(config) {
-    return { ...config, provider: 'deepseek', model: 'deepseek-flash', thinking: 'enabled', reasoning_effort: 'low', temperature: null, max_tokens: 4096 };
+    return { ...config, provider: 'deepseek', model: 'deepseek-flash', thinking: 'enabled', reasoning_effort: 'low', temperature: null, max_tokens: 8192 };
   }
   function renderProviderSetup() {
     const configured = state.providerInfo?.deepseek?.configured;

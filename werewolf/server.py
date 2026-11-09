@@ -83,7 +83,7 @@ def parse_setup(body):
         temperature = player.get("temperature", None if provider == "openai_subscription" or
                                  thinking == "enabled" else 0.7)
         max_tokens = player.get("max_tokens", None if provider == "openai_subscription" else
-                                4096 if provider == "deepseek" else 500)
+                                providers.DEEPSEEK_FLASH_MAX_TOKENS if provider == "deepseek" else 500)
         if temperature is not None and (isinstance(temperature, bool) or
                 not isinstance(temperature, (int, float)) or
                 not math.isfinite(temperature) or not 0 <= temperature <= 2):

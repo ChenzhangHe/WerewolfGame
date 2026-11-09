@@ -16,6 +16,7 @@ from urllib import error, request as http
 
 PROMPT_VERSION = "player-v2"
 DEEPSEEK_FLASH_MODEL = "deepseek-flash"
+DEEPSEEK_FLASH_MAX_TOKENS = 8192
 MAX_SPEECH_CHARS = 1200
 MAX_NOTES_CHARS = 2000
 MAX_CONTEXT_CHARS = 500_000
@@ -89,7 +90,7 @@ def deepseek_flash_config(seat, name, personality="", language="en"):
     return PlayerConfig(
         seat=seat, name=name, provider="deepseek", model=DEEPSEEK_FLASH_MODEL,
         personality=personality or "Thoughtful, concise, and willing to revise a suspicion.",
-        temperature=None, max_tokens=4096, language=language,
+        temperature=None, max_tokens=DEEPSEEK_FLASH_MAX_TOKENS, language=language,
         thinking="enabled", reasoning_effort="low",
     )
 
