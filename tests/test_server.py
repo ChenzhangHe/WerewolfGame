@@ -4,6 +4,7 @@ from copy import deepcopy
 import io
 import json
 import unittest
+import os
 from unittest.mock import patch
 
 from werewolf.server import Handler, parse_setup
@@ -68,6 +69,35 @@ def request(method="GET", path="/api/state", body=None, headers=None):
 
 
 class SetupTests(unittest.TestCase):
+    def test_flash_preset_freezes_all_twelve_seats(self):
+        configs, seed, language = parse_setup({"preset": "deepseek_flash", "language": "zh", "seed": 42})
+        self.assertEqual((seed, language), (42, "zh"))
+        self.assertEqual(len(configs), 12)
+        for config in configs:
+            self.assertEqual(config.provider, "deepseek")
+            self.assertEqual(config.model, "deepseek-flash")
+            self.assertEqual(config.thinking, "enabled")
+            self.assertEqual(config.reasoning_effort, "low")
+            self.assertIsNone(config.temperature)
+            self.assertEqual(config.max_tokens, 4096)
+            self.assertEqual(config.language, "zh")
+
+    def test_explicit_player_thinking_and_effort_survive_setup(self):
+        configs, _, _ = parse_setup({})
+        from dataclasses import asdict
+        players = [asdict(config) for config in configs]
+        players[0].update(provider="deepseek", model="deepseek-flash", thinking="enabled",
+                          reasoning_effort="high", temperature=None, max_tokens=4096)
+        configs, _, _ = parse_setup({"players": players})
+        self.assertEqual(configs[0].reasoning_effort, "high")
+        players[0]["temperature"] = 0.7
+        with self.assertRaises(ValueError):
+            parse_setup({"players": players})
+
+    def test_preset_and_explicit_players_are_not_ambiguously_combined(self):
+        with self.assertRaises(ValueError):
+            parse_setup({"preset": "deepseek_flash", "players": []})
+
     def test_default_setup_has_twelve_scripted_players(self):
         configs, seed, language = parse_setup({})
         self.assertEqual([p.seat for p in configs], list(range(1, 13)))
@@ -97,6 +127,30 @@ class SetupTests(unittest.TestCase):
 
 
 class HTTPBoundaryTests(unittest.TestCase):
+    def test_provider_status_returns_presence_without_secret(self):
+        with patch("werewolf.server.load_local_credentials"), \
+             patch.dict(os.environ, {"DEEPSEEK_API_KEY": "PRIVATE_TEST_CREDENTIAL"}):
+            status, _, body, _ = request(path="/api/providers")
+        self.assertEqual(status, 200)
+        self.assertTrue(json.loads(body)["deepseek"]["configured"])
+        self.assertNotIn(b"PRIVATE_TEST_CREDENTIAL", body)
+
+    def test_connection_check_is_explicit_and_does_not_touch_game(self):
+        with patch("werewolf.server.load_local_credentials"), \
+             patch("werewolf.server.providers.check_deepseek", return_value={"ok": True}) as check:
+            status, _, body, calls = request("POST", "/api/providers/deepseek/check", {"language": "zh"})
+        self.assertEqual(status, 200)
+        self.assertTrue(json.loads(body)["ok"])
+        check.assert_called_once_with("zh")
+        self.assertEqual(calls, [])
+
+    def test_cross_origin_connection_check_cannot_spend_tokens(self):
+        with patch("werewolf.server.providers.check_deepseek") as check:
+            status, _, _, _ = request("POST", "/api/providers/deepseek/check", {},
+                                      {"Origin": "https://untrusted.example"})
+        self.assertEqual(status, 403)
+        check.assert_not_called()
+
     def test_replay_query_reaches_read_only_snapshot(self):
         status, headers, body, calls = request(path="/api/state?mode=player&seat=7&at=3")
         self.assertEqual(status, 200)

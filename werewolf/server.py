@@ -8,10 +8,13 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import math
+import os
 from pathlib import Path
 import threading
 from urllib.parse import parse_qs, urlsplit
 
+from . import providers
+from .credentials import load_local_credentials
 from .providers import PlayerConfig
 from .runner import Runner
 
@@ -30,8 +33,11 @@ def parse_setup(body):
     """Validate local setup without accepting secrets, endpoints, or code."""
     if not isinstance(body, dict):
         raise ValueError("Setup must be a JSON object.")
-    if set(body) - {"seed", "language", "players"}:
+    if set(body) - {"seed", "language", "players", "preset"}:
         raise ValueError("Unknown setup field.")
+    preset = body.get("preset", "demo")
+    if preset not in {"demo", "deepseek_flash"}:
+        raise ValueError("Unknown game preset.")
     language = body.get("language", "en")
     if language not in {"en", "zh"}:
         raise ValueError("Language must be en or zh.")
@@ -39,6 +45,12 @@ def parse_setup(body):
     if type(seed) is not int or not 0 <= seed <= 2**53 - 1:
         raise ValueError("Seed must be an integer from 0 through 9007199254740991.")
     players = body.get("players")
+    if players is not None and "preset" in body:
+        raise ValueError("Choose either a preset or explicit player configurations.")
+    if players is None and preset == "deepseek_flash":
+        return [providers.deepseek_flash_config(i + 1, name,
+                    personality=PERSONALITIES[i], language=language)
+                for i, name in enumerate(NAMES)], seed, language
     if players is None:
         players = [{"seat": i + 1, "name": name, "provider": "demo",
                     "model": "scripted", "personality": PERSONALITIES[i]}
@@ -47,7 +59,7 @@ def parse_setup(body):
         raise ValueError("Exactly twelve player configurations are required.")
     configs = []
     allowed = {"seat", "name", "provider", "model", "personality",
-               "temperature", "max_tokens", "language"}
+               "temperature", "max_tokens", "language", "thinking", "reasoning_effort"}
     for index, player in enumerate(players, 1):
         if not isinstance(player, dict) or set(player) - allowed:
             raise ValueError("Player configuration has unsupported fields.")
@@ -57,7 +69,8 @@ def parse_setup(body):
         if provider not in PROVIDERS:
             raise ValueError("Unknown provider.")
         name = player.get("name", NAMES[index - 1])
-        model = player.get("model", "scripted" if provider == "demo" else "")
+        model = player.get("model", "scripted" if provider == "demo" else
+                           providers.DEEPSEEK_FLASH_MODEL if provider == "deepseek" else "")
         personality = player.get("personality", PERSONALITIES[index - 1])
         if not isinstance(name, str) or not name.strip() or len(name) > 50:
             raise ValueError("Player names must contain 1–50 characters.")
@@ -65,8 +78,12 @@ def parse_setup(body):
             raise ValueError("Each player needs a model identifier of 1–120 characters.")
         if not isinstance(personality, str) or len(personality) > 2000:
             raise ValueError("Personality must be text of at most 2000 characters.")
-        temperature = player.get("temperature", None if provider == "openai_subscription" else 0.7)
-        max_tokens = player.get("max_tokens", None if provider == "openai_subscription" else 500)
+        thinking = player.get("thinking")
+        reasoning_effort = player.get("reasoning_effort")
+        temperature = player.get("temperature", None if provider == "openai_subscription" or
+                                 thinking == "enabled" else 0.7)
+        max_tokens = player.get("max_tokens", None if provider == "openai_subscription" else
+                                4096 if provider == "deepseek" else 500)
         if temperature is not None and (isinstance(temperature, bool) or
                 not isinstance(temperature, (int, float)) or
                 not math.isfinite(temperature) or not 0 <= temperature <= 2):
@@ -76,14 +93,15 @@ def parse_setup(body):
         configs.append(PlayerConfig(seat=index, name=name.strip(), provider=provider,
                                     model=model.strip(), personality=personality,
                                     temperature=temperature, max_tokens=max_tokens,
-                                    language=language))
+                                    language=language, thinking=thinking,
+                                    reasoning_effort=reasoning_effort))
     return configs, seed, language
 
 
 class Controller:
     """A single inference worker with detached, nonblocking spectator snapshots."""
 
-    def __init__(self):
+    def __init__(self, initial_setup=None):
         self.condition = threading.Condition(threading.RLock())
         self.runner = None
         self.views = {}
@@ -93,7 +111,7 @@ class Controller:
         self.step_requested = False
         self.stopped = False
         self.failure = None
-        self.create({})
+        self.create(initial_setup or {})
         self.worker = threading.Thread(target=self._work, daemon=True, name="werewolf-turns")
         self.worker.start()
 
@@ -113,6 +131,7 @@ class Controller:
             self.history.append(deepcopy(checkpoint))
 
     def create(self, body):
+        load_local_credentials()
         configs, seed, language = parse_setup(body)
         with self.condition:
             if self.busy or self.playing or self.step_requested:
@@ -266,6 +285,12 @@ class Handler(BaseHTTPRequestHandler):
                 seat = int(query["seat"][0]) if "seat" in query else None
                 at = int(query["at"][0]) if "at" in query else None
                 self._send(200, self.server.controller.snapshot(query.get("mode", ["mystery"])[0], seat, at))
+            elif route.path == "/api/providers":
+                load_local_credentials()
+                self._send(200, {"deepseek": {
+                    "configured": bool(os.environ.get("DEEPSEEK_API_KEY", "").strip()),
+                    "model": providers.DEEPSEEK_FLASH_MODEL,
+                }})
             elif route.path == "/api/export":
                 self._send(200, self.server.controller.export(), download=True)
             else:
@@ -308,13 +333,18 @@ class Handler(BaseHTTPRequestHandler):
             path = urlsplit(self.path).path
             if path == "/api/game":
                 result = self.server.controller.create(body)
+            elif path == "/api/providers/deepseek/check":
+                if set(body) - {"language"} or body.get("language", "en") not in {"en", "zh"}:
+                    raise ValueError("Connection check accepts only language en or zh.")
+                load_local_credentials()
+                result = providers.check_deepseek(body.get("language", "en"))
             elif path in {"/api/step", "/api/play", "/api/pause"}:
                 result = self.server.controller.control(path.rsplit("/", 1)[1])
             else:
                 self._error(404, "Not found.")
                 return
             self._send(200, result)
-        except (ValueError, UnicodeDecodeError) as exc:
+        except (ValueError, UnicodeDecodeError, providers.ProviderError) as exc:
             self._error(400, str(exc))
         except RuntimeError as exc:
             self._error(409, str(exc))
@@ -325,10 +355,24 @@ class Handler(BaseHTTPRequestHandler):
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Run the local Werewolf spectator application.")
     parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument("--language", choices=("en", "zh"), default="en")
+    parser.add_argument("--preset", choices=("demo", "deepseek_flash"), default="demo")
+    parser.add_argument("--check-deepseek", action="store_true",
+                        help="Verify one real Flash speech request without creating a game.")
     args = parser.parse_args(argv)
-    server = LocalServer(("127.0.0.1", args.port))
+    try:
+        load_local_credentials()
+        if args.check_deepseek:
+            result = providers.check_deepseek(args.language)
+            print(json.dumps(result, ensure_ascii=False), flush=True)
+            return
+        controller = Controller({"preset": args.preset, "language": args.language})
+    except (ValueError, providers.ProviderError) as exc:
+        parser.exit(1, f"{exc}\n")
+    server = LocalServer(("127.0.0.1", args.port), controller)
     print(f"Werewolf spectator: http://127.0.0.1:{server.server_address[1]}", flush=True)
-    print("Default players are scripted demo players. Configure live providers before evaluating AI.", flush=True)
+    print("DeepSeek Flash players configured; press Play to start inference." if args.preset == "deepseek_flash"
+          else "Default players are scripted demo players. Configure live providers before evaluating AI.", flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
