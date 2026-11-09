@@ -85,3 +85,11 @@ Use `scripts/verify_live.py` to exercise a fresh configured game. Compare initia
 wire size, peak and cumulative context, read calls, failures, and accepted actions
 with prior JSON runs. This measures functional behavior and context reduction;
 it does not establish equal strategic strength or a formal isolation proof.
+
+## V5 critical game facts
+
+New games use `player-tools-v5`, retaining v4 budgets and final action stage.
+Briefings always include concise win conditions and permanent-death consequences.
+Self-explosion/pass tools explain their neutral consequences directly; other
+actions and legal choices stay the same. V1–v4 games remain pinned to their
+original profile. See [the explosion diagnosis](explosion-diagnostics.md).

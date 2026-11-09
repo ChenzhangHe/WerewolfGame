@@ -25,6 +25,100 @@ def event(text, audience='public', kind='speech', seat=1):
 
 
 class HarnessTests(unittest.TestCase):
+    def test_legacy_consequences_flag_default_preserves_exact_briefing_and_manifest(self):
+        observation = context(role='wolf', seat=1)
+        decision = {'kind': 'explosion', 'options': [{'type': 'pass'}, {'type': 'explode'}]}
+        for fixed_pages in (False, True):
+            implicit = SeatToolHarness(observation, decision, fixed_pages=fixed_pages)
+            explicit_false = SeatToolHarness(observation, decision, fixed_pages=fixed_pages,
+                                             explicit_consequences=False)
+            self.assertEqual(implicit.briefing(), explicit_false.briefing())
+            self.assertEqual(implicit.tools(), explicit_false.tools())
+            self.assertNotIn('win_conditions', implicit.briefing())
+            self.assertNotIn('death_consequences', implicit.briefing())
+            for tool in implicit.tools():
+                if tool['function']['name'] in ('action_pass', 'action_explode'):
+                    self.assertEqual('Finish this turn by proposing this legal game action. This does not directly mutate game state.',
+                                     tool['function']['description'])
+
+    def test_explicit_consequences_are_upfront_for_every_role_in_both_languages(self):
+        for language in ('en', 'zh'):
+            for role in ('wolf', 'villager', 'seer', 'witch', 'hunter', 'idiot'):
+                observation = context(role=role)
+                observation['language'] = language
+                harness = SeatToolHarness(observation, speech(), language=language,
+                                          explicit_consequences=True)
+                briefing = harness.briefing()
+                self.assertIsInstance(briefing['win_conditions'], str)
+                self.assertIsInstance(briefing['death_consequences'], str)
+                if language == 'en':
+                    for fact in ('all Wolves are dead', 'all four Villagers OR all four special roles',
+                                 'Parity alone does not end'):
+                        self.assertIn(fact, briefing['win_conditions'])
+                    for fact in ('Death is permanent', 'cannot take later actions',
+                                 'wolf chat or attacks', 'last living Wolf dying', 'Good an immediate victory'):
+                        self.assertIn(fact, briefing['death_consequences'])
+                else:
+                    for fact in ('所有狼人死亡，好人获胜', '普通平民全部死亡', '或四名神职全部死亡',
+                                 '人数相等不自动结束'):
+                        self.assertIn(fact, briefing['win_conditions'])
+                    for fact in ('永久出局', '不能参与之后的行动', '狼聊和刀人',
+                                 '最后一只存活狼人死亡，好人立即获胜'):
+                        self.assertIn(fact, briefing['death_consequences'])
+
+    def test_explosion_descriptions_are_factual_bilingual_and_keep_last_wolf_choice(self):
+        for language in ('en', 'zh'):
+            observation = context(role='wolf', seat=1)
+            observation['language'] = language
+            observation['wolf_teammates'] = [1, 2, 3, 4]
+            observation['players'] = [{'seat': seat, 'alive': seat not in (2, 3, 4), 'name': str(seat)}
+                                      for seat in range(1, 13)]
+            decision = {'kind': 'explosion', 'options': [{'type': 'pass'}, {'type': 'explode'}]}
+            harness = SeatToolHarness(observation, decision, language=language,
+                                      explicit_consequences=True)
+            legacy = SeatToolHarness(observation, decision, language=language)
+            actions = {t['function']['name']: t['function'] for t in harness.tools()
+                       if t['function']['name'].startswith('action_')}
+            self.assertEqual({'action_pass', 'action_explode'}, set(actions))
+            self.assertEqual({'type': 'pass'}, harness.call('action_pass', {}))
+            self.assertEqual({'type': 'explode'}, harness.call('action_explode', {}))
+            for old in legacy.tools():
+                if old['function']['name'] in actions:
+                    self.assertEqual(old['function']['parameters'], actions[old['function']['name']]['parameters'])
+            if language == 'en':
+                for fact in ('Decline self-explosion', 'continues unless another Wolf explodes'):
+                    self.assertIn(fact, actions['action_pass']['description'])
+                for fact in ('reveal your Wolf role', 'permanently die', 'remaining daytime speeches and exile',
+                             'cannot join later wolf chat or attacks', 'last living Wolf',
+                             'immediately gives Good victory', 'only the lowest seat acts'):
+                    self.assertIn(fact, actions['action_explode']['description'])
+            else:
+                for fact in ('本次窗口不自爆', '继续竞选或依序发言'):
+                    self.assertIn(fact, actions['action_pass']['description'])
+                for fact in ('公开你的狼人身份并永久死亡', '结束本日剩余发言和放逐',
+                             '不能参加狼聊或刀人', '最后一只存活狼人', '好人立即获胜',
+                             '只有号码最小者执行'):
+                    self.assertIn(fact, actions['action_explode']['description'])
+
+    def test_witch_pass_keeps_generic_description_even_with_explicit_consequences(self):
+        observation = context(role='witch', seat=10)
+        decision = {'kind': 'witch', 'options': [{'type': 'pass'}, {'type': 'poison', 'target': 3}]}
+        harness = SeatToolHarness(observation, decision, explicit_consequences=True)
+        passed = next(t['function'] for t in harness.tools() if t['function']['name'] == 'action_pass')
+        self.assertEqual('Finish this turn by proposing this legal game action. This does not directly mutate game state.',
+                         passed['description'])
+        self.assertNotIn('self-explosion', passed['description'])
+        self.assertEqual({'type': 'pass'}, harness.call('action_pass', {}))
+
+    def test_explicit_consequences_do_not_depend_on_other_hidden_roles(self):
+        alternate = list(ROLES)
+        alternate[7], alternate[9] = alternate[9], alternate[7]
+        a, b = Game(roles=ROLES), Game(roles=alternate)
+        first = SeatToolHarness(a.observe(5), speech(), explicit_consequences=True)
+        second = SeatToolHarness(b.observe(5), speech(), explicit_consequences=True)
+        self.assertEqual(first.briefing(), second.briefing())
+        self.assertEqual(first.tools(), second.tools())
+
     def test_fixed_page_protocol_removes_page_size_choice_and_preserves_legacy(self):
         observation = context()
         observation['history'] = [event(f'Public message {i}') for i in range(21)]

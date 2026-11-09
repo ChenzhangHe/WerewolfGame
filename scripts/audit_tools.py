@@ -90,7 +90,7 @@ def audit(archive):
             # tool_choice and absence of unexpected context-bearing fields.
             expected_body = deepcopy(expected)
             expected_body['messages'] = deepcopy(expected_messages)
-            if request.get('prompt_version') == 'player-tools-v4' and hop_index == 5:
+            if request.get('prompt_version') in {'player-tools-v4', 'player-tools-v5'} and hop_index == 5:
                 # V4's final model request still lets the model choose, but
                 # offers terminal actions only after five opportunities to read.
                 expected_body['tools'] = [tool for tool in expected_body['tools']

@@ -61,6 +61,66 @@ class ProviderToolsTests(unittest.TestCase):
             with self.subTest(fields=fields), self.assertRaises(ValueError):
                 p.PlayerConfig(1, "Ada", **fields)
 
+    def test_v5_adds_upfront_facts_without_changing_v4_briefing_or_legal_choices(self):
+        observation = copy.deepcopy(self.observation)
+        observation["role"] = "wolf"
+        observation["wolf_teammates"] = [1, 3, 7, 12]
+        decision = {"kind": "explosion", "options": [{"type": "pass"}, {"type": "explode"}]}
+        def assembled(version):
+            return p._build_tools_request(self.config, observation, decision, "", "en", version=version)
+        old = assembled("player-tools-v4")
+        old_body = p.wire_request(self.config, old)
+        new = assembled("player-tools-v5")
+        new_body = p.wire_request(self.config, new)
+        self.assertNotIn("win_conditions", old["input"])
+        self.assertNotIn("death_consequences", old["input"])
+        self.assertIn("win_conditions", new["input"])
+        self.assertIn("death_consequences", new["input"])
+        # The delta is public rules, not another seat's knowledge or changed state.
+        new_without_facts = {k: v for k, v in new["input"].items()
+                             if k not in {"win_conditions", "death_consequences"}}
+        self.assertEqual(old["input"], new_without_facts)
+        old_tools = {t["function"]["name"]: t["function"] for t in old_body["tools"]}
+        new_tools = {t["function"]["name"]: t["function"] for t in new_body["tools"]}
+        self.assertEqual(set(old_tools), set(new_tools))
+        self.assertIn("action_pass", new_tools)
+        self.assertIn("action_explode", new_tools)
+        for name in old_tools:
+            self.assertEqual(old_tools[name]["parameters"], new_tools[name]["parameters"])
+            if name not in {"action_pass", "action_explode"}:
+                self.assertEqual(old_tools[name], new_tools[name])
+        self.assertNotEqual(old_tools["action_explode"]["description"], new_tools["action_explode"]["description"])
+        self.assertNotEqual(old_tools["action_pass"]["description"], new_tools["action_pass"]["description"])
+        self.assertEqual(old["instructions"], new["instructions"])
+        # Constructing v5 cannot mutate the legacy request/harness profile.
+        self.assertEqual(old_body, p.wire_request(self.config, assembled("player-tools-v4")))
+        self.assertEqual(p.tool_protocol_limits("player-tools-v4"), p.tool_protocol_limits("player-tools-v5"))
+
+    def test_serialized_v4_request_keeps_its_profile_when_default_advances(self):
+        original = self.assembled("player-tools-v4")
+        stored = json.loads(json.dumps(original))
+        body = p.wire_request(self.config, original)
+        self.assertEqual("player-tools-v5", p.TOOLS_PROMPT_VERSION)
+        self.assertEqual("player-tools-v4", stored["prompt_version"])
+        self.assertEqual(body, p.wire_request(self.config, stored))
+        self.assertNotIn("win_conditions", json.loads(body["messages"][1]["content"]))
+        self.assertIn("win_conditions", self.assembled()["input"])
+
+    def test_v5_bilingual_facts_do_not_remove_last_wolfs_legal_explosion(self):
+        for language in ("en", "zh"):
+            observation = {**copy.deepcopy(self.observation), "language": language,
+                           "role": "wolf", "wolf_teammates": [1]}
+            decision = {"kind": "explosion", "options": [{"type": "pass"}, {"type": "explode"}]}
+            request = p._build_tools_request(self.config, observation, decision, "", language,
+                                              version="player-tools-v5")
+            for key in ("win_conditions", "death_consequences"):
+                self.assertIsInstance(request["input"][key], str)
+                self.assertTrue(request["input"][key])
+            self.assertIn("狼人" if language == "zh" else "wolves", request["input"]["win_conditions"].lower())
+            # Rules are made explicit; the host neither chooses for the model
+            # nor prohibits a legal (even losing) sacrifice.
+            self.assertEqual({"type": "explode"}, p._seat_harness(request).call("action_explode", {}))
+
     def test_initial_wire_is_compact_and_host_context_is_not_sent(self):
         assembled = self.assembled()
         self.assertIn("PRIVATE_RESULT_ONLY_ON_READ", json.dumps(assembled["tool_context"]))
