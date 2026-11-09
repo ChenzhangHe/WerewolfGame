@@ -35,6 +35,16 @@ class StrategyProbeTests(unittest.TestCase):
         self.assertNotIn('tools', high)
         self.assertEqual(before, self.record)
 
+    def test_native_modes_use_same_messages_tools_choice_and_output_cap(self):
+        off = PROBE['prepare'](self.config, self.record, 'off', 'tools')[2]
+        high = PROBE['prepare'](self.config, self.record, 'high', 'tools')[2]
+        self.assertEqual(off['messages'], high['messages'])
+        self.assertEqual(off['tools'], high['tools'])
+        self.assertEqual('auto', off['tool_choice'])
+        self.assertEqual(off['tool_choice'], high['tool_choice'])
+        self.assertEqual(off['max_tokens'], high['max_tokens'])
+        self.assertNotIn('response_format', high)
+
     def test_reasoning_never_survives_into_probe_results_and_no_retry(self):
         response = {'model': 'synthetic', 'choices': [{'finish_reason': 'stop', 'message': {
             'content': '{"type":"pass"}', 'reasoning_content': 'PRIVATE_REASONING_SENTINEL'}}],

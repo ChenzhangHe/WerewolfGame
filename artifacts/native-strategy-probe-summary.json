@@ -1,0 +1,31 @@
+{
+  "profile": "strategy-probe-v2-native",
+  "protocol": "player-tools-v11",
+  "tool_choice": "auto",
+  "cases": 4,
+  "repeats_per_mode_per_case": 2,
+  "modes": {
+    "off": {
+      "decisions": 8,
+      "actions": {
+        "pass": 8
+      },
+      "errors": 0,
+      "mean_seconds": 6.64,
+      "model_requests": 23,
+      "reasoning_tokens": 0,
+      "max_seconds": 7.99
+    },
+    "high": {
+      "decisions": 8,
+      "actions": {
+        "pass": 8
+      },
+      "errors": 0,
+      "mean_seconds": 58.04,
+      "model_requests": 21,
+      "reasoning_tokens": 50039,
+      "max_seconds": 166.66
+    }
+  }
+}
