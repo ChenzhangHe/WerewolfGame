@@ -86,8 +86,8 @@ def parse_setup(body):
         interaction_mode = player.get("interaction_mode", "json")
         if not isinstance(interaction_mode, str) or interaction_mode not in {"json", "tools"}:
             raise ValueError("Interaction mode must be json or tools.")
-        if interaction_mode == "tools" and (provider != "deepseek" or thinking == "enabled"):
-            raise ValueError("Tool interaction is supported only for DeepSeek with thinking disabled.")
+        if interaction_mode == "tools" and provider != "deepseek":
+            raise ValueError("Tool interaction is supported only for DeepSeek.")
         temperature = player.get("temperature", None if provider == "openai_subscription" or
                                  thinking == "enabled" else 0.7)
         max_tokens = player.get("max_tokens", None if provider == "openai_subscription" else
@@ -96,8 +96,8 @@ def parse_setup(body):
                 not isinstance(temperature, (int, float)) or
                 not math.isfinite(temperature) or not 0 <= temperature <= 2):
             raise ValueError("Temperature must be null or a number between 0 and 2.")
-        if max_tokens is not None and (type(max_tokens) is not int or not 128 <= max_tokens <= 8192):
-            raise ValueError("Token budget must be null or an integer between 128 and 8192.")
+        if max_tokens is not None and (type(max_tokens) is not int or not 128 <= max_tokens <= 32768):
+            raise ValueError("Token budget must be null or an integer between 128 and 32768.")
         configs.append(PlayerConfig(seat=index, name=name.strip(), provider=provider,
                                     model=model.strip(), personality=personality,
                                     temperature=temperature, max_tokens=max_tokens,

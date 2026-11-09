@@ -807,7 +807,6 @@ function createSpeechPlayer({ synth, Utterance, onState = () => {} } = {}) {
       }
       mode.addEventListener('change', () => {
         config.interaction_mode = mode.value;
-        if (mode.value === 'tools') { config.thinking = 'disabled'; config.reasoning_effort = null; }
         renderSetup();
       }); modeLabel.append(mode);
       const modeRow = node('div', 'budget-row thinking-row'); modeRow.append(modeLabel); row.append(modeRow);
@@ -818,7 +817,7 @@ function createSpeechPlayer({ synth, Utterance, onState = () => {} } = {}) {
         }
         thinking.addEventListener('change', () => {
           config.thinking = thinking.value || null;
-          if (config.thinking === 'enabled') { config.temperature = null; config.reasoning_effort = config.reasoning_effort || 'low'; config.interaction_mode = 'json'; }
+          if (config.thinking === 'enabled') { config.temperature = null; config.reasoning_effort = config.reasoning_effort || 'high'; config.max_tokens = Math.max(config.max_tokens || 0, 32768); }
           else config.reasoning_effort = null;
           renderSetup();
         }); thinkingLabel.append(thinking);
@@ -835,7 +834,7 @@ function createSpeechPlayer({ synth, Utterance, onState = () => {} } = {}) {
         const tempLabel = node('label', '', `${t('temperature')} `); const temp = node('input'); temp.type = 'number'; temp.min = '0'; temp.max = '2'; temp.step = '.1'; temp.value = config.temperature ?? ''; temp.placeholder = providerDefault; temp.title = providerDefault;
         if (config.provider === 'deepseek' && config.thinking === 'enabled') { config.temperature = null; temp.value = ''; temp.disabled = true; temp.title = t('temperatureThinking'); }
         temp.addEventListener('input', () => { config.temperature = temp.value === '' ? null : Number(temp.value); }); tempLabel.append(temp);
-        const tokenLabel = node('label', '', `${t('tokens')} `); const tokens = node('input'); tokens.type = 'number'; tokens.min = '128'; tokens.max = '8192'; tokens.step = '1'; tokens.value = config.max_tokens ?? ''; tokens.placeholder = providerDefault; tokens.title = providerDefault;
+        const tokenLabel = node('label', '', `${t('tokens')} `); const tokens = node('input'); tokens.type = 'number'; tokens.min = '128'; tokens.max = '32768'; tokens.step = '1'; tokens.value = config.max_tokens ?? ''; tokens.placeholder = providerDefault; tokens.title = providerDefault;
         tokens.addEventListener('input', () => { config.max_tokens = tokens.value === '' ? null : Number(tokens.value); }); tokenLabel.append(tokens);
         budgets.append(tempLabel, tokenLabel);
       }

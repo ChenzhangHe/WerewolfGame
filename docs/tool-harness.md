@@ -182,3 +182,21 @@ The instructions explicitly distinguish claiming Idiot from its triggered
 protection, and reiterate that a living Idiot is not a dead special role.
 V1–v9 restore profiles are unchanged. See the fixed-v9 rerun in the game audit
 for the exact evidence and the limits of that validation.
+
+
+## Native thinking transport
+
+Thinking is an explicit frozen player setting, supported with native tools.
+Provider reasoning text is retained only in the current `_tools_live` call's
+local message list and passed back to that same seat/decision. No cross-seat,
+subsequent-decision, replay, viewer, or archive copy receives it. Empty provider
+reasoning is carried as an empty string. Actual reasoning counts toward context
+and cumulative budgets. Numeric `reasoning_tokens` usage is retained.
+
+Thinking trace `wire_request` bodies redact only `reasoning_content`; hashes,
+raw/JSON character lengths, message indices and actual request character totals
+record continuity without exposing the text. The auditor verifies all visible
+wire fields and passback metadata against preceding assistant states in that
+same attempt. It cannot reconstruct or semantically inspect redacted reasoning.
+Synthetic tests inspect actual outbound payloads for isolation and full passback.
+Non-thinking archives preserve their original exact-wire representation.

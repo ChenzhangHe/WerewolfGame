@@ -23,6 +23,18 @@ def require(condition, message='Archive audit failed.'):
         raise AssertionError(message)
 
 
+def require_reasoning_metadata(value):
+    require(isinstance(value, dict) and set(value) == {'chars', 'json_chars', 'sha256'},
+            'Invalid reasoning metadata shape.')
+    require(type(value['chars']) is int and value['chars'] >= 0
+            and type(value['json_chars']) is int
+            and value['chars'] + 2 <= value['json_chars'] <= 6 * value['chars'] + 2,
+            'Invalid reasoning metadata length.')
+    require(isinstance(value['sha256'], str) and len(value['sha256']) == 64
+            and all(c in '0123456789abcdef' for c in value['sha256']),
+            'Invalid reasoning metadata digest.')
+
+
 def audit(archive):
     archive = Runner._canonical(archive)
     # Also verifies every historical projection against referee replay; no inference.
@@ -94,12 +106,25 @@ def audit(archive):
         max_hops = max(max_hops, len(trace))
         terminal_count = 0
         record_reads = 0
+        expected_reasoning = []
+        thinking = config.thinking == "enabled"
         for hop_index, hop in enumerate(trace):
             hops += 1
             prompt_tokens += hop.get("usage", {}).get("prompt_tokens", 0)
             completion_tokens += hop.get("usage", {}).get("completion_tokens", 0)
             body = hop['wire_request']
-            bodies.append(size(body))
+            if thinking:
+                require(hop.get('reasoning_passback') == expected_reasoning,
+                        'Reasoning passback differs from this decision prior assistant states.')
+                actual_chars = size(body) + sum(m['json_chars'] + len(', "reasoning_content": ')
+                                              for m in expected_reasoning)
+                require(hop.get('wire_request_chars') == actual_chars,
+                        'Thinking wire size does not match its redacted metadata.')
+                bodies.append(actual_chars)
+            else:
+                require('reasoning_passback' not in hop and 'assistant_reasoning' not in hop,
+                        'Disabled thinking must not retain reasoning state.')
+                bodies.append(size(body))
             # Check the ENTIRE actual body, including model, schema, settings,
             # tool_choice and absence of unexpected context-bearing fields.
             expected_body = deepcopy(expected)
@@ -132,6 +157,11 @@ def audit(archive):
                 require(not results and failed_hop)
                 continue
             require(isinstance(assistant, dict) and 'reasoning_content' not in assistant)
+            if thinking:
+                if 'assistant_reasoning' in hop:
+                    require_reasoning_metadata(hop['assistant_reasoning'])
+                else:
+                    require(failed_hop, 'Successful thinking response lacks state metadata.')
             calls = assistant.get('tool_calls', [])
             require(isinstance(calls, list))
             # A failed read may stop after a prefix; successful responses cannot
@@ -176,6 +206,10 @@ def audit(archive):
                     executed_reads.append((call, result))
             if executed_reads and not failed_hop:
                 require(len({call['id'] for call in calls}) == len(calls), 'Native tool IDs must be unique within a hop.')
+                if thinking:
+                    require_reasoning_metadata(hop.get('assistant_reasoning'))
+                    expected_reasoning.append({'message_index': len(expected_messages),
+                                               **hop['assistant_reasoning']})
                 expected_messages.append(deepcopy(assistant))
                 for call, result in executed_reads:
                     expected_messages.append({'role': 'tool', 'tool_call_id': call['id'],

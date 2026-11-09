@@ -56,7 +56,6 @@ class ProviderToolsTests(unittest.TestCase):
         self.assertEqual("json", p.deepseek_flash_config(1, "Legacy", interaction_mode="json").interaction_mode)
         for fields in ({"provider": "demo", "interaction_mode": "tools"},
                        {"provider": "openai", "interaction_mode": "tools"},
-                       {"provider": "deepseek", "interaction_mode": "tools", "thinking": "enabled", "temperature": None},
                        {"provider": "deepseek", "interaction_mode": "other"}):
             with self.subTest(fields=fields), self.assertRaises(ValueError):
                 p.PlayerConfig(1, "Ada", **fields)

@@ -61,8 +61,8 @@ class PlayerConfig:
             raise ValueError("Unsupported player provider.")
         if self.interaction_mode not in ("json", "tools"):
             raise ValueError("interaction_mode must be json or tools.")
-        if self.interaction_mode == "tools" and (self.provider != "deepseek" or self.thinking == "enabled"):
-            raise ValueError("Tools mode requires DeepSeek with thinking disabled.")
+        if self.interaction_mode == "tools" and self.provider != "deepseek":
+            raise ValueError("Tools mode requires DeepSeek.")
         if self.language not in {"en", "zh"}:
             raise ValueError("Language must be en or zh.")
         if not isinstance(self.name, str) or not self.name.strip() or len(self.name) > 80:
@@ -434,7 +434,11 @@ def wire_request(config, player_request):
 def _number_usage(value):
     if not isinstance(value, dict):
         return {}
-    return {k: v for k, v in value.items() if isinstance(k, str) and type(v) in {int, float}}
+    result = {k: v for k, v in value.items() if isinstance(k, str) and type(v) in {int, float}}
+    details = value.get("completion_tokens_details")
+    if isinstance(details, dict) and type(details.get("reasoning_tokens")) is int:
+        result.setdefault("reasoning_tokens", details["reasoning_tokens"])
+    return result
 
 
 def _output_text(response):
@@ -574,6 +578,22 @@ def _live(config, player_request):
         raise failure from None
 
 
+def _reasoning_metadata(content):
+    """Retain only integrity/usage metadata, never the provider's reasoning text."""
+    return {"chars": len(content), "json_chars": len(json.dumps(content, ensure_ascii=False)),
+            "sha256": hashlib.sha256(content.encode("utf-8")).hexdigest()}
+
+
+def _archive_tool_body(body):
+    archived = copy.deepcopy(body)
+    passback = []
+    for index, message in enumerate(archived["messages"]):
+        if "reasoning_content" in message:
+            content = message.pop("reasoning_content")
+            passback.append({"message_index": index, **_reasoning_metadata(content)})
+    return archived, passback
+
+
 def _tools_live(config, player_request):
     """A bounded native function loop over one immutable seat capability."""
     harness = _seat_harness(player_request)
@@ -584,6 +604,7 @@ def _tools_live(config, player_request):
     read_calls = 0
     total_usage = {}
     reported_model = None
+    thinking = config.thinking == "enabled"
     limits = tool_protocol_limits(player_request.get("prompt_version", "player-tools-v1"))
 
     def fail(message, category, entry=None):
@@ -617,8 +638,12 @@ def _tools_live(config, player_request):
         used_chars += context_chars
         if used_chars > limits["message_chars"]:
             raise fail("Player tool conversation exceeded its message budget; game paused.", "tool_message_budget")
-        entry = {"wire_request": body, "assistant": None, "tool_results": [],
+        archived_body, reasoning_passback = _archive_tool_body(body)
+        entry = {"wire_request": archived_body, "assistant": None, "tool_results": [],
                  "reported_model": None, "usage": {}}
+        if thinking:
+            entry["reasoning_passback"] = reasoning_passback
+            entry["wire_request_chars"] = len(json.dumps(body, ensure_ascii=False))
         trace.append(entry)
         try:
             # Native tool decisions never receive network retries or format repair.
@@ -668,9 +693,19 @@ def _tools_live(config, player_request):
                 ids.add(call_id)
                 assistant["tool_calls"].append({"id": call_id, "type": "function",
                                                 "function": {"name": name, "arguments": arguments}})
-            # Retain assistant final content and function calls, never reasoning_content.
+            # Only this decision's private in-memory conversation receives passback.
+            # The archive and returned result keep the sanitized assistant instead.
             entry["assistant"] = copy.deepcopy(assistant)
-            used_chars += len(json.dumps(assistant, ensure_ascii=False))
+            conversation_assistant = copy.deepcopy(assistant)
+            if thinking:
+                reasoning = message.get("reasoning_content")
+                if reasoning is None:
+                    reasoning = ""
+                if not isinstance(reasoning, str):
+                    raise ValueError("Invalid reasoning state")
+                conversation_assistant["reasoning_content"] = reasoning
+                entry["assistant_reasoning"] = _reasoning_metadata(reasoning)
+            used_chars += len(json.dumps(conversation_assistant, ensure_ascii=False))
             if used_chars > limits["message_chars"]:
                 raise fail("Player tool conversation exceeded its message budget; game paused.", "tool_message_budget", entry)
             if choice.get("finish_reason") not in ("tool_calls", "stop"):
@@ -710,7 +745,7 @@ def _tools_live(config, player_request):
                                   raw_text=json.dumps(action, ensure_ascii=False), tool_trace=trace)
         if read_calls + len(calls) > limits["read_calls"]:
             raise fail("Player exceeded its read-tool call budget; game paused.", "tool_read_budget", entry)
-        messages.append(assistant)
+        messages.append(conversation_assistant)
         for call in calls:
             read_calls += 1
             name = call["function"]["name"]

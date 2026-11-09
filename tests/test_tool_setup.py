@@ -37,9 +37,9 @@ class ToolSetupTests(unittest.TestCase):
                 self.assertEqual(configs[0].interaction_mode, "tools")
                 self.assertTrue(all(config.interaction_mode == "json" for config in configs[1:]))
 
-    def test_tools_reject_other_providers_and_enabled_thinking(self):
+    def test_tools_reject_other_providers(self):
         for provider, thinking in (("demo", None), ("openai", None),
-                                   ("openai_subscription", None), ("deepseek", "enabled")):
+                                   ("openai_subscription", None)):
             with self.subTest(provider=provider, thinking=thinking):
                 players = self.players()
                 players[0].update(provider=provider, model="model", thinking=thinking,

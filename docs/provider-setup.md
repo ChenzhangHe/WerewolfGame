@@ -42,8 +42,9 @@ adapter calls `https://api.deepseek.com/chat/completions`. Tool mode uses native
 function calls; JSON mode enables JSON output.
 It passes the configured temperature and token budget when they are not null.
 Incomplete, invalid, or illegal responses pause the game with private diagnostic
-traces. No substitute action is created. Tool mode currently supports disabled
-thinking only; select JSON mode for thinking-enabled evaluations.
+traces. No substitute action is created. Both JSON and native tool modes support
+explicit thinking settings. For tools plus high thinking, use temperature null
+and a 32768-token output budget; output tokens include provider reasoning.
 
 Use `python3 -m werewolf --check-deepseek --language en` for one explicit live
 speech request using synthetic public information. The UI's **Test connection**
@@ -71,8 +72,13 @@ DeepSeek-V4.1-Flash-1017 as of 2026-11-08. Provider-side aliases can change; pre
 the returned model identifier alongside the requested model. See
 [thinking controls](https://api-docs.deepseek.com/guides/thinking_mode/). Tool
 conversations are local to one seat and decision. Provider `reasoning_content`
-is never forwarded or archived; action content and tool transcripts are private
-archive material.
+is never shown or archived. In thinking tool mode it is passed back only inside
+the same seat/decision in-memory conversation, as required by DeepSeek; it is
+discarded when that decision ends. The archive retains only hashes, character
+lengths, and numeric usage for these states. All other wire fields, action
+content and tool transcripts remain private archive material. The setup UI no
+longer switches tools to JSON when thinking is enabled, and supports 32768 output
+tokens. Ordinary Flash presets remain non-thinking for comparison.
 
 Consult [DeepSeek's API quickstart](https://api-docs.deepseek.com/) for current
 model names and [JSON output instructions](https://api-docs.deepseek.com/guides/json_mode/)
