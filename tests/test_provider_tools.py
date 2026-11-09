@@ -99,7 +99,7 @@ class ProviderToolsTests(unittest.TestCase):
         original = self.assembled("player-tools-v4")
         stored = json.loads(json.dumps(original))
         body = p.wire_request(self.config, original)
-        self.assertEqual("player-tools-v11", p.TOOLS_PROMPT_VERSION)
+        self.assertEqual("player-tools-v12", p.TOOLS_PROMPT_VERSION)
         self.assertEqual("player-tools-v4", stored["prompt_version"])
         self.assertEqual(body, p.wire_request(self.config, stored))
         self.assertNotIn("win_conditions", json.loads(body["messages"][1]["content"]))
@@ -228,7 +228,7 @@ class ProviderToolsTests(unittest.TestCase):
         result, network = self.infer([
             response([call("read_my_results", {}, "read-1"), call("read_my_notes", {}, "read-2")]),
             response([call("action_speak", {"text": "I am comparing the claims.", "notes": "Remember my check."}, "action-1")]),
-        ])
+        ], self.assembled("player-tools-v11"))
         self.assertEqual({"type": "speak", "text": "I am comparing the claims.", "notes": "Remember my check."}, dict(result))
         self.assertEqual(2, network.call_count)
         self.assertEqual(26, result.usage["total_tokens"])

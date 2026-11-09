@@ -1,4 +1,4 @@
-"""Seat-scoped, read-only tools over one already-authorized observation.
+"""Seat-scoped capabilities over one already-authorized observation.
 
 This module never receives an engine, runner, spectator archive, filesystem path,
 or provider credential. Terminal tools propose an action; they do not apply it.
@@ -56,10 +56,10 @@ EXPLICIT_CONSEQUENCES = {
 
 
 class SeatToolHarness:
-    """Immutable seat-local input, bounded reads, and exact terminal proposals."""
+    """Detached input, bounded reads, staged own notes, and terminal proposals."""
 
     def __init__(self, observation, decision, notes='', language='en', *, fixed_pages=False, explicit_consequences=False,
-                 explicit_output_limits=False, explicit_state_facts=False, explicit_vote_facts=False, decision_support=False):
+                 explicit_output_limits=False, explicit_state_facts=False, explicit_vote_facts=False, decision_support=False, separate_private_notes=False):
         if not isinstance(observation, dict) or not isinstance(decision, dict):
             raise ValueError('Invalid player context.')
         if language not in RULES or observation.get('language', language) != language:
@@ -85,6 +85,8 @@ class SeatToolHarness:
         self._explicit_state_facts = explicit_state_facts
         self._explicit_vote_facts = explicit_vote_facts
         self._decision_support = decision_support
+        self._separate_private_notes = separate_private_notes
+        self._notes_changed = False
         self._notes = notes
         # Explicit metadata allowlist avoids forwarding opaque engine-global fields.
         self._metadata = deepcopy({k: observation[k] for k in
@@ -243,6 +245,9 @@ class SeatToolHarness:
                                 'items': {'type': 'integer', 'minimum': 1, 'maximum': 12}}},
                            ['assignments', 'additional_deaths']),
             ])
+        if self._separate_private_notes:
+            definitions.append(self._tool('write_my_notes', 'Replace only your private notes for this decision. Persisted only if the terminal action is accepted; never published. No need to rewrite an unchanged plan.',
+                {'notes': {'type': 'string', 'maxLength': 2000}}, ['notes']))
         for name, options in self._actions.items():
             properties = {}
             keys = list(dict.fromkeys(k for option in options for k in option if k != 'type'))
@@ -260,9 +265,12 @@ class SeatToolHarness:
                 properties['text'] = {'type': 'string', 'minLength': 1, 'maxLength': 1200}
                 if self._explicit_output_limits:
                     properties['text']['description'] = 'Public speech: aim for 400–700 characters; hard maximum 1200 decoded characters including spaces, punctuation and newlines. Be concise.'
+                if self._separate_private_notes:
+                    properties['text']['description'] += ' Only in-character public game words. No XML/parameter markup or private note dumps; use write_my_notes separately.'
                 required.append('text')
-            properties['notes'] = {'type': 'string', 'maxLength': 2000,
-                                   'description': 'Optional private strategy self-report replacing your previous notes.'}
+            if not self._separate_private_notes:
+                properties['notes'] = {'type': 'string', 'maxLength': 2000,
+                                       'description': 'Optional private strategy self-report replacing your previous notes.'}
             description = 'Finish this turn by proposing this legal game action. This does not directly mutate game state.'
             if (self._explicit_consequences and self._decision['kind'] == 'explosion'
                     and options[0]['type'] in ('pass', 'explode')):
@@ -336,11 +344,13 @@ class SeatToolHarness:
             option_type = self._actions[name][0]['type']
             if 'type' in args:
                 raise ValueError('Action tool supplies its own action type.')
+            if self._separate_private_notes and 'notes' in args:
+                raise ValueError('Use write_my_notes separately; terminal actions have no notes field.')
             action = {'type': option_type, **args}
             # Lazy import keeps providers free to import this harness.
             from .providers import validate_action
             try:
-                validate_action(action, self._decision)
+                validate_action(action, self._decision, allow_protocol_artifacts=not self._separate_private_notes)
             except ValueError:
                 raise
             except Exception as cause:
@@ -349,6 +359,8 @@ class SeatToolHarness:
                 if isinstance(details, dict):
                     failure.validation_details = deepcopy(details)
                 raise failure from None
+            if self._separate_private_notes and self._notes_changed:
+                action['notes'] = self._notes
             return deepcopy(action)
         if self._decision_support and name == 'calculate_exile_votes':
             if set(args) != {'ballots'}:
@@ -397,6 +409,12 @@ class SeatToolHarness:
                 raise ValueError('Unknown rules section.')
             return self._bounded({'ruleset': 'rules-v1', 'section': args['section'], 'language': self._language,
                                   'text': RULES[self._language][args['section']]})
+        if self._separate_private_notes and name == 'write_my_notes':
+            if set(args) != {'notes'} or not isinstance(args['notes'], str) or len(args['notes']) > 2000:
+                raise ValueError('Private notes must be a string of at most 2000 characters.')
+            self._notes = args['notes']
+            self._notes_changed = True
+            return {'updated': True, 'chars': len(self._notes)}
         if name == 'read_my_notes':
             if args:
                 raise ValueError('Unsupported tool argument.')

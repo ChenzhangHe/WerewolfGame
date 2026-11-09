@@ -204,7 +204,7 @@ Non-thinking archives preserve their original exact-wire representation.
 
 ## V11 decision support and thinking-compatible invocation
 
-New games use `player-tools-v11`. The same native protocol uses `tool_choice:
+Protocol `player-tools-v11` uses the decision support below. The same native protocol uses `tool_choice:
 auto` in both off/high modes: a live synthetic check established that DeepSeek
 rejects `required` with thinking enabled (HTTP 400). The application still accepts
 only one legal terminal native call; prose is never converted into an action or
@@ -238,3 +238,30 @@ Both tools consume only detached seat observations and caller arguments. Tests
 cover a living Idiot blocking a false all-specials-dead win, self-claims versus
 formal reveals, duplicate/ineligible votes, Sheriff weight, own wolf roster
 conflicts, and independence from other unrevealed assignments.
+
+
+## V12 separate private note writes and guard public serialization
+
+New games use `player-tools-v12`. Terminal action schemas no longer contain a
+notes parameter. `write_my_notes` stages an actor-only replacement in the current
+harness; the terminal action may occur in a later response or immediately after exactly one private note write in the same response; no reads or other actions may accompany that pair. Only on
+accepted batch commit does the runner persist the staged note. An unmodified
+plan need not be rewritten. Writes count against the existing utility-call
+budget and never add public events or modify another seat. Failed turns discard
+staged notes. Tool traces still record the exact private write arguments.
+
+A v11 high-thinking trial was stopped at batch 33: campaign tool text for seats
+1 and 5 contained XML-like text/notes parameter delimiters. The provider's native
+arguments already embedded these inside the public text string; there was no
+separate notes field. The former string/length validator accepted it. The new
+validator rejects such tool-field scaffolding before publication, with a
+structured diagnosis and the original raw call retained privately. It neither
+truncates nor silently reparses the text. Ordinary deliberate game role claims
+remain legal. Historical manifests and replay stay intact; the auditor now
+separately flags historical speech boundary failures even in valid old archives.
+
+The stopped phase-1 trial archive is retained privately as
+`v11-high-speech-markup-failure.private.json`, and three actual replays of the
+problematic seat's campaign succeeded with separated-note tools. Tests cover
+public/HTML-escaped delimiters, role claims, private note commit/rollback and
+per-seat isolation. No private chain-of-thought text is retained.

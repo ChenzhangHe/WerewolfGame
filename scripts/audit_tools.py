@@ -79,11 +79,21 @@ def audit(archive):
     reads = invalid_reads = actions = hops = failures = prompt_tokens = completion_tokens = max_hops = 0
     accepted = 0
     names = {}
+    speech_boundary_findings = []
     for record in archive['inference']:
         request = record['request']
         if request.get('interaction_mode') != 'tools':
             continue
         accepted += bool(record['accepted'])
+        if record['accepted'] and record.get('response', {}).get('type') in {'speak', 'discuss'}:
+            try:
+                p.validate_action(record['response'], request['tool_context']['decision'])
+            except p.ProviderError as error:
+                if error.validation_details.get('category') == 'protocol_artifact_in_public_text':
+                    speech_boundary_findings.append({'seat': record['seat'], 'batch_index': record['batch_index'],
+                                                     'kind': record['kind'], 'category': 'protocol_artifact_in_public_text'})
+                else:
+                    raise AssertionError('Accepted speech failed action validation.') from None
         config = configs[record['seat']]
         context = request['tool_context']
         fresh = p.build_request(config, context['observation'], context['decision'],
@@ -132,12 +142,12 @@ def audit(archive):
             limits = p.tool_protocol_limits(request['prompt_version'])
             action_phase = limits['final_action_stage'] and (
                 hop_index == limits['model_requests'] - 1 or
-                (request['prompt_version'] in {'player-tools-v7', 'player-tools-v8', 'player-tools-v9', 'player-tools-v10', 'player-tools-v11'} and record_reads >= limits['read_calls']))
+                (request['prompt_version'] in {'player-tools-v7', 'player-tools-v8', 'player-tools-v9', 'player-tools-v10', 'player-tools-v11', 'player-tools-v12'} and record_reads >= limits['read_calls']))
             if action_phase:
                 # Verify the versioned action-only stage and host transition notice.
                 expected_body['tools'] = [tool for tool in expected_body['tools']
                                           if tool['function']['name'].startswith('action_')]
-                if request['prompt_version'] in {'player-tools-v7', 'player-tools-v8', 'player-tools-v9', 'player-tools-v10', 'player-tools-v11'}:
+                if request['prompt_version'] in {'player-tools-v7', 'player-tools-v8', 'player-tools-v9', 'player-tools-v10', 'player-tools-v11', 'player-tools-v12'}:
                     tool_names = ", ".join(tool['function']['name'] for tool in expected_body['tools'])
                     expected_body['messages'][0]['content'] += (
                         "\nACTION PHASE: Reading is now closed for this decision. "
@@ -194,9 +204,11 @@ def audit(archive):
                 require(reconstructed == result['result'], 'Tool result differs from its authorized seat-local data.')
                 names[name] = names.get(name, 0) + 1
                 if h.is_action(name):
-                    require(len(calls) == len(results) == 1 and hop_index == len(trace)-1
+                    paired_note = (request['prompt_version'] == 'player-tools-v12' and len(calls) == len(results) == 2
+                                   and calls[0]['function']['name'] == 'write_my_notes' and result_index == 1)
+                    require((len(calls) == len(results) == 1 or paired_note) and hop_index == len(trace)-1
                             and not failed_hop and not record.get('error'),
-                            'A terminal action must be the sole call and end a successful attempt.')
+                            'A terminal action must end a successful attempt, alone or after one private note write.')
                     actions += 1
                     terminal_count += 1
                     require(result['result'] == record['response'], 'Recorded action differs from the native call.')
@@ -222,7 +234,10 @@ def audit(archive):
     if not initial:
         raise ValueError('No tool decisions found.')
     return {'decisions': len(initial), 'accepted': accepted,
-            'failed_attempts': failures, 'model_requests': hops, 'read_calls': reads, 'invalid_read_calls': invalid_reads,
+            'failed_attempts': failures, 'model_requests': hops, 'read_calls': reads - names.get('write_my_notes', 0),
+            'utility_calls': reads, 'private_note_writes': names.get('write_my_notes', 0),
+            'speech_boundary_failures': len(speech_boundary_findings),
+            'speech_boundary_findings': speech_boundary_findings, 'invalid_read_calls': invalid_reads,
             'action_calls': actions, 'calls_by_name': names,
             'mean_initial_wire_chars': round(statistics.mean(initial)),
             'max_initial_wire_chars': max(initial),

@@ -1,0 +1,58 @@
+{
+  "decisions": 99,
+  "accepted": 99,
+  "failed_attempts": 0,
+  "model_requests": 176,
+  "read_calls": 103,
+  "utility_calls": 103,
+  "private_note_writes": 0,
+  "speech_boundary_failures": 2,
+  "speech_boundary_findings": [
+    {
+      "seat": 1,
+      "batch_index": 6,
+      "kind": "campaign",
+      "category": "protocol_artifact_in_public_text"
+    },
+    {
+      "seat": 5,
+      "batch_index": 12,
+      "kind": "campaign",
+      "category": "protocol_artifact_in_public_text"
+    }
+  ],
+  "invalid_read_calls": 0,
+  "action_calls": 99,
+  "calls_by_name": {
+    "read_wolf_chat": 38,
+    "action_discuss": 4,
+    "read_my_results": 13,
+    "action_attack": 4,
+    "action_save": 1,
+    "action_investigate": 1,
+    "action_run": 8,
+    "action_stay": 4,
+    "read_rules": 2,
+    "action_pass": 52,
+    "action_speak": 12,
+    "read_public_log": 49,
+    "action_remain": 3,
+    "action_withdraw": 5,
+    "action_vote": 4,
+    "action_direction": 1,
+    "search_public_log": 1
+  },
+  "mean_initial_wire_chars": 16518,
+  "max_initial_wire_chars": 18222,
+  "mean_equivalent_json_wire_chars": 21145,
+  "initial_wire_reduction_percent": 21.9,
+  "max_hop_wire_chars": 50717,
+  "mean_cumulative_wire_chars": 34493,
+  "cumulative_wire_reduction_percent": -63.1,
+  "prompt_tokens": 1184948,
+  "completion_tokens": 219861,
+  "max_hops_per_decision": 3,
+  "day": 1,
+  "batches": 33,
+  "winner": null
+}

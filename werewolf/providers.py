@@ -9,13 +9,15 @@ import hashlib
 import json
 import math
 import os
+import re
+import html
 from pathlib import Path
 import time
 from urllib import error, request as http
 
 
 PROMPT_VERSION = "player-v3"
-TOOLS_PROMPT_VERSION = "player-tools-v11"
+TOOLS_PROMPT_VERSION = "player-tools-v12"
 MAX_TOOL_MODEL_REQUESTS = 6
 MAX_TOOL_READ_CALLS = 12
 MAX_TOOL_MESSAGE_CHARS = 5_000_000
@@ -196,24 +198,25 @@ def _seat_harness(player_request):
     context = player_request["tool_context"]
     return SeatToolHarness(copy.deepcopy(context["observation"]), copy.deepcopy(context["decision"]),
                            notes=context["private_notes"], language=player_request["language"],
-                           fixed_pages=player_request.get("prompt_version") in {"player-tools-v3", "player-tools-v4", "player-tools-v5", "player-tools-v6", "player-tools-v7", "player-tools-v8", "player-tools-v9", "player-tools-v10", "player-tools-v11"},
-                           explicit_consequences=player_request.get("prompt_version") in {"player-tools-v5", "player-tools-v6", "player-tools-v7", "player-tools-v8", "player-tools-v9", "player-tools-v10", "player-tools-v11"},
-                           explicit_output_limits=player_request.get("prompt_version") in {"player-tools-v8", "player-tools-v9", "player-tools-v10", "player-tools-v11"},
-                           explicit_state_facts=player_request.get("prompt_version") in {"player-tools-v9", "player-tools-v10", "player-tools-v11"},
-                           explicit_vote_facts=player_request.get("prompt_version") in {"player-tools-v10", "player-tools-v11"},
-                           decision_support=player_request.get("prompt_version") == "player-tools-v11")
+                           fixed_pages=player_request.get("prompt_version") in {"player-tools-v3", "player-tools-v4", "player-tools-v5", "player-tools-v6", "player-tools-v7", "player-tools-v8", "player-tools-v9", "player-tools-v10", "player-tools-v11", "player-tools-v12"},
+                           explicit_consequences=player_request.get("prompt_version") in {"player-tools-v5", "player-tools-v6", "player-tools-v7", "player-tools-v8", "player-tools-v9", "player-tools-v10", "player-tools-v11", "player-tools-v12"},
+                           explicit_output_limits=player_request.get("prompt_version") in {"player-tools-v8", "player-tools-v9", "player-tools-v10", "player-tools-v11", "player-tools-v12"},
+                           explicit_state_facts=player_request.get("prompt_version") in {"player-tools-v9", "player-tools-v10", "player-tools-v11", "player-tools-v12"},
+                           explicit_vote_facts=player_request.get("prompt_version") in {"player-tools-v10", "player-tools-v11", "player-tools-v12"},
+                           decision_support=player_request.get("prompt_version") in {"player-tools-v11", "player-tools-v12"},
+                           separate_private_notes=player_request.get("prompt_version") == "player-tools-v12")
 
 
 def tool_protocol_limits(version):
     """Protocol versions pin resource limits and final-stage capabilities."""
-    if version not in {"player-tools-v1", "player-tools-v2", "player-tools-v3", "player-tools-v4", "player-tools-v5", "player-tools-v6", "player-tools-v7", "player-tools-v8", "player-tools-v9", "player-tools-v10", "player-tools-v11"}:
+    if version not in {"player-tools-v1", "player-tools-v2", "player-tools-v3", "player-tools-v4", "player-tools-v5", "player-tools-v6", "player-tools-v7", "player-tools-v8", "player-tools-v9", "player-tools-v10", "player-tools-v11", "player-tools-v12"}:
         raise ProviderError("Unsupported player tool protocol.")
-    current = version in {"player-tools-v4", "player-tools-v5", "player-tools-v6", "player-tools-v7", "player-tools-v8", "player-tools-v9", "player-tools-v10", "player-tools-v11"}
-    return {"model_requests": 12 if version in {"player-tools-v7", "player-tools-v8", "player-tools-v9", "player-tools-v10", "player-tools-v11"} else MAX_TOOL_MODEL_REQUESTS, "read_calls": MAX_TOOL_READ_CALLS,
-            "message_chars": (MAX_TOOL_MESSAGE_CHARS if version == "player-tools-v11" else
+    current = version in {"player-tools-v4", "player-tools-v5", "player-tools-v6", "player-tools-v7", "player-tools-v8", "player-tools-v9", "player-tools-v10", "player-tools-v11", "player-tools-v12"}
+    return {"model_requests": 12 if version in {"player-tools-v7", "player-tools-v8", "player-tools-v9", "player-tools-v10", "player-tools-v11", "player-tools-v12"} else MAX_TOOL_MODEL_REQUESTS, "read_calls": MAX_TOOL_READ_CALLS,
+            "message_chars": (MAX_TOOL_MESSAGE_CHARS if version in {"player-tools-v11", "player-tools-v12"} else
                               V6_MAX_TOOL_MESSAGE_CHARS if version in {"player-tools-v6", "player-tools-v7", "player-tools-v8", "player-tools-v9", "player-tools-v10"} else
                               V4_MAX_TOOL_MESSAGE_CHARS if current else LEGACY_MAX_TOOL_MESSAGE_CHARS),
-            "context_chars": (MAX_TOOL_CONTEXT_CHARS if version == "player-tools-v11" else
+            "context_chars": (MAX_TOOL_CONTEXT_CHARS if version in {"player-tools-v11", "player-tools-v12"} else
                               V6_MAX_TOOL_CONTEXT_CHARS if version in {"player-tools-v6", "player-tools-v7", "player-tools-v8", "player-tools-v9", "player-tools-v10"} else
                               V4_MAX_TOOL_CONTEXT_CHARS if current else None),
             "final_action_stage": current}
@@ -221,7 +224,7 @@ def tool_protocol_limits(version):
 
 def _build_tools_request(config, observation, decision, notes, language, version=None):
     version = version or TOOLS_PROMPT_VERSION
-    if version not in {"player-tools-v1", "player-tools-v2", "player-tools-v3", "player-tools-v4", "player-tools-v5", "player-tools-v6", "player-tools-v7", "player-tools-v8", "player-tools-v9", "player-tools-v10", "player-tools-v11"}:
+    if version not in {"player-tools-v1", "player-tools-v2", "player-tools-v3", "player-tools-v4", "player-tools-v5", "player-tools-v6", "player-tools-v7", "player-tools-v8", "player-tools-v9", "player-tools-v10", "player-tools-v11", "player-tools-v12"}:
         raise ProviderError("Unsupported player tool protocol.")
     result = {
         "prompt_version": version, "provider": config.provider,
@@ -253,7 +256,7 @@ def _build_tools_request(config, observation, decision, notes, language, version
            if language == "zh" else "All speech, wolf discussion, and private notes must be in English. ")
         + "Keep tool names and enum values exactly as declared. Your fixed personality: " + config.personality
     )
-    if version in {"player-tools-v4", "player-tools-v5", "player-tools-v6", "player-tools-v7", "player-tools-v8", "player-tools-v9", "player-tools-v10", "player-tools-v11"}:
+    if version in {"player-tools-v4", "player-tools-v5", "player-tools-v6", "player-tools-v7", "player-tools-v8", "player-tools-v9", "player-tools-v10", "player-tools-v11", "player-tools-v12"}:
         result["instructions"] += (
             "\nUse targeted public-log search instead of repeatedly retrieving broad history. "
             "All reads are from this same frozen snapshot; repeated reads cannot produce new events. "
@@ -262,14 +265,14 @@ def _build_tools_request(config, observation, decision, notes, language, version
             "model request exposes only your current action_ functions, with tool choice required. "
             "Choose exactly one of those actions on that final step; no read tools are available then."
         )
-    if version in {"player-tools-v7", "player-tools-v8", "player-tools-v9", "player-tools-v10", "player-tools-v11"}:
+    if version in {"player-tools-v7", "player-tools-v8", "player-tools-v9", "player-tools-v10", "player-tools-v11", "player-tools-v12"}:
         result["instructions"] = result["instructions"].replace("sixth and final", "twelfth and final")
         result["instructions"] += (
             " The host may close reads earlier when all twelve read calls are used. "
             "When the host announces ACTION PHASE, use only the listed action functions, "
             "even if earlier messages mentioned read tools. Decide using the information already available."
         )
-    if version in {"player-tools-v8", "player-tools-v9", "player-tools-v10", "player-tools-v11"}:
+    if version in {"player-tools-v8", "player-tools-v9", "player-tools-v10", "player-tools-v11", "player-tools-v12"}:
         result["instructions"] += (
             "\nOUTPUT LENGTH: For action_speak and action_discuss, aim for 400–700 characters "
             "and never exceed 1200 characters in the decoded text field, including spaces, "
@@ -279,7 +282,7 @@ def _build_tools_request(config, observation, decision, notes, language, version
             + (" 中文发言建议400至700字，text字段硬上限1200字符，标点、空格和换行均计入；不要写成长篇复盘。"
                if language == "zh" else "")
         )
-    if version in {"player-tools-v9", "player-tools-v10", "player-tools-v11"}:
+    if version in {"player-tools-v9", "player-tools-v10", "player-tools-v11", "player-tools-v12"}:
         result["instructions"] += (
             "\nFACTS AND OBJECTIVE: Play for the team_objective in your briefing, including after "
             "your own death during permitted last words. Optimize your team's actual victory, "
@@ -297,7 +300,7 @@ def _build_tools_request(config, observation, decision, notes, language, version
             "The last Wolf's death immediately ends the game; there is no later round to influence. "
             "Distinguish confirmed knowledge, public claims, and your inferences in private notes."
         )
-    if version in {"player-tools-v10", "player-tools-v11"}:
+    if version in {"player-tools-v10", "player-tools-v11", "player-tools-v12"}:
         result["instructions"] += (
             "\nIDIOT STATUS: Saying 'I am the Idiot' is a public claim, not the referee's "
             "idiot_reveal ability event. The Idiot keeps ordinary voting rights until their "
@@ -309,7 +312,7 @@ def _build_tools_request(config, observation, decision, notes, language, version
             "A claimed or formally revealed living Idiot is not dead; killing the Hunter "
             "while that Idiot lives cannot eliminate all special roles."
         )
-    if version == "player-tools-v11":
+    if version in {"player-tools-v11", "player-tools-v12"}:
         result["instructions"] = result["instructions"].replace(
             "Read read_my_notes when prior strategy matters. ",
             "Your prior_private_notes are already in the briefing; they are your past beliefs and plan, not referee facts. ")
@@ -329,8 +332,23 @@ def _build_tools_request(config, observation, decision, notes, language, version
             "as a concise reusable plan with conditions for changing it; do not invent a fresh "
             "justification merely because the next routine checkpoint arrived."
         )
-    if config.thinking == "enabled" or version == "player-tools-v11":
+    if config.thinking == "enabled" or version in {"player-tools-v11", "player-tools-v12"}:
         result["instructions"] = result["instructions"].replace("with tool choice required", "with native tool invocation expected")
+    if version == "player-tools-v12":
+        result["instructions"] = result["instructions"].replace(
+            "Optional notes are a concise private strategy self-report, not reasoning traces.",
+            "Private notes are concise strategy self-reports updated only via write_my_notes, not inside public text.")
+        result["instructions"] += (
+            "\nPUBLIC/PRIVATE OUTPUT BOUNDARY: Terminal action functions have no notes parameter. "
+            "To change your private plan, call write_my_notes before the terminal action, either in an "
+            "earlier response or immediately before it in the same response. Otherwise old notes remain. "
+            "Exactly one private note write may precede one terminal action; no reads or other "
+            "calls can accompany that pair. Public action_speak/action_discuss accepts only "
+            "the public text field. Do not embed tool markup, parameter boundaries, notes objects, "
+            "scratch notes or private-plan dumps inside text. Each native call argument is a "
+            "normal JSON field value, not an XML document. Public game role claims and deliberately "
+            "chosen game disclosures are allowed; internal tool/field syntax is not public speech."
+        )
     if len(json.dumps(result, ensure_ascii=False)) > MAX_CONTEXT_CHARS:
         raise ProviderError("Player context exceeded the configured limit; game paused without truncation.")
     return result
@@ -372,7 +390,7 @@ def _validation_error(message, category, **details):
     return error
 
 
-def validate_action(action, decision):
+def validate_action(action, decision, *, allow_protocol_artifacts=False):
     """Check provider output before caching or committing a simultaneous batch."""
     if not isinstance(action, dict):
         raise _validation_error("Player response must be a JSON action object.", "action_not_object")
@@ -401,6 +419,11 @@ def validate_action(action, decision):
             raise _validation_error("Player speech must contain 1–1200 characters.", "invalid_speech_text", field="text",
                                     actual_chars=len(text) if isinstance(text, str) else None,
                                     max_chars=MAX_SPEECH_CHARS)
+        if not allow_protocol_artifacts:
+            normalized = html.unescape(text)
+            if re.search(r"</(?:text|parameter|tool_call|function)\s*>|<parameter\s+name\s*=|<[|｜]DSML[|｜]|[\"']notes[\"']\s*:", normalized, re.I):
+                raise _validation_error("Player speech contained tool-field markup; game paused before publication.",
+                                        "protocol_artifact_in_public_text", field="text")
     elif "text" in action:
         raise _validation_error("Only speech actions may contain public text.", "unexpected_text")
     if "notes" in action and (
@@ -434,7 +457,7 @@ def wire_request(config, player_request):
             # Thinking supports only auto. V11 uses auto for both modes so
             # comparisons differ only in thinking, while action validation below
             # still requires one native terminal call.
-            body["tool_choice"] = ("auto" if config.thinking == "enabled" or player_request.get("prompt_version") in {"player-tools-v1", "player-tools-v11"}
+            body["tool_choice"] = ("auto" if config.thinking == "enabled" or player_request.get("prompt_version") in {"player-tools-v1", "player-tools-v11", "player-tools-v12"}
                                    else "required")
         if config.thinking == "enabled":
             body["reasoning_effort"] = config.reasoning_effort or "low"
@@ -649,10 +672,10 @@ def _tools_live(config, player_request):
         body = copy.deepcopy(base)
         body["messages"] = copy.deepcopy(messages)
         if limits["final_action_stage"] and (hop == limits["model_requests"] - 1 or
-                (player_request.get("prompt_version") in {"player-tools-v7", "player-tools-v8", "player-tools-v9", "player-tools-v10", "player-tools-v11"} and read_calls >= limits["read_calls"])):
+                (player_request.get("prompt_version") in {"player-tools-v7", "player-tools-v8", "player-tools-v9", "player-tools-v10", "player-tools-v11", "player-tools-v12"} and read_calls >= limits["read_calls"])):
             body["tools"] = [tool for tool in body["tools"] if harness.is_action(tool["function"]["name"])]
-            body["tool_choice"] = "auto" if thinking or player_request.get("prompt_version") == "player-tools-v11" else "required"
-            if player_request.get("prompt_version") in {"player-tools-v7", "player-tools-v8", "player-tools-v9", "player-tools-v10", "player-tools-v11"}:
+            body["tool_choice"] = "auto" if thinking or player_request.get("prompt_version") in {"player-tools-v11", "player-tools-v12"} else "required"
+            if player_request.get("prompt_version") in {"player-tools-v7", "player-tools-v8", "player-tools-v9", "player-tools-v10", "player-tools-v11", "player-tools-v12"}:
                 names = ", ".join(tool["function"]["name"] for tool in body["tools"])
                 body["messages"][0]["content"] += (
                     "\nACTION PHASE: Reading is now closed for this decision. "
@@ -753,9 +776,27 @@ def _tools_live(config, player_request):
                            "invalid_tool_read", entry)
         action_calls = [call for call in calls if harness.is_action(call["function"]["name"])]
         if action_calls:
-            if len(action_calls) != 1 or len(calls) != 1:
-                raise fail("A terminal action must be the only tool call in its response; game paused.",
+            paired_note = (player_request.get("prompt_version") == "player-tools-v12" and len(calls) == 2
+                           and calls[0]["function"]["name"] == "write_my_notes"
+                           and len(action_calls) == 1 and calls[1] == action_calls[0])
+            if len(action_calls) != 1 or (len(calls) != 1 and not paired_note):
+                raise fail("A terminal action must occur alone or after one private note write; no reads or other actions may accompany it.",
                            "mixed_or_multiple_actions", entry)
+            if paired_note:
+                if read_calls >= limits["read_calls"]:
+                    raise fail("Player exceeded its utility-call budget; game paused.", "tool_read_budget", entry)
+                note_call = calls[0]["function"]
+                try:
+                    note_result = harness.call("write_my_notes", note_call["arguments"])
+                except (ValueError, ProviderError):
+                    entry["tool_results"].append({"name": "write_my_notes", "arguments": note_call["arguments"],
+                                                   "result": {"error": "Tool request was invalid."}})
+                    raise fail("Player supplied invalid private-note arguments; game paused.", "invalid_tool_read", entry) from None
+                read_calls += 1
+                entry["tool_results"].append({"name": "write_my_notes", "arguments": note_call["arguments"], "result": note_result})
+                used_chars += len(json.dumps(note_result, ensure_ascii=False))
+                if used_chars > limits["message_chars"]:
+                    raise fail("Player exceeded its cumulative utility budget; game paused.", "tool_message_budget", entry)
             call = action_calls[0]
             name = call["function"]["name"]
             arguments = call["function"]["arguments"]
