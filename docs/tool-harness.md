@@ -1,0 +1,72 @@
+# Seat-scoped player tools
+
+New DeepSeek Flash presets use `interaction_mode: "tools"`. Select `"json"`
+explicitly for the original one-request adapter. The setting is frozen with each
+player's configuration. Existing archives without this field restore in JSON
+mode. Tool mode currently requires DeepSeek with thinking disabled; thinking
+experiments retain the JSON adapter.
+
+## Context and permissions
+
+Each decision starts a fresh conversation with a short trusted instruction and
+compact player briefing. Full transcripts and the repository rules document are
+not included in that initial message. Read tools retrieve evidence on demand.
+Only that seat's prior private notes persist between decisions. Cross-game
+memory remains disabled.
+
+The runner creates every player request from the same uncommitted referee state.
+`SeatToolHarness` receives a detached `game.observe(seat)`, that player's legal
+options, and that player's notes. It has no engine reference, filesystem, network,
+credentials, spectator view, or other player session. Its host-only `tool_context`
+is retained in the private archive but excluded from every model wire request.
+Filtering happens before search, pagination, and result counts. Read tools never
+accept a caller-selected seat. Log offsets are local to the visible stream.
+
+Read tools cover paginated public history, public-history search, private role
+results, wolf chat for Wolves only, the player's notes, and public rule sections.
+Player speech stays attributed data even when it contains apparent instructions.
+The compact briefing includes the role, roster, phase, available task, and bounded
+recent evidence; it is not a fabricated summary of hidden state.
+
+## Action and execution
+
+The manifest exposes only `action_<type>` functions corresponding to the current
+legal options. Legal targets and enum values are schema constrained; the host
+still validates exact types, fields, speech length, and the full legal action.
+Calling an action returns a proposal, not a mutation. The runner commits only
+a complete valid batch through the referee, as before.
+
+One terminal action must occur alone. Unknown tools, invalid arguments, multiple
+actions, mixed read/action calls, malformed provider responses, and exhausted
+budgets pause the game and retain a diagnostic trace. Tool mode never invokes
+format repair, including when JSON-mode repair is enabled for the game. An
+explicit retry preserves settings and cached successful decisions.
+
+Protocol `player-tools-v2` allows at most six model requests and twelve read calls
+per decision, with a 60,000-character cumulative message budget. Each request also
+retains the player's frozen output-token cap. These bounds prevent an unbounded
+agent loop; retrieving too much evidence is a visible evaluation failure rather
+than silent context truncation.
+
+## Transport and diagnostics
+
+This version uses DeepSeek's native function-calling API and an in-process
+capability gateway. It does not run a network MCP server or give players access
+to installed computer tools. The JSON-schema manifest and local dispatch boundary
+can support an MCP transport later without broadening permissions. Native tools
+follow the [official DeepSeek tool-call protocol](https://api-docs.deepseek.com/guides/tool_calls/);
+provider-side beta strict mode is not enabled. Nonthinking requests set
+`tool_choice: "required"` so prose-only answers are not a permitted API choice.
+An initial `auto`-choice live run exposed that gap and was preserved as a failed
+evaluation before starting a new game with the corrected protocol.
+
+Private inference archives contain every hop's exact credential-free wire body,
+assistant action content and tool calls, tool results, usage, model identifier,
+and errors. Provider reasoning is discarded. These traces are never added to a
+spectator Mystery view or another player's context. Archives contain secrets
+about the game and must not be given to active players.
+
+Use `scripts/verify_live.py` to exercise a fresh configured game. Compare initial
+wire size, peak and cumulative context, read calls, failures, and accepted actions
+with prior JSON runs. This measures functional behavior and context reduction;
+it does not establish equal strategic strength or a formal isolation proof.

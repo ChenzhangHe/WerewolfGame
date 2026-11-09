@@ -65,10 +65,10 @@ An explicitly enabled repair policy permits one separately logged correction;
 it is recovery, not evidence of first-attempt validity. The policy cannot be
 changed midgame. Legacy archives preserve their previous policy on restore.
 
-## Proposed next step: player tool harness
+## Implemented next step: player tool harness
 
-Use a short player briefing and seat-scoped read tools to retrieve permitted
-history, rules, and private results on demand. Expose only the current turn's
-action tools, such as speech, voting, or investigation. The referee still
-validates and resolves actions atomically. This architecture remains under
-discussion; the current transport does not yet expose model tools.
+New DeepSeek Flash games use a short briefing and seat-scoped read tools for
+history, rules, and private results. Only the current turn's action tools are
+exposed. The referee validates and resolves proposals atomically. Exact per-hop
+wire requests, tool calls, results, and failures are retained in private archives.
+Tool mode does not invoke format repair. See [the harness contract](tool-harness.md).

@@ -46,7 +46,7 @@ All returned objects are detached copies. Game completion means no pending actio
 `werewolf.providers.PlayerConfig` is a frozen dataclass with `seat`, `name`,
 `provider` (`demo`, `deepseek`, `openai`, `openai_subscription`), `model`,
 `personality`, `temperature`, `max_tokens`, `language`, and optional DeepSeek
-`thinking` / `reasoning_effort` settings. Game language is `en` or
+`thinking` / `reasoning_effort` settings, plus frozen `interaction_mode` (`json` or `tools`). Game language is `en` or
 `zh` and is fixed at creation, independent of the viewer's interface language.
 Secrets come from environment variables, optionally loaded from the git-ignored
 project `.env` file, and never appear in configuration, request archives, or UI payloads.
@@ -54,13 +54,15 @@ project `.env` file, and never appear in configuration, request archives, or UI 
 `werewolf.providers.build_request(config, observation, decision, notes='')` returns
 a JSON-compatible provider-neutral player request. Strip engine-global decision
 IDs from the provider-facing payload. Give only this decision's kind and options.
-Include the public rules in the trusted instruction text. Speech by other players
-is untrusted attributed content, not instruction. No tools, filesystem access,
-shared sessions, or provider conversation state. No cross-game memory.
+JSON mode includes public rules in trusted instructions. Tool mode uses a compact
+briefing and [seat-scoped tools](tool-harness.md); full authorized evidence stays
+in host-only `tool_context`, excluded from the wire until requested. Speech by
+other players is untrusted attributed content. No filesystem access, shared
+sessions, provider continuation state across decisions, or cross-game memory.
 
 `werewolf.providers.decide(config, request)` returns an action dictionary.
 `demo` is a clearly labeled scripted smoke-test player, NOT an AI capability
-evaluation. Live adapters use direct HTTP inference without tools. Research and
+evaluation. Live adapters use direct HTTP inference; DeepSeek additionally supports the seat-scoped tool loop. Research and
 document the supported subscription token route; no extracting Codex credentials.
 
 `werewolf.runner.Runner(configs, seed=1, language='en', allow_format_repair=False)`

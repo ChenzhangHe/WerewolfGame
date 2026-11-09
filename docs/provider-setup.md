@@ -9,19 +9,20 @@ key. OpenAI API and subscription transports remain unverified with live accounts
 ## Configuration and language
 
 Configure all twelve seats before starting the game. `provider`, `model`,
-`personality`, `temperature`, `max_tokens`, `thinking`, and `reasoning_effort` are frozen for that game. Game
+`personality`, `temperature`, `max_tokens`, `thinking`, `reasoning_effort`, and `interaction_mode` are frozen for that game. Game
 language is `en` (English) or `zh` (Simplified Chinese), and is copied into every
 seat's frozen configuration. Referee announcements and player speech use that
 language. Changing the interface language does not translate old speech or alter
 an active game. Generated text is instructed to use the game language; model
 language compliance still needs evaluation with actual models.
 
-Each inference is stateless and tool-free. Its input contains the selected
-player's permitted observation, legal options for their own decision, and that
-player's private notes. Other seats' private notes, referee archives, hidden
-assignment seed, global decision IDs, tools, and provider conversation/session
-continuations are never supplied. All requests for a simultaneous batch are built
-before any batch action is committed.
+Each decision starts a fresh context. `interaction_mode: "tools"` uses a compact
+briefing and seat-scoped read/action tools; `"json"` sends the permitted observation
+and legal options in one request. The DeepSeek Flash preset selects tools. Old
+archives and explicit configurations without the field retain JSON mode.
+Other seats' private notes, referee archives, assignment seed, global decision
+IDs, credentials, and provider session continuations are never supplied. Every
+simultaneous batch uses one frozen pre-commit view. See [the tool harness](tool-harness.md).
 
 Secrets are read from the server process environment or the local, git-ignored
 project `.env` file. The `.env` loader supports literal `DEEPSEEK_API_KEY` values
@@ -37,10 +38,12 @@ real access check. No automatic provider, model, or billing-path fallback occurs
 Set `DEEPSEEK_API_KEY` in the terminal that starts the server or in `.env` at the
 repository root, using the committed `.env.example` as a template. Select
 `provider: "deepseek"` and model `deepseek-flash`. The
-adapter calls `https://api.deepseek.com/chat/completions` with JSON output enabled.
+adapter calls `https://api.deepseek.com/chat/completions`. Tool mode uses native
+function calls; JSON mode enables JSON output.
 It passes the configured temperature and token budget when they are not null.
-The prompt explicitly requests JSON; incomplete, blank, invalid, or illegal
-responses pause the game rather than creating a substitute action.
+Incomplete, invalid, or illegal responses pause the game with private diagnostic
+traces. No substitute action is created. Tool mode currently supports disabled
+thinking only; select JSON mode for thinking-enabled evaluations.
 
 Use `python3 -m werewolf --check-deepseek --language en` for one explicit live
 speech request using synthetic public information. The UI's **Test connection**
@@ -66,10 +69,10 @@ are part of the frozen configuration snapshot and credential-free wire archive.
 The public model ID `deepseek-flash` is documented as served by
 DeepSeek-V4.1-Flash-1017 as of 2026-11-08. Provider-side aliases can change; preserve
 the returned model identifier alongside the requested model. See
-[thinking controls](https://api-docs.deepseek.com/guides/thinking_mode/). No tools,
-shared provider conversations, or provider `reasoning_content` enter another
-player's context; only parsed action content and optional private self-reports
-are recorded.
+[thinking controls](https://api-docs.deepseek.com/guides/thinking_mode/). Tool
+conversations are local to one seat and decision. Provider `reasoning_content`
+is never forwarded or archived; action content and tool transcripts are private
+archive material.
 
 Consult [DeepSeek's API quickstart](https://api-docs.deepseek.com/) for current
 model names and [JSON output instructions](https://api-docs.deepseek.com/guides/json_mode/)

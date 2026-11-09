@@ -69,13 +69,15 @@ It is a trusted local spectator application, not a multi-user hosting service.
    select **Use DeepSeek Flash for all 12**. **Test connection** makes one explicit
    request without revealing or changing the current game.
 
-The preset selects `deepseek-flash` in **fast dialogue mode (thinking disabled)**,
+The preset selects `deepseek-flash` with a **seat-scoped tool harness** and
+**thinking disabled**,
 temperature **0.7**, and an **8192-token** response limit. Live thinking-mode
 tests exhausted both 4096 and 8192 budgets before producing action content, so
 thinking is an explicit per-player experiment rather than the viewing default.
-You can enable it before a new game, selecting an effort and leaving temperature
-unset. Existing games keep their original settings. Change settings before creating a game; they remain fixed
-during play. Each player uses only its own authorized context. API failures pause
+You can enable it before a new game in JSON interaction mode, selecting an effort
+and leaving temperature unset. Existing games keep their original settings. Change settings before creating a game; they remain fixed
+during play. Each player uses only its own authorized context. History and rules are read on
+demand through bounded tools; only current legal action tools are exposed. API failures pause
 the game without silently replacing a player with a script or another model.
 See [DeepSeek's model documentation](https://api-docs.deepseek.com/) and the
 [detailed provider setup](docs/provider-setup.md).
@@ -120,7 +122,7 @@ first invalid player response and retain the exact request, action content,
 and structured validation details for prompt debugging. First-attempt failures
 are never counted as clean successes.
 
-Optional recovery can be enabled before creating a new game with
+For JSON-mode players, optional recovery can be enabled before creating a new game with
 `--allow-format-repair` (or `allow_format_repair: true` in setup JSON). This allows
 one logged correction attempt using only that player's unchanged observation
 and legal options. The policy is fixed for the game and is preserved on restore;
@@ -146,3 +148,4 @@ Archive files contain hidden information; do not give them to active players.
 - [Provider connections and limitations](docs/provider-setup.md)
 - [Live DeepSeek validation results](docs/live-validation.md)
 - [Prompt failure diagnosis](docs/prompt-diagnostics.md)
+- [Seat-scoped player tools](docs/tool-harness.md)
