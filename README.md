@@ -230,3 +230,9 @@ seat's current decision; reasoning text is not exported or played to spectators.
 New games also supply own prior notes, core rules, and hypothetical arithmetic
 tools. See [the harness protocol](docs/tool-harness.md) for their information
 boundaries and versioned budgets.
+
+The [twelve-game mixed-provider pilot](docs/mixed-pilot.md) compares six Sol
+Codex seats and six DeepSeek Flash high-thinking seats per game, with balanced
+role exposure, frozen scheduling, per-provider input auditing, and a tentative
+team-outcome score board. It is a command-line experiment; it does not replace
+the current browser game's configuration.

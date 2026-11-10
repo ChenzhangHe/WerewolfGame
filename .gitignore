@@ -5,3 +5,4 @@ __pycache__/
 *.private.json
 artifacts/codex-match-*.progress*.json
 .DS_Store
+artifacts/pilot-*.progress.json
