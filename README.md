@@ -35,6 +35,34 @@ It is a trusted local spectator application, not a multi-user hosting service.
 
 ## Connect AI players
 
+### Codex Harness validation (ChatGPT subscription)
+
+An experimental validation adapter uses the real `codex app-server` agent loop,
+with **one thread per game and seat**, incremental authorized event deliveries,
+and the existing seat-scoped game tools. It uses the CLI's ChatGPT login; no
+OpenAI API key or manually copied subscription token is required.
+
+```sh
+codex login
+python3 scripts/verify_codex.py --synthetic --decisions 3
+```
+
+This explicitly invokes `gpt-6.1-sol` at high effort and consumes subscription
+usage. It generates a fictional timeline without reading an existing private
+game archive. Each of twelve seats makes three proposals against fixed snapshots;
+this is a capability test, not a complete AI-played game. To exercise private
+reads and note writes as well:
+
+```sh
+python3 scripts/verify_codex.py --synthetic --seats 1,5,10 --decisions 2 --exercise-tools --output artifacts/codex-utilities.private.json --summary artifacts/codex-utilities.json
+```
+
+Results and audit instructions are in [provider setup](docs/provider-setup.md#codex-harness-validation).
+The spectator setup still uses the existing providers; this experimental adapter
+is currently exercised through the validation command. Threads live for the
+validation game's lifetime; automatic restart recovery and compaction have not
+been validated. Missing access or a failed turn stops that seat without fallback.
+
 ### DeepSeek Flash
 
 1. Obtain an API key from the [DeepSeek platform](https://platform.deepseek.com/).

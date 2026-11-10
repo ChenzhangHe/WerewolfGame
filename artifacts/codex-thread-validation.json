@@ -1,0 +1,40 @@
+{
+  "protocol": "codex-seat-thread-v1",
+  "test_kind": "synthetic-seat-snapshots-not-a-full-AI-game",
+  "players": 12,
+  "unique_thread_bindings": 12,
+  "players_with_successful_thread_reuse": 12,
+  "accepted_actions": 36,
+  "failed_attempts": 0,
+  "errors": [],
+  "calls_by_name": {
+    "action_investigate": 1,
+    "action_run": 5,
+    "action_speak": 8,
+    "action_discuss": 4,
+    "action_attack": 4,
+    "action_stay": 7,
+    "action_withdraw": 6,
+    "action_pass": 1
+  },
+  "delivered_seat_events": 149,
+  "idle_feed_started_turns": 0,
+  "usage": {
+    "totalTokens": 890671,
+    "inputTokens": 885410,
+    "cachedInputTokens": 628992,
+    "cacheWriteInputTokens": 0,
+    "outputTokens": 5261,
+    "reasoningOutputTokens": 548
+  },
+  "source_archive_replay_verified": false,
+  "synthetic_source_engine_generated": true,
+  "action_seconds": {
+    "mean": 8.37,
+    "median": 4.08,
+    "max": 19.45
+  },
+  "all_checks_passed": true,
+  "restart_recovery_tested": false,
+  "context_compaction_tested": false
+}

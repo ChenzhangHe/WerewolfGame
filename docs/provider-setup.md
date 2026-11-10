@@ -200,3 +200,113 @@ attempt; a connection failure is recorded and pauses for an explicit retry.
 Safe diagnostics retain exception class, wait limit and attempt count, not raw
 exception text, credentials, or provider bodies. An in-flight retry clears the
 stale UI error while retaining the original inference failure in the archive.
+
+## Codex Harness validation
+
+The experimental `werewolf/codex_harness.py` adapter uses the installed Codex
+Harness through `codex app-server` over stdio. Authentication stays inside Codex;
+the adapter checks for a ChatGPT login and exact model/effort availability. It
+does not extract OAuth tokens, call a private subscription endpoint, use an
+OpenAI API key, or fall back to another model or billing path.
+
+Checked against [official App Server documentation](https://learn.chatgpt.com/docs/app-server)
+and local `codex-cli 0.166.0` on 2026-11-09. This validates Codex Harness separately
+from the earlier direct `openai_subscription` HTTP adapter described above.
+
+### Thread and event lifetime
+
+- A `CodexGameHarness` owns a game scope and one app-server connection. Its
+  `bind(CodexPlayer(...))` returns the same seat thread throughout that scope;
+  changing a bound player's configuration is rejected. A new game has new threads.
+- Each seat receives only detached authorized observations, never an engine,
+  runner, full archive, spectator endpoint, or another seat's thread identifier.
+- `feed()` uses `thread/inject_items` to append complete authorized event bundles
+  without starting inference. Per-seat offsets are acknowledged before advancing;
+  identical deliveries are no-ops. Changed history, rollback, identity changes,
+  and non-Wolf wolf-channel deliveries are rejected.
+- `decide()` starts another turn on the same thread. A per-seat lock keeps the
+  frozen decision snapshot stable while a turn is active. Incoming updates wait
+  until that turn completes; this version does not use mid-turn `turn/steer`.
+- Dynamic `game_tool` is a stable native gateway. Each turn supplies the current
+  catalog, and the host validates its name and parameters against a fresh
+  `SeatToolHarness`. Old actions, cross-seat parameters, reads after submission,
+  multiple actions, and public protocol-field contamination are rejected.
+- Private notes are staged with `write_my_notes`; the caller receives them only
+  with a successful complete action. An interrupted/invalid turn returns no
+  action and does not commit a new plan.
+
+Threads request no execution environments or workspace roots, use an empty
+temporary working directory, and load no project instruction files. Shell,
+browser, apps, plugins, memories, hooks and configured MCP connections are
+disabled for the app-server process without modifying the user's configuration.
+Some built-in utility names may remain discoverable. Earlier synthetic probing
+confirmed a file operation was blocked with “No usable execution environment”;
+the temporary canary was not created. These controls are not an operating-system
+security boundary against a compromised Codex runtime.
+
+Only game tool callbacks, numeric token usage, compaction notices and terminal
+status are retained by this adapter. Ordinary assistant streaming text and
+reasoning events are discarded rather than published as speech or saved in its
+diagnostic trace. The host publishes only a validated `action_speak` or
+`action_discuss` payload. There are twelve utility calls per decision, bounded
+input/tool-output sizes, and a 300-second whole-turn deadline. App Server owns
+its internal inference loop; this adapter does not count or constrain each
+underlying model request as the DeepSeek HTTP loop does.
+
+### Reproduce without an existing private archive
+
+After installing Codex and signing in with `codex login`:
+
+```sh
+python3 scripts/verify_codex.py --synthetic --decisions 3
+python3 scripts/verify_codex.py --synthetic --seats 1,5,10 --decisions 2 --exercise-tools --output artifacts/codex-utilities.private.json --summary artifacts/codex-utilities.json
+```
+
+These commands consume subscription usage. They create fresh fictional input
+with the real referee engine and send only each selected seat's view. The
+scripted source timeline remains fixed: model proposals do not alter it. They
+are protocol/capability tests, not a complete AI game or strategic comparison.
+No existing private archive is opened in `--synthetic` mode.
+
+The first actual attempt to use the old private game archive was rejected by
+automatic approval review for sending its hidden-role/private observation data
+to another provider. That command did not execute. Validation instead used only
+the new synthetic data above.
+
+| Actual GPT-6.1 Sol / high test | Threads | Valid actions | Failures | Utilities |
+| --- | ---: | ---: | ---: | --- |
+| All twelve seats, three decisions each | 12 | 36 | 0 | Terminal actions across all six roles |
+| Seer, Wolf and Witch, two decisions each | 3 | 6 | 0 | Six own-note reads, six private-result reads, two wolf-chat reads and six private-note writes |
+
+Both cohorts reused each seat's thread and started zero model turns during idle
+event injection. The first cohort reported 885,410 input tokens (628,992 cached),
+5,261 output tokens including 548 reasoning tokens. The utility cohort reported
+191,433 input tokens (142,464 cached), 1,549 output tokens including 108 reasoning
+tokens. Usage is the difference in thread cumulative counters, not `last`, which
+only measures the final model request in a turn. An initial two-seat smoke test
+used that incomplete `last` counter and is excluded from these usage totals.
+Effort was set to high; these small tasks do not establish strategic strength or
+cost efficiency for a full game.
+
+Aggregate reports are `artifacts/codex-thread-validation.json` and
+`artifacts/codex-utilities.json`. Raw authorized inputs and tool results remain
+local in corresponding `*.private.json` files, ignored by Git. Offline auditing
+requires no provider calls:
+
+```sh
+python3 scripts/verify_codex.py artifacts/codex-thread-validation.private.json --audit-only
+```
+
+The audit reconstructs event-prefix delivery, current briefings and tool catalogs,
+every seat-local tool result, private-note continuity and the legal terminal
+action. Synthetic tests additionally reject cross-seat requests, changed/future
+history, wrong-thread events, tampered traces, and public field bleed.
+All 206 Python tests passed, including fourteen new Codex/runtime-audit tests.
+
+The validation threads currently live in memory for the game harness lifetime.
+Disconnection, a lost delivery acknowledgment, or a failed turn marks the seat
+unusable and requires explicit recovery; there is no silent context reset or
+format retry. Automatic restart/resume, long-context compaction and a full live
+AI game have not been validated. The spectator UI is not connected to this
+experimental adapter yet. This milestone verifies the agreed persistent-thread
+and native-tool foundation before that integration.
