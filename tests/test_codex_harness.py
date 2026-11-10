@@ -272,4 +272,3 @@ class CodexHarnessTests(unittest.TestCase):
             result.append(target.get())
         self.assertEqual([values[-1], None], result)
         self.assertNotIn('PRIVATE_REASONING', encoded(result))
-
