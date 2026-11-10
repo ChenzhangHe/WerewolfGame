@@ -63,6 +63,20 @@ is currently exercised through the validation command. Threads live for the
 validation game's lifetime; automatic restart recovery and compaction have not
 been validated. Missing access or a failed turn stops that seat without fallback.
 
+To run complete AI-driven games on new fictional game data:
+
+```sh
+python3 scripts/play_codex.py --seeds 9101,9102,9103 --output-dir artifacts/codex-next-run
+```
+
+This runs three games concurrently, with two inference workers per game. Every
+seat uses GPT-6.1 Sol / high and one thread for that whole game; actual model
+actions advance the referee. Existing match files are never overwritten: choose
+new seeds or a fresh output directory for another experiment. Completed-game
+results are in [the match summary](artifacts/codex-matches.json); the first three
+games completed with 707 actions, zero failed attempts, two Good wins and one
+Wolf win. Details and limitations are in the provider setup document.
+
 ### DeepSeek Flash
 
 1. Obtain an API key from the [DeepSeek platform](https://platform.deepseek.com/).

@@ -306,7 +306,119 @@ All 206 Python tests passed, including fourteen new Codex/runtime-audit tests.
 The validation threads currently live in memory for the game harness lifetime.
 Disconnection, a lost delivery acknowledgment, or a failed turn marks the seat
 unusable and requires explicit recovery; there is no silent context reset or
-format retry. Automatic restart/resume, long-context compaction and a full live
-AI game have not been validated. The spectator UI is not connected to this
-experimental adapter yet. This milestone verifies the agreed persistent-thread
-and native-tool foundation before that integration.
+format retry. Automatic restart/resume and long-context compaction have not been
+validated. The spectator UI is not connected to this experimental adapter yet.
+Full live-game results follow below.
+
+### Full live Codex games
+
+On 2026-11-09, three fresh twelve-seat games ran to completion with
+`gpt-6.1-sol`, high effort, Chinese, fixed per-seat personalities and rules-v1.
+Each game owned twelve independent threads and its own app-server process.
+No recorded-state test instruction or forced tool-use requirement was used.
+The engine advanced only from complete batches of actual model proposals;
+secret votes and night choices were not delivered to other actors before locking.
+Dead seats stopped receiving updates after permitted death decisions.
+
+```sh
+python3 scripts/play_codex.py --seeds 9101,9102,9103 --parallel-games 3 --workers 2 --output-dir artifacts/codex-next-run
+python3 scripts/play_codex.py --audit artifacts/codex-match-9101.private.json
+```
+
+The first command consumes subscription usage and creates new fictional data;
+it cannot load an existing private archive. Choose new seeds or an unused output
+directory for another run. Existing raw or summary files cause an error before
+Codex starts, preserving earlier evidence. Local progress JSON files are ignored
+by Git. Auditing reads only local files and does not invoke inference.
+
+| Seed | Winner | Terminal day | Referee batches | Committed actions | Self-explosions | Failed attempts | Wall minutes |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 9101 | Wolves | 5, night resolution | 93 | 187 | 1 | 0 | 25.7 |
+| 9102 | Good | 5, exile | 112 | 279 | 0 | 0 | 36.4 |
+| 9103 | Good | 5, exile | 113 | 241 | 0 | 0 | 29.9 |
+
+All 707 actions were committed, with zero host format corrections or default
+replacement actions. All three input/tool audits and independent referee replays
+passed. There were 316 individual explosion-window decisions across the games,
+with one explosion proposal, executed once. This is also one exploding Wolf among
+twelve assigned Wolves; these are different denominators, not a human baseline.
+No compaction was observed and idle event delivery started no inference turns.
+The underlying Codex transport's internal retry behavior was not measured.
+All 209 Python tests passed after adding the live-game runner and evidence guard.
+
+The audit checks exact historical observations, public reveal provenance,
+per-seat event delivery at each referee batch, correct per-turn tool catalogs/options,
+own-note continuity, tool outputs, committed actions and terminal state. It
+remaps only random internal routing UUIDs during replay. No unauthorized
+other-seat roles, private notes, future events or unpublished ballots were found
+in these model-facing adapter inputs. This is not a semantic audit of Codex's
+hidden reasoning or a claim that players never make bad inferences or bluffs.
+
+#### What happened in the games
+
+**9101:** Wolf 1 counterclaimed Seer 4; Wolf 9 and Witch 8 then disputed the Witch
+identity with the same first-night target. Wolf 1 exploded after that conflict,
+skipping the rest of day one. Night two killed Seer 4 and Witch 8 poisoned Wolf 9;
+day two exiled Wolf 11. The last Wolf, 10, survived the subsequent wrong exiles
+of Villagers 7 and 6. Its night targets were Witch 8, claimed Idiot 12, then
+Hunter 3. On night five, its private team discussion explicitly treated 3 as
+the most likely last special under the declared-role hypothesis, recognized
+attack-first victory, and still deferred the actual outcome to the referee.
+Killing 3 eliminated all specials and ended the game before a Hunter shot.
+Two Villagers remained; this was not parity victory.
+
+**9102:** Seer 3's first-night Wolf result on 8 did not persuade the village;
+the village exiled the true Seer and then Villager 12. After Witch 9 died,
+Hunter 5 was attacked and shot Wolf 4. The village later exiled Wolves 8 and 11,
+but 11 passed the badge to the last Wolf, 10. Night five killed Villager 2,
+leaving Villager 6, unrevealed Idiot 7 and Wolf Sheriff 10. Players 6 and 7
+explicitly compared the decisive day-four ballots rather than declaring death
+or a badge transfer to be a role reveal. Both voted 10: their two votes beat its
+1.5-weight ballot. Idiot 7 had never triggered protection, so its vote counted.
+The Wolf's final speech offered a complete alternative role assignment to
+frame 6. That was an intentional public bluff, not evidence that the host
+supplied another role assignment.
+
+**9103:** Day one exiled fake Seer 6. Night two killed Seer 8 and Witch 1 poisoned
+Wolf 9. The village wrongly exiled Villager 10, then correctly exiled Wolf 11
+after a Hunter conflict, then wrongly exiled Villager 5. Wolf 2 avoided the
+claimed Hunter 12, killing 3 and then 7. The final three were Wolf 2, Villager 4
+and Hunter Sheriff 12. Players 4 and 12 compared when 4 had actually pushed and
+voted against 11 before that Wolf's position collapsed; they rejected 2's
+claim that all early pressure could be discounted as costless distancing.
+Both voted 2 and Good won.
+
+#### Endgame reasoning remains uneven
+
+The completed transcripts permit two useful comparisons without reading hidden
+reasoning. In 9101, Wolf 10 explicitly considered eliminating the last special
+and selected the immediate-winning target. In 9102, its stated main hypothesis
+was that 7 was Idiot and 2/6 were the remaining Villagers; nevertheless, it chose
+to kill 2 and seek 7's vote to exile 6, saying there was no need to kill 7 just
+to verify the Idiot claim. Under that same hypothesis, killing 7 instead would
+end all specials immediately, avoiding the contested daytime vote. This suggests
+incomplete comparison of its own hypothesized winning routes.
+
+In 9103, Wolf 2 described 12 as probably Hunter and repeatedly avoided the gun.
+With the actual assignments, killing 12 on night five would also have ended all
+specials before a shot. Unlike the spectator, that Wolf did not know dead 3's
+exact role; this is a missed opportunity in an omniscient comparison, not proof
+that its action was dominated in every possible information-consistent world.
+Postgame referee reconstruction confirmed both counterfactual immediate wins;
+no Witch remained alive in either position.
+
+Role/claim calibration was often better than in the earlier DeepSeek sample:
+speeches explicitly distinguished an antidote save from a faction check, and
+players recognized that claims, deaths and badge transfers do not certify roles.
+That did not prevent wrong exiles or hindsight-prone behavioral arguments.
+Three games are insufficient to establish provider strength; model, persistent
+context, prompt/harness and seeds differ from the earlier runs. No calculation
+tools were used in these games; the few utility calls were private note writes.
+
+Aggregate evidence is `artifacts/codex-matches.json` and the three
+`artifacts/codex-match-<seed>.json` reports. Corresponding full private traces
+remain local and ignored by Git. Across the three games, Codex reported
+134,178,674 input tokens, including 129,859,456 cached input tokens, and 107,684
+output tokens including 22,189 reasoning tokens. Repeated long-thread context
+is counted on each internal request: these numbers do not demonstrate lower
+total token use, API dollar cost, or a direct cost comparison with DeepSeek.
