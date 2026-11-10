@@ -54,7 +54,7 @@ def canonical_game(value):
     return result
 
 
-def audit_match(trial):
+def audit_match(trial, *, audit_players=audit_trial):
     require(trial['test_kind'] == 'full-live-ai-game', 'Not a live AI match.')
     players = sorted(trial['game']['players'], key=lambda p: p['seat'])
     game = Game(seed=trial['source_seed'], names=[p['name'] for p in players],
@@ -80,6 +80,9 @@ def audit_match(trial):
             player = by_seat[seat]
             observations = game.observe(seat)
             visibility(observations, game)
+            if player.get('transport', PROTOCOL) != PROTOCOL:
+                require(not player['deliveries'] and not player['delivery_batches'], 'Stateless seat has thread deliveries.')
+                continue
             history = authorized_events(observations)
             if delivered_counts[seat] == 0 or history != histories[seat]:
                 count = delivered_counts[seat]
@@ -116,15 +119,15 @@ def audit_match(trial):
     for seat, player in by_seat.items():
         require(delivered_counts[seat] == len(player['deliveries']), 'Dead seat or future history received extra deliveries.')
         require(len(player['delivery_batches']) == len(player['deliveries']), 'Delivery provenance is incomplete.')
-    report = audit_trial(trial)
+    report = audit_players(trial)
     report.update(seed=trial['source_seed'], status=trial['status'], winner=trial['game']['winner'],
                   model=next(iter(by_seat.values()))['config']['model'],
-                  effort=next(iter(by_seat.values()))['config']['effort'], language=trial['language'],
+                  effort=next(iter(by_seat.values()))['config'].get('effort', next(iter(by_seat.values()))['config'].get('reasoning_effort')), language=trial['language'],
                   day=game.day, batches=len(submitted), referee_replay_verified=True,
                   committed_actions=sum(bool(r.get('committed')) for p in trial['players'] for r in p['decisions']),
                   explosions=sum(e['kind'] == 'explosion' for e in game.events),
                   public_speeches=sum(e['kind'] in ('speech', 'campaign', 'last_words') for e in game.events),
-                  compactions=sum(r['tool_trace'][0].get('compactions', 0) for p in trial['players']
+                  compactions=sum(sum(hop.get('compactions', 0) for hop in r['tool_trace']) for p in trial['players']
                                   for r in p['decisions'] if 'error' not in r),
                   duration_seconds=trial['duration_seconds'])
     roles = {p['seat']: p['role'] for p in players}
@@ -148,17 +151,21 @@ def audit_match(trial):
 
 
 def play(seed, *, output_dir=Path('artifacts'), model='gpt-6.1-sol', effort='high', language='zh',
-         max_batches=300, workers=2, harness_factory=CodexGameHarness, progress=True):
-    raw_path = output_dir / f'codex-match-{seed}.private.json'
-    summary_path = output_dir / f'codex-match-{seed}.json'
-    progress_path = output_dir / f'codex-match-{seed}.progress.json'
+         max_batches=300, workers=2, harness_factory=CodexGameHarness, progress=True,
+         configs=None, roles=None, artifact_stem=None, protocol=PROTOCOL, audit_players=audit_trial):
+    stem = artifact_stem or f'codex-match-{seed}'
+    if Path(stem).name != stem:
+        raise ValueError('Artifact stem must be a plain filename.')
+    raw_path = output_dir / f'{stem}.private.json'
+    summary_path = output_dir / f'{stem}.json'
+    progress_path = output_dir / f'{stem}.progress.json'
     if raw_path.exists() or summary_path.exists():
         raise ValueError('Match artifacts already exist; choose a new seed or output directory.')
     started = time.monotonic()
-    game = Game(seed=seed, names=NAMES, language=language)
-    configs = [CodexPlayer(i+1, name, model=model, effort=effort, language=language,
+    game = Game(seed=seed, names=NAMES, roles=roles, language=language)
+    configs = configs or [CodexPlayer(i+1, name, model=model, effort=effort, language=language,
                           personality=PERSONALITIES[i]) for i, name in enumerate(NAMES)]
-    trial = {'protocol': PROTOCOL, 'test_kind': 'full-live-ai-game', 'game_scope': str(uuid.uuid4()),
+    trial = {'protocol': protocol, 'test_kind': 'full-live-ai-game', 'game_scope': str(uuid.uuid4()),
              'source_seed': seed, 'language': language, 'source_archive_replay_verified': False,
              'status': 'running', 'players': [], 'duration_seconds': 0, 'game': game.export()}
     bindings, sessions = {}, {}
@@ -177,9 +184,11 @@ def play(seed, *, output_dir=Path('artifacts'), model='gpt-6.1-sol', effort='hig
                 session = harness.bind(config)
                 sessions[config.seat] = session
                 player = {'config': asdict(config), 'binding': session.binding, 'decisions': [],
-                          'deliveries': [], 'delivery_batches': [], 'idle_feed_started_turns': 0}
+                          'deliveries': [], 'delivery_batches': [], 'idle_feed_started_turns': 0,
+                          'transport': getattr(session, 'transport', PROTOCOL)}
                 bindings[config.seat] = player
                 trial['players'].append(player)
+            checkpoint()
             with ThreadPoolExecutor(max_workers=workers, thread_name_prefix=f'codex-match-{seed}') as pool:
                 while game.pending() and len(game.export()['submitted_batches']) < max_batches:
                     index = len(game.export()['submitted_batches'])
@@ -189,9 +198,9 @@ def play(seed, *, output_dir=Path('artifacts'), model='gpt-6.1-sol', effort='hig
                     observations = {seat: game.observe(seat) for seat in active}
                     for seat in sorted(active):
                         visibility(observations[seat], game)
-                        before = harness.rpc.generation_starts[sessions[seat].thread_id]
+                        before = sessions[seat].generation_count
                         updates = sessions[seat].feed(observations[seat])
-                        bindings[seat]['idle_feed_started_turns'] += harness.rpc.generation_starts[sessions[seat].thread_id]-before
+                        bindings[seat]['idle_feed_started_turns'] += sessions[seat].generation_count-before
                         if updates:
                             bindings[seat]['delivery_batches'].append(index)
 
@@ -206,7 +215,11 @@ def play(seed, *, output_dir=Path('artifacts'), model='gpt-6.1-sol', effort='hig
                             record.update(action=dict(result), tool_trace=result.tool_trace)
                         except ProviderError as error:
                             record.update(error=str(error), category=getattr(error, 'validation_details', {}).get('category'),
+                                          validation_details=deepcopy(getattr(error, 'validation_details', {})),
                                           tool_trace=getattr(error, 'tool_trace', []))
+                        if hasattr(sessions[seat], 'last_request'):
+                            record['request'] = deepcopy(sessions[seat].last_request)
+                            record['wire_request'] = deepcopy(sessions[seat].last_wire_request)
                         record['elapsed_seconds'] = round(time.monotonic()-began, 2)
                         return record
 
@@ -242,7 +255,7 @@ def play(seed, *, output_dir=Path('artifacts'), model='gpt-6.1-sol', effort='hig
         trial['host_error'] = {'category': getattr(error, 'validation_details', {}).get('category', type(error).__name__)}
         checkpoint()
         raise
-    report = audit_match(trial)
+    report = audit_match(trial, audit_players=audit_players)
     save(summary_path, report)
     if progress:
         with PRINT_LOCK:

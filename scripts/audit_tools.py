@@ -75,13 +75,21 @@ def audit(archive):
             batch = batches[index]
             original = {d['seat']: d['id'] for d in batch['decisions']}
             game.submit({d['id']: batch['actions'][original[d['seat']]] for d in game.pending()})
+    result = audit_records(configs, archive['inference'])
+    result.update(day=archive['game']['events'][-1]['day'],
+                  batches=len(archive['game']['submitted_batches']), winner=archive['game']['winner'])
+    return result
+
+
+def audit_records(configs, inference):
+    """Verify native wire bodies and scoped tool executions; caller verifies referee state."""
     initial, baseline, peak, cumulative = [], [], [], []
     reads = invalid_reads = actions = hops = failures = prompt_tokens = completion_tokens = max_hops = 0
     accepted = 0
     reasoning_tokens = 0
     names = {}
     speech_boundary_findings = []
-    for record in archive['inference']:
+    for record in inference:
         request = record['request']
         if request.get('interaction_mode') != 'tools':
             continue
@@ -248,9 +256,7 @@ def audit(archive):
             'max_hop_wire_chars': max(peak), 'mean_cumulative_wire_chars': round(statistics.mean(cumulative)),
             'cumulative_wire_reduction_percent': round(100*(1-sum(cumulative)/sum(baseline)), 1),
             'prompt_tokens': prompt_tokens, 'completion_tokens': completion_tokens, 'reasoning_tokens': reasoning_tokens,
-            'max_hops_per_decision': max_hops,
-            'day': archive['game']['events'][-1]['day'], 'batches': len(archive['game']['submitted_batches']),
-            'winner': archive['game']['winner']}
+            'max_hops_per_decision': max_hops}
 
 
 if __name__ == '__main__':

@@ -298,6 +298,10 @@ class SeatThread:
         self.binding = digest([owner.game_id, config.seat, self.thread_id])
         self._events = owner.rpc.register(self.thread_id)
 
+    @property
+    def generation_count(self):
+        return self.owner.rpc.generation_starts[self.thread_id]
+
     def _feed(self, observation):
         if self.owner._closed:
             raise failure('This game harness is closed.', 'codex_game_closed')
