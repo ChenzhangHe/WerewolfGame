@@ -236,3 +236,9 @@ Codex seats and six DeepSeek Flash high-thinking seats per game, with balanced
 role exposure, frozen scheduling, per-provider input auditing, and a tentative
 team-outcome score board. It is a command-line experiment; it does not replace
 the current browser game's configuration.
+
+[Role-aware Elo-scale ratings](docs/ratings.md) estimate shared configuration
+ability and shrunk role adjustments from one outcome per audited game, while
+accounting for faction bias and paired layouts. Calculate them offline with
+`python scripts/rate_league.py`; ratings include approximate uncertainty and
+remain exploratory on the twelve-game sample.

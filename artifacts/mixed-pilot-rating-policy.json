@@ -1,0 +1,20 @@
+{
+  "version": "hierarchical-team-elo-v1",
+  "initial_rating": 1500,
+  "elo_scale": 400,
+  "configuration_prior_sd": 200,
+  "role_adjustment_prior_sd": 100,
+  "good_baseline_logit_prior_sd": 1,
+  "layout_logit_prior_sd": 0.5,
+  "role_weights": {
+    "wolf": 0.5,
+    "villager": 0.25,
+    "seer": 0.0625,
+    "witch": 0.0625,
+    "hunter": 0.0625,
+    "idiot": 0.0625
+  },
+  "outcome_unit": "one-result-per-game",
+  "inference": "MAP-with-Laplace-approximation",
+  "failure_policy": "retain-but-exclude-from-skill-fit"
+}
