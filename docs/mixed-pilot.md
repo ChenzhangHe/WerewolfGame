@@ -55,7 +55,9 @@ remain visible. This can introduce selection bias if failures are not random.
 
 Seats in one game share its outcome, and paired games share their initial
 layout. Twelve games are an engineering/behavior pilot, not 144 independent
-skill trials. We fit no Elo or hierarchical rating from this small sample.
+skill trials. The tournament score board does not fit an Elo rating. A separate
+[exploratory role-aware Elo-scale fitter](ratings.md) is available; its estimates
+include uncertainty and must not be treated as stable rankings from this pilot.
 
 ## Run and audit
 
