@@ -242,3 +242,8 @@ ability and shrunk role adjustments from one outcome per audited game, while
 accounting for faction bias and paired layouts. Calculate them offline with
 `python scripts/rate_league.py`; ratings include approximate uncertainty and
 remain exploratory on the twelve-game sample.
+
+The [first mixed pilot report](docs/mixed-pilot-results.md) records twelve
+attempts with zero completed games: timeouts and native-tool contract failures
+prevented valid Elo outcomes. Its 1500 ratings are prior values, not evidence
+that the configurations have equal playing strength.

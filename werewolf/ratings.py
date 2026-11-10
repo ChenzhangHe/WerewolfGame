@@ -197,5 +197,5 @@ def fit_ratings(matches, reports):
             'good_baseline_probability_at_map': sigmoid(theta[0]*POLICY['good_baseline_logit_prior_sd']),
             'in_sample_probabilities': [{'match_id': m['id'], 'good_win_probability_at_map': sigmoid(dot(features(m), theta))}
                                         for m, _ in valid],
-            'status': 'exploratory-not-a-calibrated-leaderboard',
+            'status': 'exploratory-not-a-calibrated-leaderboard' if valid else 'no-valid-outcomes-prior-only',
             'uncertainty': 'Marginal Laplace approximation with fixed priors, not MCMC or empirical confidence intervals.'}

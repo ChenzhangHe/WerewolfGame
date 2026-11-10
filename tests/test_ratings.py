@@ -15,6 +15,7 @@ class RatingTests(unittest.TestCase):
         matches = schedule()
         empty = fit_ratings(matches, [])
         self.assertEqual(0, empty['valid_games'])
+        self.assertEqual('no-valid-outcomes-prior-only', empty['status'])
         for row in empty['ratings']:
             self.assertEqual(1500, row['rating'])
             self.assertGreater(row['sd'], 190)
