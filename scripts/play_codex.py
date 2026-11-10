@@ -118,6 +118,8 @@ def audit_match(trial):
         require(len(player['delivery_batches']) == len(player['deliveries']), 'Delivery provenance is incomplete.')
     report = audit_trial(trial)
     report.update(seed=trial['source_seed'], status=trial['status'], winner=trial['game']['winner'],
+                  model=next(iter(by_seat.values()))['config']['model'],
+                  effort=next(iter(by_seat.values()))['config']['effort'], language=trial['language'],
                   day=game.day, batches=len(submitted), referee_replay_verified=True,
                   committed_actions=sum(bool(r.get('committed')) for p in trial['players'] for r in p['decisions']),
                   explosions=sum(e['kind'] == 'explosion' for e in game.events),
@@ -125,12 +127,33 @@ def audit_match(trial):
                   compactions=sum(r['tool_trace'][0].get('compactions', 0) for p in trial['players']
                                   for r in p['decisions'] if 'error' not in r),
                   duration_seconds=trial['duration_seconds'])
+    roles = {p['seat']: p['role'] for p in players}
+    exile_targets = [e['seat'] for e in game.events if e['kind'] == 'exile']
+    poison_targets = [e['data']['target'] for e in game.events
+                      if e['kind'] == 'witch_action' and e['data']['type'] == 'poison']
+    explosion_records = [r for p in trial['players'] for r in p['decisions']
+                         if r['decision']['kind'] == 'explosion' and 'error' not in r]
+    living = [p for p in game.players.values() if p['alive']]
+    report.update(exiled_wolves=sum(roles[s] == 'wolf' for s in exile_targets),
+                  exiled_good=sum(roles[s] != 'wolf' for s in exile_targets),
+                  witch_poison_wolf_targets=sum(roles[s] == 'wolf' for s in poison_targets),
+                  witch_poison_good_targets=sum(roles[s] != 'wolf' for s in poison_targets),
+                  explosion_decisions=len(explosion_records),
+                  explosion_proposals=sum(r['action']['type'] == 'explode' for r in explosion_records),
+                  living_wolves=sum(p['role'] == 'wolf' for p in living),
+                  living_villagers=sum(p['role'] == 'villager' for p in living),
+                  living_specials=sum(p['role'] not in ('wolf', 'villager') for p in living))
     report['all_checks_passed'] = report['all_checks_passed'] and trial['status'] == 'finished' and bool(game.winner)
     return report
 
 
 def play(seed, *, output_dir=Path('artifacts'), model='gpt-6.1-sol', effort='high', language='zh',
          max_batches=300, workers=2, harness_factory=CodexGameHarness, progress=True):
+    raw_path = output_dir / f'codex-match-{seed}.private.json'
+    summary_path = output_dir / f'codex-match-{seed}.json'
+    progress_path = output_dir / f'codex-match-{seed}.progress.json'
+    if raw_path.exists() or summary_path.exists():
+        raise ValueError('Match artifacts already exist; choose a new seed or output directory.')
     started = time.monotonic()
     game = Game(seed=seed, names=NAMES, language=language)
     configs = [CodexPlayer(i+1, name, model=model, effort=effort, language=language,
@@ -138,9 +161,6 @@ def play(seed, *, output_dir=Path('artifacts'), model='gpt-6.1-sol', effort='hig
     trial = {'protocol': PROTOCOL, 'test_kind': 'full-live-ai-game', 'game_scope': str(uuid.uuid4()),
              'source_seed': seed, 'language': language, 'source_archive_replay_verified': False,
              'status': 'running', 'players': [], 'duration_seconds': 0, 'game': game.export()}
-    raw_path = output_dir / f'codex-match-{seed}.private.json'
-    summary_path = output_dir / f'codex-match-{seed}.json'
-    progress_path = output_dir / f'codex-match-{seed}.progress.json'
     bindings, sessions = {}, {}
     notes = {seat: '' for seat in range(1, 13)}
 

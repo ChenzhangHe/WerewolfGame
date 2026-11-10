@@ -3,4 +3,5 @@ __pycache__/
 .venv/
 .env
 *.private.json
+artifacts/codex-match-*.progress*.json
 .DS_Store

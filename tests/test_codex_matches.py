@@ -42,6 +42,16 @@ def factory(scope):
 
 
 class CodexMatchTests(unittest.TestCase):
+    def test_existing_private_evidence_is_not_overwritten(self):
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory)/'codex-match-1.private.json'
+            target.write_text('existing evidence')
+            def never_start(scope):
+                raise AssertionError('Must not start Codex before checking existing artifacts.')
+            with self.assertRaisesRegex(ValueError, 'already exist'):
+                play(1, output_dir=Path(directory), harness_factory=never_start, progress=False)
+            self.assertEqual('existing evidence', target.read_text())
+
     def test_full_match_commits_and_audits_without_delivering_to_dead_players(self):
         with tempfile.TemporaryDirectory() as directory:
             report = play(1, output_dir=Path(directory), harness_factory=factory, progress=False)
