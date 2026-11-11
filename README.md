@@ -251,3 +251,8 @@ that the configurations have equal playing strength.
 New tool games use [strict streaming v13](docs/reliability-v13.md), with logged
 transport recovery and isolated error diagnostics. The next rated season has a
 new plan and configurations, keeping the failed first pilot unchanged.
+
+The [v14 native tool contract](docs/reliability-v14.md) addresses a provider
+strict-mode violation found in v2: fieldless tools require confirmation, and
+invalid native calls receive bounded, audited error feedback without host
+argument repair. The new v3 season starts with a serial, rated first-game gate.

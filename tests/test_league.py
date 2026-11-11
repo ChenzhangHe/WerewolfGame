@@ -22,6 +22,8 @@ def send(config, body, **kwargs):
     for key, schema in tools[name]['parameters']['properties'].items():
         if key == 'text':
             args[key] = 'Offline test statement.'
+        elif key == 'confirm':
+            args[key] = True
         elif 'enum' in schema:
             choices = [v for v in schema['enum'] if v is not None] or schema['enum']
             args[key] = choices[0]
@@ -48,7 +50,7 @@ class LeagueTests(unittest.TestCase):
         self.assertEqual(2, len(results))
         self.assertTrue(results[-1][1])
 
-    def test_v2_plan_pins_transport_and_changed_code_is_execution_only_block(self):
+    def test_current_plan_pins_transport_and_changed_code_is_execution_only_block(self):
         with tempfile.TemporaryDirectory() as directory:
             plan = create_plan(Path(directory)/'plan.private.json', 13000)
             verify_plan(plan, execution=True)
@@ -62,13 +64,24 @@ class LeagueTests(unittest.TestCase):
     def test_v2_full_mixed_game_uses_strict_protocol_and_replays(self):
         match = schedule(13000, version=2)[0]
         def mixed(scope):
-            return MixedHarness(scope, codex_factory=factory)
+            return MixedHarness(scope, codex_factory=factory, prompt_version='player-tools-v13')
         with tempfile.TemporaryDirectory() as directory, patch.object(p, '_send_http', side_effect=send):
             result = play(match['seed'], configs=configs_for(match), roles=match['roles'],
                 protocol='mixed-league-v2', harness_factory=mixed, audit_players=audit_players,
                 output_dir=Path(directory), artifact_stem='v2-test', progress=False)
             self.assertTrue(result['all_checks_passed'])
             self.assertEqual('mixed-league-v2', result['protocol'])
+
+    def test_v3_game_uses_native_validation_protocol_and_replays(self):
+        match = schedule(14000, version=3)[0]
+        def mixed(scope):
+            return MixedHarness(scope, codex_factory=factory)
+        with tempfile.TemporaryDirectory() as directory, patch.object(p, '_send_http', side_effect=send):
+            result = play(match['seed'], configs=configs_for(match), roles=match['roles'],
+                protocol='mixed-league-v3', harness_factory=mixed, audit_players=audit_players,
+                output_dir=Path(directory), artifact_stem='v3-test', progress=False)
+            self.assertTrue(result['all_checks_passed'])
+            self.assertEqual('mixed-league-v3', result['protocol'])
 
     def test_schedule_balances_every_role_and_varies_faction_composition(self):
         matches = schedule()

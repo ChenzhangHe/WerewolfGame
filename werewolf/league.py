@@ -13,15 +13,17 @@ DEEPSEEK = 'deepseek-flash-high-tools'
 ENTRIES = (SOL, DEEPSEEK)
 SOL_V2 = 'sol-high-codex-600s'
 DEEPSEEK_V13 = 'deepseek-flash-high-strict-v13'
-ENTRY_PAIRS = (ENTRIES, (SOL_V2, DEEPSEEK_V13))
+DEEPSEEK_V14 = 'deepseek-flash-high-native-v14'
+ENTRY_PAIRS = (ENTRIES, (SOL_V2, DEEPSEEK_V13), (SOL_V2, DEEPSEEK_V14))
 ROLES = ('wolf', 'villager', 'seer', 'witch', 'hunter', 'idiot')
 PROTOCOL = 'mixed-league-v1'
 PROTOCOL_V2 = 'mixed-league-v2'
+PROTOCOL_V3 = 'mixed-league-v3'
 
 
 def schedule(seed=12000, *, version=1):
     """Six fresh paired layouts; complementary assignments balance every role exactly."""
-    if version not in (1, 2):
+    if version not in (1, 2, 3):
         raise ValueError('Unknown schedule version.')
     sol, deepseek = ENTRY_PAIRS[version-1]
     rng = random.Random(seed)
@@ -75,7 +77,7 @@ def configs_for(match):
         args = dict(seat=seat, name=NAMES[seat-1], personality=PERSONALITIES[seat-1], language='zh')
         if entry in (SOL, SOL_V2):
             result.append(CodexPlayer(**args, model='gpt-6.1-sol', effort='high'))
-        elif entry in (DEEPSEEK, DEEPSEEK_V13):
+        elif entry in (DEEPSEEK, DEEPSEEK_V13, DEEPSEEK_V14):
             result.append(replace(deepseek_flash_config(**args), thinking='enabled',
                                   reasoning_effort='high', temperature=None, max_tokens=32768))
         else:

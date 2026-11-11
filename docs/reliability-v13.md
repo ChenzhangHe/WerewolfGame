@@ -69,3 +69,8 @@ The [new twelve-game preregistration](../artifacts/mixed-v2/preregistration.json
 pins the repaired season. The validation game and old partial games are excluded
 from its Elo fit. A successful validation game does not guarantee API availability
 throughout the subsequent season.
+
+A subsequent v2 attempt exposed a strict-mode empty-argument violation and
+transport failures; its circuit breaker halted scheduling.
+[The v14 follow-up](reliability-v14.md) adds explicit confirmation and native
+validation feedback rather than relying solely on provider strict decoding.

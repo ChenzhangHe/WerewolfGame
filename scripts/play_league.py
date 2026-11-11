@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from werewolf import providers as p
 from werewolf.codex_harness import CodexGameHarness, CodexPlayer, PROTOCOL as CODEX_PROTOCOL
 from werewolf.credentials import load_local_credentials
-from werewolf.league import PROTOCOL, PROTOCOL_V2, SOL, DEEPSEEK, SOL_V2, DEEPSEEK_V13, schedule, configs_for, scoreboard, validate_schedule, season_entries
+from werewolf.league import PROTOCOL, PROTOCOL_V2, PROTOCOL_V3, SOL, DEEPSEEK, SOL_V2, DEEPSEEK_V13, DEEPSEEK_V14, schedule, configs_for, scoreboard, validate_schedule, season_entries
 from scripts.audit_tools import audit_records, require
 from scripts.play_codex import play, save, audit_match
 from scripts.verify_codex import audit_trial
@@ -25,7 +25,7 @@ class DeepSeekSeat:
     transport = 'deepseek-native-tools-v12'
     generation_count = 0
 
-    def __init__(self, config, prompt_version='player-tools-v13'):
+    def __init__(self, config, prompt_version='player-tools-v14'):
         self.prompt_version = prompt_version
         self.transport = 'deepseek-native-tools-'+prompt_version.removeprefix('player-tools-')
         self.config = config
@@ -44,7 +44,7 @@ class DeepSeekSeat:
 
 
 class MixedHarness:
-    def __init__(self, game_id, codex_factory=CodexGameHarness, prompt_version='player-tools-v13'):
+    def __init__(self, game_id, codex_factory=CodexGameHarness, prompt_version='player-tools-v14'):
         self.codex = codex_factory(game_id)
         self.prompt_version = prompt_version
 
@@ -60,8 +60,8 @@ class MixedHarness:
 
 
 def audit_players(trial):
-    require(trial['protocol'] in (PROTOCOL, PROTOCOL_V2), 'Unknown mixed-game protocol.')
-    version = 'player-tools-v13' if trial['protocol'] == PROTOCOL_V2 else 'player-tools-v12'
+    require(trial['protocol'] in (PROTOCOL, PROTOCOL_V2, PROTOCOL_V3), 'Unknown mixed-game protocol.')
+    version = {PROTOCOL: 'player-tools-v12', PROTOCOL_V2: 'player-tools-v13', PROTOCOL_V3: 'player-tools-v14'}[trial['protocol']]
     transport = 'deepseek-native-tools-'+version.removeprefix('player-tools-')
     codex_players = [player for player in trial['players'] if player['transport'] == CODEX_PROTOCOL]
     deepseek_players = [player for player in trial['players'] if player['transport'] == transport]
@@ -89,7 +89,7 @@ def audit_players(trial):
 
 def source_fingerprint():
     root = Path(__file__).resolve().parents[1]
-    paths = ['werewolf/engine.py', 'werewolf/providers.py', 'werewolf/chat_stream.py', 'werewolf/strict_tools.py', 'werewolf/harness.py', 'werewolf/briefing_rules.py', 'werewolf/calculations.py',
+    paths = ['werewolf/engine.py', 'werewolf/providers.py', 'werewolf/chat_stream.py', 'werewolf/strict_tools.py', 'werewolf/native_transaction.py', 'werewolf/harness.py', 'werewolf/briefing_rules.py', 'werewolf/calculations.py',
              'werewolf/codex_harness.py', 'werewolf/league.py', 'scripts/play_codex.py',
              'scripts/play_league.py', 'scripts/audit_tools.py', 'scripts/verify_codex.py',
              'werewolf/server.py', 'docs/rules-v1.md']
@@ -103,30 +103,36 @@ def source_fingerprint():
 def create_plan(output, seed):
     if output.exists():
         raise ValueError('Plan already exists; refusing to overwrite the preregistration.')
-    matches = schedule(seed, version=2)
-    plan = {'protocol': PROTOCOL_V2, 'source_fingerprint': source_fingerprint(), 'matches': matches,
+    matches = schedule(seed, version=3)
+    plan = {'protocol': PROTOCOL_V3, 'source_fingerprint': source_fingerprint(), 'matches': matches,
             'configs': {m['id']: [asdict(c) for c in configs_for(m)] for m in matches},
             'scoring': 'team-outcome-v1', 'max_batches': 300, 'workers_per_game': 2, 'codex_turn_timeout_seconds': 600, 'halt_scheduling_on_error': True,
-            'deepseek_transport': {'stream': True, 'strict': True, 'attempts': 3, 'idle_seconds': 90, 'request_seconds': 900},
-            'failure_policy': 'Retain failed games; bounded logged transport retries only, no format repair, default, replacement or thread recreation.',
+            'deepseek_transport': {'stream': True, 'strict': True, 'attempts': 6, 'idle_seconds': 90, 'request_seconds': 900,
+                                   'explicit_confirm': True, 'validation_feedback_limit': 2, 'decision_seconds': 1200, 'allow_finish_eof': True},
+            'initial_gate_games': 1,
+            'failure_policy': 'Retain failed games; logged transport recovery and bounded native validation feedback, no argument rewriting, default action, replacement or thread recreation.',
             'schedule_policy': 'Six paired layouts, complementary entries; fresh games and threads from the opening.',
             'entries': {SOL_V2: 'gpt-6.1-sol high, ChatGPT subscription, persistent seat Codex thread',
-                        DEEPSEEK_V13: 'deepseek-flash high, strict v13 SSE tools, fresh decision context and own notes'}}
+                        DEEPSEEK_V14: 'deepseek-flash high, native v14 SSE tools, explicit confirmation and bounded tool rejection feedback'}}
     save(output, plan)
     return plan
 
 
 def verify_plan(plan, *, execution=False):
-    require(plan['protocol'] in (PROTOCOL, PROTOCOL_V2) and plan['scoring'] == 'team-outcome-v1', 'Unknown plan version.')
+    require(plan['protocol'] in (PROTOCOL, PROTOCOL_V2, PROTOCOL_V3) and plan['scoring'] == 'team-outcome-v1', 'Unknown plan version.')
     if execution:
-        require(plan['protocol'] == PROTOCOL_V2, 'Legacy experiments are audit-only; create a fresh v2 plan.')
+        require(plan['protocol'] == PROTOCOL_V3, 'Older experiments are audit-only; create a fresh v3 plan.')
         require(plan['source_fingerprint'] == source_fingerprint(), 'Code changed after preregistration; do not mix protocols.')
     validate_schedule(plan['matches'])
-    require(plan['max_batches'] == 300 and plan['workers_per_game'] == (2 if plan['protocol'] == PROTOCOL_V2 else 4), 'Frozen execution limits changed.')
-    require(season_entries(plan['matches']) == ((SOL_V2, DEEPSEEK_V13) if plan['protocol'] == PROTOCOL_V2 else (SOL, DEEPSEEK)), 'Configuration version mismatch.')
-    if plan['protocol'] == PROTOCOL_V2:
+    require(plan['max_batches'] == 300 and plan['workers_per_game'] == (4 if plan['protocol'] == PROTOCOL else 2), 'Frozen execution limits changed.')
+    require(season_entries(plan['matches']) == {PROTOCOL: (SOL, DEEPSEEK), PROTOCOL_V2: (SOL_V2, DEEPSEEK_V13), PROTOCOL_V3: (SOL_V2, DEEPSEEK_V14)}[plan['protocol']], 'Configuration version mismatch.')
+    if plan['protocol'] in (PROTOCOL_V2, PROTOCOL_V3):
         require(plan.get('halt_scheduling_on_error') is True, 'Failure circuit breaker disabled.')
-        require(plan['codex_turn_timeout_seconds'] == 600 and plan['deepseek_transport'] == {'stream': True, 'strict': True, 'attempts': 3, 'idle_seconds': 90, 'request_seconds': 900}, 'Transport policy changed.')
+        expected_transport = {'stream': True, 'strict': True, 'attempts': 3, 'idle_seconds': 90, 'request_seconds': 900}
+        if plan['protocol'] == PROTOCOL_V3:
+            expected_transport.update(attempts=6, explicit_confirm=True, validation_feedback_limit=2, decision_seconds=1200, allow_finish_eof=True)
+            require(plan['initial_gate_games'] == 1, 'Initial game gate changed.')
+        require(plan['codex_turn_timeout_seconds'] == 600 and plan['deepseek_transport'] == expected_transport, 'Transport policy changed.')
     for match in plan['matches']:
         require(plan['configs'][match['id']] == [asdict(c) for c in configs_for(match)], 'Frozen configurations changed.')
 
@@ -150,7 +156,7 @@ def run_one(match, plan, output_dir):
     try:
         play(match['seed'], configs=configs_for(match), roles=match['roles'], protocol=plan['protocol'],
              artifact_stem=stem, output_dir=output_dir, workers=plan['workers_per_game'],
-             max_batches=plan['max_batches'], harness_factory=partial(MixedHarness, prompt_version='player-tools-v13'), audit_players=audit_players)
+             max_batches=plan['max_batches'], harness_factory=partial(MixedHarness, prompt_version='player-tools-v14'), audit_players=audit_players)
         trial = json.loads((output_dir/f'{stem}.private.json').read_text())
         report = verify_trial(trial, match, plan)
         report.update(match_id=stem, pair=match['pair'], model='mixed', effort='high')
@@ -189,12 +195,14 @@ def scheduled_games(matches, runner, *, parallel_games=2):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--plan', type=Path, default=Path('artifacts/mixed-v2/plan.private.json'))
+    parser.add_argument('--plan', type=Path, default=Path('artifacts/mixed-v3/plan.private.json'))
     parser.add_argument('--create-plan', action='store_true')
-    parser.add_argument('--seed', type=int, default=13000)
+    parser.add_argument('--seed', type=int, default=14000)
     parser.add_argument('--run', action='store_true')
     parser.add_argument('--parallel-games', type=int, choices=(1, 2, 3), default=2)
     parser.add_argument('--audit', type=Path)
+    parser.add_argument('--max-new-games', type=int, choices=range(1, 13), default=12,
+                        help='Limit newly started games; use 1 for the preregistered first-game gate.')
     args = parser.parse_args()
     if args.create_plan:
         create_plan(args.plan, args.seed)
@@ -231,10 +239,13 @@ def main():
             reports.append({'match_id': match['id'], 'status': 'interrupted', 'all_checks_passed': False})
         else:
             remaining.append(match)
+    if not reports and args.max_new_games != 1:
+        parser.error('First run must use --max-new-games 1 for the preregistered gate; resume normally after it passes.')
+    remaining = remaining[:args.max_new_games]
     halted = False
     def aggregate():
         save(output_dir/'mixed-pilot-results.json', {'reports': sorted(reports, key=lambda r: r['match_id']),
-            'scheduler': {'halted_on_failure': halted,
+            'scheduler': {'halted_on_failure': halted, 'parallel_games': args.parallel_games, 'max_new_games': args.max_new_games,
                           'unfinished_games': [m['id'] for m in plan['matches'] if m['id'] not in {r['match_id'] for r in reports}]},
             'scoreboard': scoreboard(plan['matches'], reports)})
     aggregate()
@@ -243,7 +254,7 @@ def main():
         reports.append(report)
         aggregate()
         print(json.dumps({'game_result': report, 'scheduling_halted': halted}, ensure_ascii=False), flush=True)
-    if not all(r.get('all_checks_passed') for r in reports) or len(reports) != 12:
+    if not all(r.get('all_checks_passed') for r in reports) or (len(reports) != 12 and args.max_new_games == 12):
         raise SystemExit(1)
 
 
