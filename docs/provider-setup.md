@@ -194,7 +194,7 @@ OpenAI documentation was checked on 2026-11-08. Subscription integration details
 and provider capabilities should be verified again when implementing sign-in.
 
 
-DeepSeek thinking HTTP requests allow 300 seconds of socket waiting, compared
+The historical v12 DeepSeek thinking HTTP requests allow 300 seconds of socket waiting, compared
 with 90 seconds for fast mode. Native tool calls still have one transport
 attempt; a connection failure is recorded and pauses for an explicit retry.
 Safe diagnostics retain exception class, wait limit and attempt count, not raw
@@ -249,7 +249,7 @@ status are retained by this adapter. Ordinary assistant streaming text and
 reasoning events are discarded rather than published as speech or saved in its
 diagnostic trace. The host publishes only a validated `action_speak` or
 `action_discuss` payload. There are twelve utility calls per decision, bounded
-input/tool-output sizes, and a 300-second whole-turn deadline. App Server owns
+input/tool-output sizes, and a 600-second whole-turn deadline with sanitized upstream error/retry diagnostics. App Server owns
 its internal inference loop; this adapter does not count or constrain each
 underlying model request as the DeepSeek HTTP loop does.
 
@@ -422,3 +422,9 @@ remain local and ignored by Git. Across the three games, Codex reported
 output tokens including 22,189 reasoning tokens. Repeated long-thread context
 is counted on each internal request: these numbers do not demonstrate lower
 total token use, API dollar cost, or a direct cost comparison with DeepSeek.
+
+New DeepSeek tool games use strict streaming v13: a 90-second idle timeout,
+900-second per-hop wall budget checked between SSE frames, and up to three
+logged attempts for transient transport failures. Models and settings remain
+frozen; invalid model actions are not silently repaired. See
+[the v13 reliability notes](reliability-v13.md).

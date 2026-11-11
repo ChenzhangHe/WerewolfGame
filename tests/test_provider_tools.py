@@ -41,7 +41,7 @@ class ProviderToolsTests(unittest.TestCase):
         if version is not None:
             return p._build_tools_request(self.config, self.observation, self.decision,
                                           "PRIVATE_NOTES_ONLY_ON_READ", "en", version=version)
-        return p.build_request(self.config, self.observation, self.decision, "PRIVATE_NOTES_ONLY_ON_READ")
+        return p.build_request(self.config, self.observation, self.decision, "PRIVATE_NOTES_ONLY_ON_READ", tool_prompt_version="player-tools-v12")
 
     def infer(self, responses, assembled=None):
         encoded = [io.BytesIO(json.dumps(item).encode()) for item in responses]
@@ -99,7 +99,7 @@ class ProviderToolsTests(unittest.TestCase):
         original = self.assembled("player-tools-v4")
         stored = json.loads(json.dumps(original))
         body = p.wire_request(self.config, original)
-        self.assertEqual("player-tools-v12", p.TOOLS_PROMPT_VERSION)
+        self.assertEqual("player-tools-v13", p.TOOLS_PROMPT_VERSION)
         self.assertEqual("player-tools-v4", stored["prompt_version"])
         self.assertEqual(body, p.wire_request(self.config, stored))
         self.assertNotIn("win_conditions", json.loads(body["messages"][1]["content"]))

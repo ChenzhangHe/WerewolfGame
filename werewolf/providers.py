@@ -18,7 +18,7 @@ from urllib import error, request as http
 
 
 PROMPT_VERSION = "player-v3"
-TOOLS_PROMPT_VERSION = "player-tools-v12"
+TOOLS_PROMPT_VERSION = "player-tools-v13"
 MAX_TOOL_MODEL_REQUESTS = 6
 MAX_TOOL_READ_CALLS = 12
 MAX_TOOL_MESSAGE_CHARS = 5_000_000

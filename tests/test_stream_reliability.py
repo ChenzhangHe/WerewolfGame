@@ -63,7 +63,8 @@ class StreamReliabilityTests(unittest.TestCase):
             f=tool['function'];self.assertTrue(f['strict'])
             self.assertEqual(list(f['parameters']['properties']),f['parameters']['required'])
             self.assertFalse(f['parameters']['additionalProperties'])
-        v13=p.build_request(config,request['tool_context']['observation'],{'kind':'speech','options':[{'type':'speak'}]},tool_prompt_version='player-tools-v13')
+        v13=p.build_request(config,request['tool_context']['observation'],{'kind':'speech','options':[{'type':'speak'}]},)
+        self.assertEqual('player-tools-v13',v13['prompt_version'])
         wire=p.wire_request(config,v13)
         self.assertTrue(wire['stream'])
         text=next(t for t in wire['tools'] if t['function']['name']=='action_speak')['function']['parameters']['properties']['text']

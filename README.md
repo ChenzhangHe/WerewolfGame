@@ -247,3 +247,7 @@ The [first mixed pilot report](docs/mixed-pilot-results.md) records twelve
 attempts with zero completed games: timeouts and native-tool contract failures
 prevented valid Elo outcomes. Its 1500 ratings are prior values, not evidence
 that the configurations have equal playing strength.
+
+New tool games use [strict streaming v13](docs/reliability-v13.md), with logged
+transport recovery and isolated error diagnostics. The next rated season has a
+new plan and configurations, keeping the failed first pilot unchanged.

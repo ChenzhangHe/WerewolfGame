@@ -33,7 +33,7 @@ class ThinkingToolsTests(unittest.TestCase):
                        'phase': 'discussion', 'players': [{'seat': config.seat, 'alive': True}],
                        'history': [], 'wolf_teammates': [config.seat]}
         return p.build_request(config, observation, {'kind': 'explosion',
-                               'options': [{'type': 'pass'}, {'type': 'explode'}]}, f'own-notes-{config.seat}')
+                               'options': [{'type': 'pass'}, {'type': 'explode'}]}, f'own-notes-{config.seat}', tool_prompt_version='player-tools-v12')
 
     def test_setup_preserves_thinking_tools_and_larger_output_budget(self):
         configs = [self.config(i) for i in range(1, 13)]

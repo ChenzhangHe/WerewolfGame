@@ -4,8 +4,10 @@ New DeepSeek Flash presets use `interaction_mode: "tools"`. Select `"json"`
 explicitly for the original one-request adapter. The setting is frozen with each
 player's configuration. Existing archives without this field restore in JSON
 mode. The tool protocol version is also frozen per game and preserved on restore,
-including earlier tool manifests. Tool mode currently requires DeepSeek with thinking disabled; thinking
-experiments retain the JSON adapter.
+including earlier tool manifests. Current new games use `player-tools-v13`,
+with strict schemas and SSE in both thinking and non-thinking modes. See the
+[reliability changes](reliability-v13.md); older version sections below document
+the historical behavior of those archived games.
 
 ## Context and permissions
 
@@ -42,7 +44,9 @@ still validates exact types, fields, speech length, and the full legal action.
 Calling an action returns a proposal, not a mutation. The runner commits only
 a complete valid batch through the referee, as before.
 
-One terminal action must occur alone. Unknown tools, invalid arguments, multiple
+One terminal action may occur alone or accompany one private note write in v13.
+The host stages notes before validating the action, regardless of native array
+order, and commits only a complete valid referee batch. Unknown tools, invalid arguments, multiple
 actions, mixed read/action calls, malformed provider responses, and exhausted
 budgets pause the game and retain a diagnostic trace. Tool mode never invokes
 format repair, including when JSON-mode repair is enabled for the game. An
@@ -242,7 +246,7 @@ conflicts, and independence from other unrevealed assignments.
 
 ## V12 separate private note writes and guard public serialization
 
-New games use `player-tools-v12`. Terminal action schemas no longer contain a
+The historical `player-tools-v12` profile separated public speech from notes. Terminal action schemas no longer contain a
 notes parameter. `write_my_notes` stages an actor-only replacement in the current
 harness; the terminal action may occur in a later response or immediately after exactly one private note write in the same response; no reads or other actions may accompany that pair. Only on
 accepted batch commit does the runner persist the staged note. An unmodified
