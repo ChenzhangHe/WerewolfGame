@@ -86,3 +86,14 @@ New files live under `artifacts/mixed-v3`. Settings stay fixed throughout each
 game and season. Execution requires the frozen source fingerprint; historical
 plans remain available for offline auditing. A failed result stops new game
 launches while the host collects already-running evidence.
+
+## First rated gate result
+
+`pilot-14000-01` completed with a Good victory on day 3: **190 committed actions
+in 85 batches**, taking 46.2 minutes. Independent referee replay and both
+provider input/tool audits passed. Three rejected native transactions were
+corrected by the model within its decision context; two HTTP retries recovered.
+There were zero final failed decisions. This game is the first rated outcome
+of v3, and the remaining eleven continue with the identical frozen settings.
+
+[Audited gate summary](../artifacts/mixed-v3/pilot-14000-01.json).
