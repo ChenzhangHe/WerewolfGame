@@ -97,6 +97,7 @@ class ThinkingToolsTests(unittest.TestCase):
     def test_thinking_archive_audit_verifies_passback_continuity_and_redaction(self):
         with patch.object(p, 'check_credentials'):
             runner = Runner([self.config(i) for i in range(1, 13)])
+            runner._tool_prompt_version = "player-tools-v12"
         def send(config, body, **kwargs):
             if not any(m['role'] == 'assistant' for m in body['messages']):
                 return response('read_my_notes', {}, f'SECRET_SEAT_{config.seat}')

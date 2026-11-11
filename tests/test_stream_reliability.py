@@ -34,7 +34,11 @@ class StreamReliabilityTests(unittest.TestCase):
         self.assertEqual({'text':'你好'},json.loads(call['function']['arguments']))
         self.assertEqual(9,result['usage']['prompt_tokens'])
         self.assertNotIn('PRIVATE',json.dumps(result['_transport']))
-        with self.assertRaises(StreamError):read_chat_stream(stream(parts,False),1e30)
+        with self.assertRaises(StreamError) as error:read_chat_stream(stream(parts,False),1e30)
+        self.assertEqual('tool_calls',error.exception.state['finish_reason'])
+        eof=read_chat_stream(stream(parts,False),1e30,allow_finish_eof=True)
+        self.assertEqual('finish_reason_and_eof',eof['_transport']['completion_marker'])
+        with self.assertRaises(StreamError):read_chat_stream(stream(parts[:-1],False),1e30,allow_finish_eof=True)
         with self.assertRaises(TimeoutError):read_chat_stream(stream(parts),0)
 
     def test_transport_retries_are_logged_but_auth_is_not_retried(self):
@@ -64,7 +68,7 @@ class StreamReliabilityTests(unittest.TestCase):
             self.assertEqual(list(f['parameters']['properties']),f['parameters']['required'])
             self.assertFalse(f['parameters']['additionalProperties'])
         v13=p.build_request(config,request['tool_context']['observation'],{'kind':'speech','options':[{'type':'speak'}]},)
-        self.assertEqual('player-tools-v13',v13['prompt_version'])
+        self.assertEqual('player-tools-v14',v13['prompt_version'])
         wire=p.wire_request(config,v13)
         self.assertTrue(wire['stream'])
         text=next(t for t in wire['tools'] if t['function']['name']=='action_speak')['function']['parameters']['properties']['text']

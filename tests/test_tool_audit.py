@@ -29,8 +29,7 @@ class ToolAuditTests(unittest.TestCase):
         configs = [p.deepseek_flash_config(i, f'Player {i}') for i in range(1, 13)]
         with patch.object(p, 'check_credentials'):
             runner = Runner(configs)
-        if prompt_version is not None:
-            runner._tool_prompt_version = prompt_version
+        runner._tool_prompt_version = prompt_version or "player-tools-v13"
         failed_seat = runner.game.pending()[0]['seat']
 
         def send(config, body, **kwargs):

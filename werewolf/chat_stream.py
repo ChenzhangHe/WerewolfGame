@@ -5,16 +5,18 @@ from http.client import IncompleteRead
 from urllib import error
 
 MAX_BYTES = 16_000_000
-MAX_ATTEMPTS = 3
+MAX_ATTEMPTS = 6
 IDLE_SECONDS = 90
 REQUEST_SECONDS = 900
 
 
 class StreamError(ValueError):
-    pass
+    def __init__(self, code, *, state=None):
+        super().__init__(code)
+        self.state = state or {}
 
 
-def read_chat_stream(response, deadline, *, clock=time.monotonic):
+def read_chat_stream(response, deadline, *, clock=time.monotonic, allow_finish_eof=False):
     began = clock()
     size = chunks = 0
     first = None
@@ -22,6 +24,10 @@ def read_chat_stream(response, deadline, *, clock=time.monotonic):
     finish = None
     usage = {}
     content, reasoning, calls = [], [], {}
+    completion_marker = 'done'
+    def state():
+        return {'stream_bytes': size, 'chunks': chunks, 'tool_count': len(calls),
+                'finish_reason': finish if finish in ('tool_calls', 'stop', 'length', 'content_filter') else None}
     while True:
         if clock() >= deadline:
             raise TimeoutError('stream_deadline')
@@ -30,8 +36,13 @@ def read_chat_stream(response, deadline, *, clock=time.monotonic):
         if size > MAX_BYTES:
             raise StreamError('stream_size')
         if not line:
-            raise StreamError('stream_incomplete')
+            if allow_finish_eof and finish in ('tool_calls', 'stop'):
+                completion_marker = 'finish_reason_and_eof'
+                break
+            raise StreamError('stream_incomplete', state=state())
         if not line.startswith(b'data:'):
+            if line.strip() and not line.startswith(b':') and not line.startswith(b'event:'):
+                raise StreamError('unexpected_wire_format', state=state())
             continue  # SSE heartbeat/comment; never model text.
         payload = line[5:].strip()
         if payload == b'[DONE]':
@@ -90,11 +101,11 @@ def read_chat_stream(response, deadline, *, clock=time.monotonic):
     return {'model': model, 'usage': usage, 'choices': [{'finish_reason': finish, 'message': {
         'role': 'assistant', 'content': ''.join(content) or None, 'reasoning_content': ''.join(reasoning),
         'tool_calls': [calls[i] for i in sorted(calls)]}}],
-        '_transport': {'stream_bytes': size, 'chunks': chunks, 'first_chunk_seconds': round(first or 0., 3),
+        '_transport': {'completion_marker': completion_marker, 'stream_bytes': size, 'chunks': chunks, 'first_chunk_seconds': round(first or 0., 3),
                        'stream_seconds': round(max(0., clock()-began), 3)}}
 
 
-def send(config, body, *, attempts):
+def send(config, body, *, attempts, allow_finish_eof=False, decision_deadline=None):
     # Lazy import avoids provider/transport cycles and reuses testable HTTP seams.
     import os
     from . import providers as p
@@ -104,7 +115,7 @@ def send(config, body, *, attempts):
     if not 1 <= attempts <= MAX_ATTEMPTS:
         raise ValueError('Invalid transport retry budget.')
     began = time.monotonic()
-    deadline = began+REQUEST_SECONDS
+    deadline = min(began+REQUEST_SECONDS, decision_deadline or float("inf"))
     history = []
     for attempt in range(attempts):
         request = p.http.Request('https://api.deepseek.com/beta/chat/completions',
@@ -114,7 +125,7 @@ def send(config, body, *, attempts):
         retry_after = None
         try:
             with p.http.urlopen(request, timeout=min(IDLE_SECONDS, max(.1, deadline-started))) as response:
-                result = read_chat_stream(response, deadline)
+                result = read_chat_stream(response, deadline, allow_finish_eof=allow_finish_eof)
             history.append({'attempt': attempt+1, 'status': 'completed', 'seconds': round(time.monotonic()-started, 3)})
             result['_transport'].update(attempts=history, total_seconds=round(time.monotonic()-began, 3))
             return result
@@ -131,13 +142,14 @@ def send(config, body, *, attempts):
             reason = getattr(cause, 'reason', cause)
             info = {'attempt': attempt+1, 'status': 'transport_error', 'failure_type': type(reason).__name__}
             if isinstance(cause, StreamError):
+                info['stream_state'] = cause.state
                 info['stream_error'] = str(cause)  # Fixed internal code, never response content.
             retry = not isinstance(cause, StreamError) or str(cause) == 'stream_incomplete'
         info['seconds'] = round(time.monotonic()-started, 3)
         history.append(info)
         if not retry or attempt+1 == attempts or time.monotonic() >= deadline:
             break
-        delay = min(30., max(2.**attempt, retry_after or 0.))
+        delay = min(30., max(2.**(attempt+2), retry_after or 0.))
         time.sleep(min(delay, max(0., deadline-time.monotonic())))
     status = history[-1].get('http_status') if history else None
     category = ('authentication' if status == 401 else 'balance' if status == 402 else 'rate limit' if status == 429 else 'transport')

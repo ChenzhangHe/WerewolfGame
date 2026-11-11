@@ -86,7 +86,7 @@ def audit_records(configs, inference):
     initial, baseline, peak, cumulative = [], [], [], []
     reads = invalid_reads = actions = hops = failures = prompt_tokens = completion_tokens = max_hops = 0
     accepted = 0
-    http_attempts = http_retries = streamed_hops = 0
+    http_attempts = http_retries = streamed_hops = validation_rejections = 0
     reasoning_tokens = 0
     names = {}
     speech_boundary_findings = []
@@ -126,6 +126,7 @@ def audit_records(configs, inference):
         max_hops = max(max_hops, len(trace))
         terminal_count = 0
         record_reads = 0
+        rejected_transactions = 0
         expected_reasoning = []
         thinking = config.thinking == "enabled"
         for hop_index, hop in enumerate(trace):
@@ -135,10 +136,15 @@ def audit_records(configs, inference):
                 transport = record.get('validation_details', {}).get('transport')
             attempts = transport.get('attempts') if isinstance(transport, dict) else None
             if isinstance(attempts, list):
-                require(1 <= len(attempts) <= 3, 'Invalid HTTP attempt budget.')
+                require(1 <= len(attempts) <= (6 if request['prompt_version'] == 'player-tools-v14' else 3), 'Invalid HTTP attempt budget.')
                 for i, attempt in enumerate(attempts, 1):
-                    require(set(attempt) <= {'attempt', 'status', 'seconds', 'failure_type', 'http_status', 'stream_error'}
+                    require(set(attempt) <= {'attempt', 'status', 'seconds', 'failure_type', 'http_status', 'stream_error', 'stream_state'}
                             and attempt.get('attempt') == i, 'Unsafe HTTP attempt metadata.')
+                    if 'stream_state' in attempt:
+                        state = attempt['stream_state']
+                        require(set(state) <= {'stream_bytes', 'chunks', 'tool_count', 'finish_reason'}
+                                and all(type(state.get(k)) is int and state[k] >= 0 for k in ('stream_bytes', 'chunks', 'tool_count'))
+                                and state.get('finish_reason') in (None, 'tool_calls', 'stop', 'length', 'content_filter'), 'Unsafe stream failure diagnostics.')
                 http_attempts += len(attempts)
                 http_retries += len(attempts)-1
                 streamed_hops += 'stream_bytes' in transport
@@ -167,12 +173,12 @@ def audit_records(configs, inference):
             limits = p.tool_protocol_limits(request['prompt_version'])
             action_phase = limits['final_action_stage'] and (
                 hop_index == limits['model_requests'] - 1 or
-                (request['prompt_version'] in {'player-tools-v7', 'player-tools-v8', 'player-tools-v9', 'player-tools-v10', 'player-tools-v11', 'player-tools-v12', 'player-tools-v13'} and record_reads >= limits['read_calls']))
+                (request['prompt_version'] in {'player-tools-v7', 'player-tools-v8', 'player-tools-v9', 'player-tools-v10', 'player-tools-v11', 'player-tools-v12', 'player-tools-v13', 'player-tools-v14'} and record_reads >= limits['read_calls']))
             if action_phase:
                 # Verify the versioned action-only stage and host transition notice.
                 expected_body['tools'] = [tool for tool in expected_body['tools']
                                           if tool['function']['name'].startswith('action_')]
-                if request['prompt_version'] in {'player-tools-v7', 'player-tools-v8', 'player-tools-v9', 'player-tools-v10', 'player-tools-v11', 'player-tools-v12', 'player-tools-v13'}:
+                if request['prompt_version'] in {'player-tools-v7', 'player-tools-v8', 'player-tools-v9', 'player-tools-v10', 'player-tools-v11', 'player-tools-v12', 'player-tools-v13', 'player-tools-v14'}:
                     tool_names = ", ".join(tool['function']['name'] for tool in expected_body['tools'])
                     expected_body['messages'][0]['content'] += (
                         "\nACTION PHASE: Reading is now closed for this decision. "
@@ -199,6 +205,39 @@ def audit_records(configs, inference):
                     require(failed_hop, 'Successful thinking response lacks state metadata.')
             calls = assistant.get('tool_calls', [])
             require(isinstance(calls, list))
+            if request['prompt_version'] == 'player-tools-v14':
+                from werewolf.native_transaction import execute, MAX_FEEDBACK
+                transaction = execute(h, calls, body['tools'], remaining_utilities=max(0, limits['read_calls']-record_reads))
+                require(results == transaction.results, 'Native transaction results differ from its authorized capability.')
+                require(hop.get('execution_order') == transaction.execution_order, 'Native transaction execution order differs.')
+                record_reads = min(limits['read_calls'], record_reads+transaction.utilities)
+                if transaction.rejection:
+                    rejected_transactions += 1
+                    validation_rejections += 1
+                    require(hop.get('validation_feedback') == {'attempt': rejected_transactions, **transaction.rejection}, 'Invalid native rejection feedback.')
+                    exhausted = rejected_transactions > MAX_FEEDBACK or hop_index == limits['model_requests']-1
+                    require(bool(failed_hop) == exhausted, 'Validation budget and failure state disagree.')
+                    if exhausted:
+                        require(record.get('validation_details', {}).get('category') == 'tool_validation_budget', 'Wrong validation failure category.')
+                else:
+                    require('validation_feedback' not in hop, 'Successful transaction has fabricated rejection feedback.')
+                    h = transaction.harness
+                    for item in results:
+                        names[item['name']] = names.get(item['name'], 0)+1
+                    reads += transaction.utilities
+                    if transaction.action is not None:
+                        require(hop_index == len(trace)-1 and not failed_hop and not record.get('error'), 'Terminal action did not end a successful decision.')
+                        require(transaction.action == record['response'], 'Accepted action differs from the native transaction.')
+                        terminal_count += 1
+                        actions += 1
+                if transaction.action is None and not failed_hop:
+                    if thinking:
+                        require_reasoning_metadata(hop.get('assistant_reasoning'))
+                        expected_reasoning.append({'message_index': len(expected_messages), **hop['assistant_reasoning']})
+                    expected_messages.append(deepcopy(assistant))
+                    for call, result in zip(calls, results):
+                        expected_messages.append({'role': 'tool', 'tool_call_id': call['id'], 'content': json.dumps(result['result'], ensure_ascii=False)})
+                continue
             strict_pair = (request['prompt_version'] == 'player-tools-v13' and len(calls) == 2
                            and sum(c['function']['name'] == 'write_my_notes' for c in calls) == 1
                            and sum(h.is_action(c['function']['name']) for c in calls) == 1)
@@ -235,7 +274,7 @@ def audit_records(configs, inference):
                 require(reconstructed == result['result'], 'Tool result differs from its authorized seat-local data.')
                 names[name] = names.get(name, 0) + 1
                 if h.is_action(name):
-                    paired_note = (request['prompt_version'] in {'player-tools-v12', 'player-tools-v13'} and len(calls) == len(results) == 2
+                    paired_note = (request['prompt_version'] in {'player-tools-v12', 'player-tools-v13', 'player-tools-v14'} and len(calls) == len(results) == 2
                                    and calls[0]['function']['name'] == 'write_my_notes' and result_index == 1)
                     require((len(calls) == len(results) == 1 or paired_note) and hop_index == len(trace)-1
                             and not failed_hop and not record.get('error'),
@@ -266,7 +305,7 @@ def audit_records(configs, inference):
         raise ValueError('No tool decisions found.')
     return {'decisions': len(initial), 'accepted': accepted,
             'failed_attempts': failures, 'model_requests': hops, 'http_attempts': http_attempts,
-            'http_retries': http_retries, 'streamed_hops': streamed_hops, 'read_calls': reads - names.get('write_my_notes', 0),
+            'http_retries': http_retries, 'streamed_hops': streamed_hops, 'validation_rejections': validation_rejections, 'read_calls': reads - names.get('write_my_notes', 0),
             'utility_calls': reads, 'private_note_writes': names.get('write_my_notes', 0),
             'speech_boundary_failures': len(speech_boundary_findings),
             'speech_boundary_findings': speech_boundary_findings, 'invalid_read_calls': invalid_reads,

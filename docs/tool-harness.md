@@ -4,9 +4,9 @@ New DeepSeek Flash presets use `interaction_mode: "tools"`. Select `"json"`
 explicitly for the original one-request adapter. The setting is frozen with each
 player's configuration. Existing archives without this field restore in JSON
 mode. The tool protocol version is also frozen per game and preserved on restore,
-including earlier tool manifests. Current new games use `player-tools-v13`,
+including earlier tool manifests. Current new games use `player-tools-v14`,
 with strict schemas and SSE in both thinking and non-thinking modes. See the
-[reliability changes](reliability-v13.md); older version sections below document
+[native rejection-feedback changes](reliability-v14.md); older version sections below document
 the historical behavior of those archived games.
 
 ## Context and permissions
@@ -44,7 +44,7 @@ still validates exact types, fields, speech length, and the full legal action.
 Calling an action returns a proposal, not a mutation. The runner commits only
 a complete valid batch through the referee, as before.
 
-One terminal action may occur alone or accompany one private note write in v13.
+One terminal action may occur alone or accompany one private note write in v14.
 The host stages notes before validating the action, regardless of native array
 order, and commits only a complete valid referee batch. Unknown tools, invalid arguments, multiple
 actions, mixed read/action calls, malformed provider responses, and exhausted

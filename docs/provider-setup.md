@@ -428,3 +428,8 @@ New DeepSeek tool games use strict streaming v13: a 90-second idle timeout,
 logged attempts for transient transport failures. Models and settings remain
 frozen; invalid model actions are not silently repaired. See
 [the v13 reliability notes](reliability-v13.md).
+
+The current v14 default adds required confirmation for fieldless tools and
+bounded native error feedback with transactional note rollback. It allows up
+to six transport attempts and a 1200-second whole-decision budget. See
+[the v14 contract and budgets](reliability-v14.md).
