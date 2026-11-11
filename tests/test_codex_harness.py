@@ -101,6 +101,28 @@ class CodexHarnessTests(unittest.TestCase):
     def player(self, seat=1):
         return CodexPlayer(seat, f'Player {seat}', language='en')
 
+    def test_upstream_error_notifications_preserve_codes_without_private_text(self):
+        game = self.game()
+        player = game.bind(self.player())
+        thread = player.thread_id
+        retry = {'method': 'error', 'params': {'threadId': thread, 'turnId': 'turn-1',
+                 'willRetry': True, 'error': {'message': 'SECRET_PROMPT',
+                 'codexErrorInfo': {'httpConnectionFailed': {'httpStatusCode': 503}}}}}
+        game.rpc.plans[thread] = [[retry, ('action_pass', {})]]
+        result = player.decide(observation(), PASS)
+        self.assertEqual([{'code': 'httpConnectionFailed', 'http_status': 503, 'will_retry': True}],
+                         result.tool_trace[0]['provider_errors'])
+        self.assertNotIn('SECRET_PROMPT', encoded(result.tool_trace))
+        fatal = deepcopy(retry)
+        fatal['params'].update(turnId='turn-2', willRetry=False,
+                               error={'message': 'SECRET_AUTH', 'codexErrorInfo': 'usageLimitExceeded'})
+        game.rpc.plans[thread] = [[fatal]]
+        with self.assertRaises(ProviderError) as error:
+            player.decide(observation(), PASS)
+        self.assertEqual('codex_upstream_error', error.exception.validation_details['category'])
+        self.assertEqual('usageLimitExceeded', error.exception.validation_details['provider']['code'])
+        self.assertNotIn('SECRET_AUTH', encoded(error.exception.tool_trace))
+
     def test_fixed_thread_for_multiple_turns_and_new_game_has_new_scope(self):
         game = self.game()
         config = self.player()

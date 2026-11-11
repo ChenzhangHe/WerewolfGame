@@ -59,6 +59,16 @@ class CodexValidationTests(unittest.TestCase):
             with self.assertRaises(AssertionError):
                 audit_trial(trial)
 
+    def test_failed_turn_inputs_are_still_audited(self):
+        trial = self.trial()
+        record = trial['players'][0]['decisions'][-1]
+        record.update(error='Simulated timeout', category='codex_turn_timeout')
+        record['tool_trace'][0]['error'] = 'Simulated timeout'
+        self.assertFalse(audit_trial(trial)['all_checks_passed'])
+        record['tool_trace'][0]['input']['briefing']['role'] = 'wolf'
+        with self.assertRaisesRegex(AssertionError, 'Actual turn input'):
+            audit_trial(trial)
+
     def test_synthetic_source_covers_twelve_seats_and_all_six_roles(self):
         source = synthetic_source(3, range(1, 13))
         contexts = [r['request']['tool_context'] for r in source['inference']]

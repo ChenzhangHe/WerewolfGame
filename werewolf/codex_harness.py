@@ -59,6 +59,29 @@ def failure(message, category, **details):
     return error
 
 
+_ERROR_CODES = frozenset(('contextWindowExceeded', 'sessionBudgetExceeded', 'usageLimitExceeded',
+    'rateLimitExceeded', 'flexUnavailable', 'serverOverloaded', 'modelNotFound',
+    'policyCapacityUnavailable', 'cyberPolicy', 'misalignmentPolicyViolation', 'tooManyDenials',
+    'internalServerError', 'unauthorized', 'badRequest', 'threadRollbackFailed', 'sandboxError', 'other'))
+_HTTP_ERRORS = frozenset(('httpConnectionFailed', 'responseStreamConnectionFailed',
+                          'responseStreamDisconnected', 'responseTooManyFailedAttempts'))
+
+
+def safe_error(error):
+    """Retain protocol codes/status only; upstream messages may echo private input."""
+    info = error.get('codexErrorInfo') if isinstance(error, dict) else None
+    result = {'code': info if isinstance(info, str) and info in _ERROR_CODES else 'other'}
+    if isinstance(info, dict):
+        for key in _HTTP_ERRORS:
+            if key in info:
+                result['code'] = key
+                status = info[key].get('httpStatusCode') if isinstance(info[key], dict) else None
+                if type(status) is int and 100 <= status <= 599:
+                    result['http_status'] = status
+                break
+    return result
+
+
 @dataclass(frozen=True)
 class CodexPlayer:
     seat: int
@@ -163,12 +186,17 @@ class CodexRPC:
                         if method == 'turn/started':
                             self.generation_starts[params.get('threadId')] += 1
                         target = self._seats.get(params.get('threadId'))
-                        keep = ('id' in value or method in ('turn/completed', 'thread/tokenUsage/updated', 'model/rerouted')
+                        keep = ('id' in value or method in ('turn/completed', 'thread/tokenUsage/updated', 'model/rerouted', 'error')
                                 or (method == 'item/started' and params.get('item', {}).get('type') in
                                     ('commandExecution', 'fileChange', 'mcpToolCall', 'contextCompaction')))
                         if not keep:
                             target = None
                     if target is not None:
+                        if method == 'error':
+                            value = {'method': method, 'params': {
+                                'threadId': params.get('threadId'), 'turnId': params.get('turnId'),
+                                'willRetry': params.get('willRetry') is True,
+                                'error': safe_error(params.get('error'))}}
                         target.put_nowait(value)
         except (ValueError, OSError, TypeError, AttributeError, queue.Full):
             pass
@@ -360,7 +388,7 @@ class SeatThread:
                  'turn_index': self.turns, 'history_count': len(self._history), 'history_digest': digest(self._history),
                  'delivery_count': len(self.deliveries),
                  'deliveries': deepcopy(delivered), 'input': deepcopy(prompt), 'calls': [], 'usage': {},
-                 'compactions': 0, 'model': self.config.model, 'effort': self.config.effort}
+                 'compactions': 0, 'provider_errors': [], 'model': self.config.model, 'effort': self.config.effort}
         offered = {t['function']['name'] for t in catalog}
         terminal = None
         calls_seen = set()
@@ -376,11 +404,11 @@ class SeatThread:
             while True:
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
-                    raise failure('Codex player timed out; no action was substituted.', 'codex_turn_timeout')
+                    raise failure('Codex player timed out; no action was substituted.', 'codex_turn_timeout', provider_errors=deepcopy(entry['provider_errors']))
                 try:
                     value = self._events.get(timeout=remaining)
                 except queue.Empty:
-                    raise failure('Codex player timed out; no action was substituted.', 'codex_turn_timeout') from None
+                    raise failure('Codex player timed out; no action was substituted.', 'codex_turn_timeout', provider_errors=deepcopy(entry['provider_errors'])) from None
                 if value is None:
                     raise failure('Codex Harness disconnected during a decision.', 'codex_disconnected')
                 method, params = value.get('method'), value.get('params', {})
@@ -422,6 +450,18 @@ class SeatThread:
                 elif 'id' in value:
                     # Approval, external tools, and user input are never a route around game tools.
                     raise failure('Codex requested a capability outside the game.', 'codex_external_request')
+                elif method == 'error':
+                    # _pump has stripped free text; FakeRPC test transports are sanitized too.
+                    error = params.get('error', {})
+                    detail = ({k: error[k] for k in ('code', 'http_status') if k in error}
+                              if error.get('code') in _ERROR_CODES | _HTTP_ERRORS else safe_error(error))
+                    detail['will_retry'] = params.get('willRetry') is True
+                    entry['provider_errors'].append(detail)
+                    if len(entry['provider_errors']) > 32:
+                        raise failure('Codex exceeded its upstream retry budget.', 'codex_retry_budget')
+                    if not detail['will_retry']:
+                        raise failure('Codex upstream request failed ('+detail['code']+').',
+                                      'codex_upstream_error', provider=detail)
                 elif method == 'model/rerouted':
                     raise failure('Codex model was rerouted; pausing rather than silently comparing another model.', 'codex_model_rerouted')
                 elif method == 'thread/tokenUsage/updated':
@@ -438,7 +478,8 @@ class SeatThread:
                         raise failure('Codex attempted a non-game capability.', 'codex_external_tool')
                 elif method == 'turn/completed':
                     if params.get('turn', {}).get('id') != turn_id or params['turn'].get('status') != 'completed':
-                        raise failure('Codex turn did not complete successfully.', 'codex_turn_failed')
+                        raise failure('Codex turn did not complete successfully.', 'codex_turn_failed',
+                                      provider=safe_error(params.get('turn', {}).get('error')))
                     if terminal is None:
                         raise failure('Codex did not submit a native game action.', 'codex_missing_action')
                     self.turns += 1
@@ -467,7 +508,7 @@ class CodexGameHarness:
     deliberately unavailable: a failed/disconnected session cannot silently reset.
     """
 
-    def __init__(self, game_id, *, turn_timeout=300, rpc_factory=CodexRPC):
+    def __init__(self, game_id, *, turn_timeout=600, rpc_factory=CodexRPC):
         if not isinstance(game_id, str) or not game_id or not 0 < turn_timeout <= 600:
             raise ValueError('Invalid game scope or turn timeout.')
         self.game_id, self.turn_timeout = game_id, turn_timeout

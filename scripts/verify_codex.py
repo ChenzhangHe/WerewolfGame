@@ -95,9 +95,9 @@ def audit_trial(trial):
             prefixes.append(prefixes[-1] + bundle['events'])
         event_count += len(prefixes[-1])
         for index, record in enumerate(player['decisions']):
-            if 'error' in record:
+            failed = 'error' in record
+            if failed:
                 errors.append({'seat': config.seat, 'batch': record['source_batch'], 'category': record.get('category')})
-                continue
             require(record['seat'] == config.seat and record['observation']['seat'] == config.seat,
                     'A record belongs to another seat.')
             require(len(record['tool_trace']) == 1, 'Unexpected Codex trace shape.')
@@ -120,11 +120,19 @@ def audit_trial(trial):
             require(entry['model'] == config.model and entry['effort'] == config.effort,
                     'Fixed model configuration changed.')
             require(set(entry) <= {'transport', 'binding', 'seat', 'turn_index', 'history_count', 'history_digest',
-                                   'delivery_count', 'deliveries', 'input', 'calls', 'usage', 'compactions', 'model', 'effort'},
+                                   'delivery_count', 'deliveries', 'input', 'calls', 'usage', 'compactions', 'model', 'effort', 'provider_errors'} | ({'error'} if failed else set()),
                     'Unexpected fields in successful Codex trace.')
+            from werewolf.codex_harness import _ERROR_CODES, _HTTP_ERRORS
+            for diagnostic in entry.get('provider_errors', []):
+                require(set(diagnostic) <= {'code', 'http_status', 'will_retry'} and diagnostic.get('code') in _ERROR_CODES | _HTTP_ERRORS
+                        and type(diagnostic.get('will_retry')) is bool, 'Unsafe provider diagnostic.')
+                require('http_status' not in diagnostic or type(diagnostic['http_status']) is int and 100 <= diagnostic['http_status'] <= 599, 'Invalid provider status.')
             terminal = None
             utilities = 0
-            for call in entry['calls']:
+            for call_index, call in enumerate(entry['calls']):
+                if failed and 'result' not in call:
+                    require(call_index == len(entry['calls'])-1, 'Unexecuted tool is not the final failed call.')
+                    break
                 require(terminal is None, 'Another call followed a terminal action.')
                 expected = harness.call(call['name'], call['arguments'])
                 require(call['result'] == expected, 'Tool returned data outside its seat snapshot.')
@@ -133,16 +141,18 @@ def audit_trial(trial):
                     terminal = expected
                 else:
                     utilities += 1
-            require(utilities <= MAX_UTILITIES and terminal == record['action'], 'Missing or mismatched terminal action.')
-            validate_action(terminal, record['decision'])
+            require(utilities <= MAX_UTILITIES, 'Utility budget exceeded.')
+            if not failed:
+                require(terminal == record['action'], 'Missing or mismatched terminal action.')
+                validate_action(terminal, record['decision'])
             require(record['notes_before'] == ('' if index == 0 else
                     player['decisions'][index-1]['action'].get('notes', player['decisions'][index-1]['notes_before'])),
                     'Private notes did not come from this same player.')
             for key, value in entry['usage'].items():
                 require(type(value) is int and value >= 0, 'Non-numeric usage or reasoning content in metadata.')
                 usage[key] = usage.get(key, 0) + value
-            accepted += 1
-            if 'elapsed_seconds' in record:
+            accepted += not failed
+            if not failed and 'elapsed_seconds' in record:
                 elapsed.append(record['elapsed_seconds'])
         reused += len(player['decisions']) >= 2 and not any('error' in r for r in player['decisions'])
     return {'protocol': PROTOCOL, 'test_kind': trial.get('test_kind', 'recorded-seat-snapshots-not-a-new-game'),
