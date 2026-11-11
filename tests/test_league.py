@@ -10,7 +10,7 @@ from unittest.mock import patch
 from werewolf import providers as p
 from werewolf.league import schedule, configs_for, scoreboard, SOL, DEEPSEEK
 from scripts.play_codex import play, audit_match
-from scripts.play_league import MixedHarness, audit_players, create_plan, verify_plan
+from scripts.play_league import MixedHarness, audit_players, create_plan, verify_plan, scheduled_games
 from test_codex_matches import factory
 from test_thinking_tools import response
 
@@ -29,6 +29,25 @@ def send(config, body, **kwargs):
 
 
 class LeagueTests(unittest.TestCase):
+    def test_season_stops_new_games_after_failure_but_collects_inflight_result(self):
+        import threading
+        release_inflight = threading.Event()
+        calls = []
+        def run(match):
+            calls.append(match)
+            if match == 0:
+                return {'match_id': '0', 'all_checks_passed': False}
+            release_inflight.wait(timeout=1)
+            return {'match_id': str(match), 'all_checks_passed': True}
+        scheduled = scheduled_games(list(range(12)), run, parallel_games=2)
+        first = next(scheduled)
+        self.assertTrue(first[1])
+        release_inflight.set()
+        results = [first]+list(scheduled)
+        self.assertEqual({0, 1}, set(calls))
+        self.assertEqual(2, len(results))
+        self.assertTrue(results[-1][1])
+
     def test_v2_plan_pins_transport_and_changed_code_is_execution_only_block(self):
         with tempfile.TemporaryDirectory() as directory:
             plan = create_plan(Path(directory)/'plan.private.json', 13000)

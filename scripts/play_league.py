@@ -1,5 +1,5 @@
 """Run the frozen twelve-game mixed-provider pilot, retaining every paid attempt."""
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 from copy import deepcopy
 from dataclasses import asdict
 import argparse
@@ -106,7 +106,7 @@ def create_plan(output, seed):
     matches = schedule(seed, version=2)
     plan = {'protocol': PROTOCOL_V2, 'source_fingerprint': source_fingerprint(), 'matches': matches,
             'configs': {m['id']: [asdict(c) for c in configs_for(m)] for m in matches},
-            'scoring': 'team-outcome-v1', 'max_batches': 300, 'workers_per_game': 2, 'codex_turn_timeout_seconds': 600,
+            'scoring': 'team-outcome-v1', 'max_batches': 300, 'workers_per_game': 2, 'codex_turn_timeout_seconds': 600, 'halt_scheduling_on_error': True,
             'deepseek_transport': {'stream': True, 'strict': True, 'attempts': 3, 'idle_seconds': 90, 'request_seconds': 900},
             'failure_policy': 'Retain failed games; bounded logged transport retries only, no format repair, default, replacement or thread recreation.',
             'schedule_policy': 'Six paired layouts, complementary entries; fresh games and threads from the opening.',
@@ -125,6 +125,7 @@ def verify_plan(plan, *, execution=False):
     require(plan['max_batches'] == 300 and plan['workers_per_game'] == (2 if plan['protocol'] == PROTOCOL_V2 else 4), 'Frozen execution limits changed.')
     require(season_entries(plan['matches']) == ((SOL_V2, DEEPSEEK_V13) if plan['protocol'] == PROTOCOL_V2 else (SOL, DEEPSEEK)), 'Configuration version mismatch.')
     if plan['protocol'] == PROTOCOL_V2:
+        require(plan.get('halt_scheduling_on_error') is True, 'Failure circuit breaker disabled.')
         require(plan['codex_turn_timeout_seconds'] == 600 and plan['deepseek_transport'] == {'stream': True, 'strict': True, 'attempts': 3, 'idle_seconds': 90, 'request_seconds': 900}, 'Transport policy changed.')
     for match in plan['matches']:
         require(plan['configs'][match['id']] == [asdict(c) for c in configs_for(match)], 'Frozen configurations changed.')
@@ -159,6 +160,31 @@ def run_one(match, plan, output_dir):
                   'all_checks_passed': False, 'category': getattr(error, 'validation_details', {}).get('category', type(error).__name__)}
     save(output_dir/f'{stem}.json', report)
     return report
+
+
+def scheduled_games(matches, runner, *, parallel_games=2):
+    """Do not launch another game after a failure; collect all in-flight evidence."""
+    pending = iter(matches)
+    halted = False
+    with ThreadPoolExecutor(max_workers=parallel_games) as pool:
+        active = {}
+        def fill():
+            while not halted and len(active) < parallel_games:
+                match = next(pending, None)
+                if match is None:
+                    break
+                active[pool.submit(runner, match)] = match
+        fill()
+        while active:
+            completed, _ = wait(active, return_when=FIRST_COMPLETED)
+            results = []
+            for future in completed:
+                active.pop(future)
+                results.append(future.result())
+            halted = halted or any(not r.get('all_checks_passed') for r in results)
+            for result in sorted(results, key=lambda r: r['match_id']):
+                yield result, halted
+            fill()
 
 
 def main():
@@ -205,17 +231,18 @@ def main():
             reports.append({'match_id': match['id'], 'status': 'interrupted', 'all_checks_passed': False})
         else:
             remaining.append(match)
+    halted = False
     def aggregate():
         save(output_dir/'mixed-pilot-results.json', {'reports': sorted(reports, key=lambda r: r['match_id']),
-                                                   'scoreboard': scoreboard(plan['matches'], reports)})
+            'scheduler': {'halted_on_failure': halted,
+                          'unfinished_games': [m['id'] for m in plan['matches'] if m['id'] not in {r['match_id'] for r in reports}]},
+            'scoreboard': scoreboard(plan['matches'], reports)})
     aggregate()
-    with ThreadPoolExecutor(max_workers=args.parallel_games) as pool:
-        futures = {pool.submit(run_one, match, plan, output_dir): match for match in remaining}
-        for future in as_completed(futures):
-            report = future.result()
-            reports.append(report)
-            aggregate()
-            print(json.dumps({'game_result': report}, ensure_ascii=False), flush=True)
+    for report, halted in scheduled_games(remaining, partial(run_one, plan=plan, output_dir=output_dir),
+                                          parallel_games=args.parallel_games):
+        reports.append(report)
+        aggregate()
+        print(json.dumps({'game_result': report, 'scheduling_halted': halted}, ensure_ascii=False), flush=True)
     if not all(r.get('all_checks_passed') for r in reports) or len(reports) != 12:
         raise SystemExit(1)
 

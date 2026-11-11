@@ -53,7 +53,9 @@ tool prefixes now receive the same seat-scope auditing as successful turns.
 Waiting-state files update while the host awaits a batch. Already returned paid
 responses are checkpointed before other responses finish. Atomic batch commit
 and own-note ownership remain unchanged. New seasons use two decision workers
-per game, with two games by default, reducing request bursts. Offline auditing
+per game, with two games by default, reducing request bursts. The season stops launching new
+games at the first failed result while collecting all already-running games.
+Unattempted games remain visible and are not counted as failures or replacements. Offline auditing
 of historical plans remains available after code changes; executing a plan
 still requires the exact preregistered source fingerprint and current protocol.
 
