@@ -152,12 +152,12 @@ def audit_records(configs, inference):
             limits = p.tool_protocol_limits(request['prompt_version'])
             action_phase = limits['final_action_stage'] and (
                 hop_index == limits['model_requests'] - 1 or
-                (request['prompt_version'] in {'player-tools-v7', 'player-tools-v8', 'player-tools-v9', 'player-tools-v10', 'player-tools-v11', 'player-tools-v12'} and record_reads >= limits['read_calls']))
+                (request['prompt_version'] in {'player-tools-v7', 'player-tools-v8', 'player-tools-v9', 'player-tools-v10', 'player-tools-v11', 'player-tools-v12', 'player-tools-v13'} and record_reads >= limits['read_calls']))
             if action_phase:
                 # Verify the versioned action-only stage and host transition notice.
                 expected_body['tools'] = [tool for tool in expected_body['tools']
                                           if tool['function']['name'].startswith('action_')]
-                if request['prompt_version'] in {'player-tools-v7', 'player-tools-v8', 'player-tools-v9', 'player-tools-v10', 'player-tools-v11', 'player-tools-v12'}:
+                if request['prompt_version'] in {'player-tools-v7', 'player-tools-v8', 'player-tools-v9', 'player-tools-v10', 'player-tools-v11', 'player-tools-v12', 'player-tools-v13'}:
                     tool_names = ", ".join(tool['function']['name'] for tool in expected_body['tools'])
                     expected_body['messages'][0]['content'] += (
                         "\nACTION PHASE: Reading is now closed for this decision. "
@@ -184,6 +184,12 @@ def audit_records(configs, inference):
                     require(failed_hop, 'Successful thinking response lacks state metadata.')
             calls = assistant.get('tool_calls', [])
             require(isinstance(calls, list))
+            strict_pair = (request['prompt_version'] == 'player-tools-v13' and len(calls) == 2
+                           and sum(c['function']['name'] == 'write_my_notes' for c in calls) == 1
+                           and sum(h.is_action(c['function']['name']) for c in calls) == 1)
+            if strict_pair:
+                calls = sorted(calls, key=lambda c: c['function']['name'] != 'write_my_notes')
+                require(hop.get('execution_order') == [c['function']['name'] for c in calls], 'Parallel transaction order differs.')
             # A failed read may stop after a prefix; successful responses cannot
             # omit, reorder, invent, or relabel any native tool execution.
             require(len(results) <= len(calls))
@@ -214,7 +220,7 @@ def audit_records(configs, inference):
                 require(reconstructed == result['result'], 'Tool result differs from its authorized seat-local data.')
                 names[name] = names.get(name, 0) + 1
                 if h.is_action(name):
-                    paired_note = (request['prompt_version'] == 'player-tools-v12' and len(calls) == len(results) == 2
+                    paired_note = (request['prompt_version'] in {'player-tools-v12', 'player-tools-v13'} and len(calls) == len(results) == 2
                                    and calls[0]['function']['name'] == 'write_my_notes' and result_index == 1)
                     require((len(calls) == len(results) == 1 or paired_note) and hop_index == len(trace)-1
                             and not failed_hop and not record.get('error'),
