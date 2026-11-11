@@ -92,6 +92,6 @@ version and a new preregistration rather than modifying this season's records.
 
 Raw seat inputs, native traces and exact assignments remain in ignored local
 `*.private.json` files. Independent audit can be rerun with
-`python scripts/play_league.py --audit artifacts/pilot-12000-01.private.json`.
+`python scripts/play_league.py --plan artifacts/mixed-pilot-12000.private.json --audit artifacts/pilot-12000-01.private.json`.
 The application test suite passes 217 tests, including rating recovery,
 faction-bias separation, failure exclusion and mixed-provider isolation tests.

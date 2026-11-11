@@ -76,6 +76,8 @@ def audit_trial(trial):
     accepted = 0
     reused = 0
     errors = []
+    upstream_errors = {}
+    upstream_retries = 0
     event_count = 0
     elapsed = []
     for player in trial['players']:
@@ -126,6 +128,8 @@ def audit_trial(trial):
             for diagnostic in entry.get('provider_errors', []):
                 require(set(diagnostic) <= {'code', 'http_status', 'will_retry'} and diagnostic.get('code') in _ERROR_CODES | _HTTP_ERRORS
                         and type(diagnostic.get('will_retry')) is bool, 'Unsafe provider diagnostic.')
+                upstream_errors[diagnostic['code']] = upstream_errors.get(diagnostic['code'], 0)+1
+                upstream_retries += diagnostic['will_retry']
                 require('http_status' not in diagnostic or type(diagnostic['http_status']) is int and 100 <= diagnostic['http_status'] <= 599, 'Invalid provider status.')
             terminal = None
             utilities = 0
@@ -158,7 +162,8 @@ def audit_trial(trial):
     return {'protocol': PROTOCOL, 'test_kind': trial.get('test_kind', 'recorded-seat-snapshots-not-a-new-game'),
             'players': len(trial['players']), 'unique_thread_bindings': len(bindings),
             'players_with_successful_thread_reuse': reused, 'accepted_actions': accepted,
-            'failed_attempts': len(errors), 'errors': errors, 'calls_by_name': calls,
+            'failed_attempts': len(errors), 'errors': errors, 'upstream_retry_notifications': upstream_retries,
+            'upstream_errors_by_code': upstream_errors, 'calls_by_name': calls,
             'delivered_seat_events': event_count, 'idle_feed_started_turns': 0,
             'usage': usage, 'source_archive_replay_verified': trial['source_archive_replay_verified'],
             'synthetic_source_engine_generated': trial.get('test_kind') == 'synthetic-seat-snapshots-not-a-full-AI-game',

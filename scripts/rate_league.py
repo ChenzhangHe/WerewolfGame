@@ -12,9 +12,9 @@ from scripts.play_league import verify_plan, verify_trial
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--plan', type=Path, default=Path('artifacts/mixed-pilot-12000.private.json'))
-    parser.add_argument('--results', type=Path, default=Path('artifacts/mixed-pilot-results.json'))
-    parser.add_argument('--output', type=Path, default=Path('artifacts/mixed-pilot-ratings.json'))
+    parser.add_argument('--plan', type=Path, default=Path('artifacts/mixed-v2/plan.private.json'))
+    parser.add_argument('--results', type=Path, default=Path('artifacts/mixed-v2/mixed-pilot-results.json'))
+    parser.add_argument('--output', type=Path, default=Path('artifacts/mixed-v2/mixed-pilot-ratings.json'))
     parser.add_argument('--freeze-policy', type=Path)
     parser.add_argument('--policy', type=Path, default=Path('artifacts/mixed-pilot-rating-policy.json'))
     args = parser.parse_args()

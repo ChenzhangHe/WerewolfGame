@@ -86,6 +86,7 @@ def audit_records(configs, inference):
     initial, baseline, peak, cumulative = [], [], [], []
     reads = invalid_reads = actions = hops = failures = prompt_tokens = completion_tokens = max_hops = 0
     accepted = 0
+    http_attempts = http_retries = streamed_hops = 0
     reasoning_tokens = 0
     names = {}
     speech_boundary_findings = []
@@ -129,6 +130,20 @@ def audit_records(configs, inference):
         thinking = config.thinking == "enabled"
         for hop_index, hop in enumerate(trace):
             hops += 1
+            transport = hop.get('transport')
+            if transport is None and hop_index == len(trace)-1 and record.get('error'):
+                transport = record.get('validation_details', {}).get('transport')
+            attempts = transport.get('attempts') if isinstance(transport, dict) else None
+            if isinstance(attempts, list):
+                require(1 <= len(attempts) <= 3, 'Invalid HTTP attempt budget.')
+                for i, attempt in enumerate(attempts, 1):
+                    require(set(attempt) <= {'attempt', 'status', 'seconds', 'failure_type', 'http_status', 'stream_error'}
+                            and attempt.get('attempt') == i, 'Unsafe HTTP attempt metadata.')
+                http_attempts += len(attempts)
+                http_retries += len(attempts)-1
+                streamed_hops += 'stream_bytes' in transport
+            else:
+                http_attempts += 1
             prompt_tokens += hop.get("usage", {}).get("prompt_tokens", 0)
             completion_tokens += hop.get("usage", {}).get("completion_tokens", 0)
             reasoning_tokens += hop.get("usage", {}).get("reasoning_tokens", 0)
@@ -250,7 +265,8 @@ def audit_records(configs, inference):
     if not initial:
         raise ValueError('No tool decisions found.')
     return {'decisions': len(initial), 'accepted': accepted,
-            'failed_attempts': failures, 'model_requests': hops, 'read_calls': reads - names.get('write_my_notes', 0),
+            'failed_attempts': failures, 'model_requests': hops, 'http_attempts': http_attempts,
+            'http_retries': http_retries, 'streamed_hops': streamed_hops, 'read_calls': reads - names.get('write_my_notes', 0),
             'utility_calls': reads, 'private_note_writes': names.get('write_my_notes', 0),
             'speech_boundary_failures': len(speech_boundary_findings),
             'speech_boundary_findings': speech_boundary_findings, 'invalid_read_calls': invalid_reads,

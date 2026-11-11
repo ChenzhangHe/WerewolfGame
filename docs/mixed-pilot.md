@@ -1,4 +1,9 @@
-# Twelve-game mixed-provider pilot
+# Twelve-game mixed-provider pilot (historical v1)
+
+The v1 season below is preserved as originally declared. New execution uses
+[the v2 reliability policy](reliability-v13.md), distinct configuration IDs,
+two workers per game and a new private plan in `artifacts/mixed-v2`.
+Use the current CLI defaults for v2; v1 plans are offline-audit-only.
 
 This is an exploratory comparison of two complete AI player configurations,
 not a model-only benchmark or a stable Elo ranking. Configuration and prompts
@@ -66,9 +71,9 @@ Load `DEEPSEEK_API_KEY` from the ignored repository `.env` (see
 extract or copy a subscription token into this application's environment.
 
 ```sh
-python scripts/play_league.py --create-plan
-python scripts/play_league.py --run --parallel-games 3
-python scripts/play_league.py --audit artifacts/pilot-12000-01.private.json
+python scripts/play_league.py --create-plan --seed 13000
+python scripts/play_league.py --run --parallel-games 2
+python scripts/play_league.py --plan artifacts/mixed-pilot-12000.private.json --audit artifacts/pilot-12000-01.private.json
 ```
 
 The runner uses up to three games and four decisions per game concurrently.

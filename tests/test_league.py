@@ -10,7 +10,7 @@ from unittest.mock import patch
 from werewolf import providers as p
 from werewolf.league import schedule, configs_for, scoreboard, SOL, DEEPSEEK
 from scripts.play_codex import play, audit_match
-from scripts.play_league import MixedHarness, audit_players
+from scripts.play_league import MixedHarness, audit_players, create_plan, verify_plan
 from test_codex_matches import factory
 from test_thinking_tools import response
 
@@ -29,6 +29,28 @@ def send(config, body, **kwargs):
 
 
 class LeagueTests(unittest.TestCase):
+    def test_v2_plan_pins_transport_and_changed_code_is_execution_only_block(self):
+        with tempfile.TemporaryDirectory() as directory:
+            plan = create_plan(Path(directory)/'plan.private.json', 13000)
+            verify_plan(plan, execution=True)
+            self.assertEqual(2, plan['workers_per_game'])
+            self.assertEqual(600, plan['codex_turn_timeout_seconds'])
+            plan['source_fingerprint'] = 'older-implementation'
+            verify_plan(plan)  # Historical evidence can still be replayed offline.
+            with self.assertRaisesRegex(AssertionError, 'Code changed'):
+                verify_plan(plan, execution=True)
+
+    def test_v2_full_mixed_game_uses_strict_protocol_and_replays(self):
+        match = schedule(13000, version=2)[0]
+        def mixed(scope):
+            return MixedHarness(scope, codex_factory=factory)
+        with tempfile.TemporaryDirectory() as directory, patch.object(p, '_send_http', side_effect=send):
+            result = play(match['seed'], configs=configs_for(match), roles=match['roles'],
+                protocol='mixed-league-v2', harness_factory=mixed, audit_players=audit_players,
+                output_dir=Path(directory), artifact_stem='v2-test', progress=False)
+            self.assertTrue(result['all_checks_passed'])
+            self.assertEqual('mixed-league-v2', result['protocol'])
+
     def test_schedule_balances_every_role_and_varies_faction_composition(self):
         matches = schedule()
         self.assertEqual(matches, schedule())
@@ -56,7 +78,7 @@ class LeagueTests(unittest.TestCase):
     def test_mixed_game_replay_and_native_wire_audits_reject_cross_seat_data(self):
         match = schedule()[0]
         def mixed(scope):
-            return MixedHarness(scope, codex_factory=factory)
+            return MixedHarness(scope, codex_factory=factory, prompt_version='player-tools-v12')
         with tempfile.TemporaryDirectory() as directory, patch.object(p, '_send_http', side_effect=send):
             result = play(match['seed'], configs=configs_for(match), roles=match['roles'],
                           protocol='mixed-league-v1', harness_factory=mixed, audit_players=audit_players,

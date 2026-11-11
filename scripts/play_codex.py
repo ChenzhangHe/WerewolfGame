@@ -3,7 +3,7 @@
 Only newly generated seat-authorized observations leave the process. There is
 no input-archive option, automatic retry, default action, or model fallback.
 """
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed, wait, FIRST_COMPLETED
 from copy import deepcopy
 from dataclasses import asdict
 import argparse
@@ -224,9 +224,22 @@ def play(seed, *, output_dir=Path('artifacts'), model='gpt-6.1-sol', effort='hig
                         return record
 
                     futures = [pool.submit(infer, task) for task in pending]
-                    responses = [future.result() for future in futures]
-                    for record in responses:
-                        bindings[record['seat']]['decisions'].append(record)
+                    responses, waiting = [], set(futures)
+                    batch_started = time.monotonic()
+                    while waiting:
+                        completed, waiting = wait(waiting, timeout=10, return_when=FIRST_COMPLETED)
+                        for future in completed:
+                            record = future.result()
+                            responses.append(record)
+                            bindings[record['seat']]['decisions'].append(record)
+                        if completed:
+                            checkpoint()  # Preserve paid responses even before the whole batch locks.
+                        if progress:
+                            save(progress_path, {'seed': seed, 'batch': index, 'day': game.day,
+                                'phase': game.phase, 'winner': game.winner, 'status': 'waiting_for_players',
+                                'waiting_responses': len(waiting), 'received_responses': len(responses),
+                                'batch_elapsed_seconds': round(time.monotonic()-batch_started, 1)})
+
                     if any('error' in record for record in responses):
                         trial['status'] = 'error'
                         break
@@ -243,8 +256,7 @@ def play(seed, *, output_dir=Path('artifacts'), model='gpt-6.1-sol', effort='hig
                         save(progress_path, state)
                         with PRINT_LOCK:
                             print(encoded(state), flush=True)
-                    if (index+1) % 5 == 0:
-                        checkpoint()
+                    checkpoint()
                 if game.winner:
                     trial['status'] = 'finished'
                 elif trial['status'] != 'error':

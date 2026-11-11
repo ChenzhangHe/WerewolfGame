@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from copy import deepcopy
 from dataclasses import asdict
 import argparse
+from functools import partial
 import hashlib
 import json
 from pathlib import Path
@@ -13,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from werewolf import providers as p
 from werewolf.codex_harness import CodexGameHarness, CodexPlayer, PROTOCOL as CODEX_PROTOCOL
 from werewolf.credentials import load_local_credentials
-from werewolf.league import PROTOCOL, SOL, DEEPSEEK, schedule, configs_for, scoreboard, validate_schedule
+from werewolf.league import PROTOCOL, PROTOCOL_V2, SOL, DEEPSEEK, SOL_V2, DEEPSEEK_V13, schedule, configs_for, scoreboard, validate_schedule, season_entries
 from scripts.audit_tools import audit_records, require
 from scripts.play_codex import play, save, audit_match
 from scripts.verify_codex import audit_trial
@@ -24,7 +25,9 @@ class DeepSeekSeat:
     transport = 'deepseek-native-tools-v12'
     generation_count = 0
 
-    def __init__(self, config):
+    def __init__(self, config, prompt_version='player-tools-v13'):
+        self.prompt_version = prompt_version
+        self.transport = 'deepseek-native-tools-'+prompt_version.removeprefix('player-tools-')
         self.config = config
         self.binding = str(uuid.uuid4())  # Host routing only; not a conversation ID.
         self.deliveries = []
@@ -35,14 +38,15 @@ class DeepSeekSeat:
 
     def decide(self, observation, decision, notes=''):
         self.last_request = p.build_request(self.config, observation, decision, notes,
-                                            tool_prompt_version='player-tools-v12')
+                                            tool_prompt_version=self.prompt_version)
         self.last_wire_request = p.wire_request(self.config, self.last_request)
         return p.decide(self.config, self.last_request)
 
 
 class MixedHarness:
-    def __init__(self, game_id, codex_factory=CodexGameHarness):
+    def __init__(self, game_id, codex_factory=CodexGameHarness, prompt_version='player-tools-v13'):
         self.codex = codex_factory(game_id)
+        self.prompt_version = prompt_version
 
     def __enter__(self):
         self.codex.__enter__()
@@ -52,13 +56,15 @@ class MixedHarness:
         return self.codex.__exit__(*args)
 
     def bind(self, config):
-        return self.codex.bind(config) if isinstance(config, CodexPlayer) else DeepSeekSeat(config)
+        return self.codex.bind(config) if isinstance(config, CodexPlayer) else DeepSeekSeat(config, self.prompt_version)
 
 
 def audit_players(trial):
-    require(trial['protocol'] == PROTOCOL, 'Unknown mixed-game protocol.')
+    require(trial['protocol'] in (PROTOCOL, PROTOCOL_V2), 'Unknown mixed-game protocol.')
+    version = 'player-tools-v13' if trial['protocol'] == PROTOCOL_V2 else 'player-tools-v12'
+    transport = 'deepseek-native-tools-'+version.removeprefix('player-tools-')
     codex_players = [player for player in trial['players'] if player['transport'] == CODEX_PROTOCOL]
-    deepseek_players = [player for player in trial['players'] if player['transport'] == DeepSeekSeat.transport]
+    deepseek_players = [player for player in trial['players'] if player['transport'] == transport]
     require(len(codex_players) == len(deepseek_players) == 6, 'Mixed game requires six seats per configuration.')
     codex = audit_trial({**trial, 'protocol': CODEX_PROTOCOL, 'players': codex_players})
     configs = {player['config']['seat']: p.PlayerConfig(**player['config']) for player in deepseek_players}
@@ -69,12 +75,12 @@ def audit_players(trial):
             request = record['request']
             require(request == p.build_request(configs[record['seat']], record['observation'],
                                                 record['decision'], record['notes_before'],
-                                                tool_prompt_version='player-tools-v12'), 'DeepSeek request scope changed.')
+                                                tool_prompt_version=version), 'DeepSeek request scope changed.')
             require(record['wire_request'] == p.wire_request(configs[record['seat']], request), 'Initial DeepSeek body changed.')
             normalized = {**record, 'accepted': bool(record['committed']), 'response': record.get('action', {})}
             records.append(normalized)
     native = audit_records(configs, records) if records else {'accepted': 0, 'failed_attempts': 0}
-    return {'protocol': PROTOCOL, 'test_kind': trial['test_kind'], 'players': 12,
+    return {'protocol': trial['protocol'], 'test_kind': trial['test_kind'], 'players': 12,
             'accepted_actions': codex['accepted_actions']+sum('error' not in r for r in records),
             'failed_attempts': codex['failed_attempts']+native['failed_attempts'],
             'codex': codex, 'deepseek': native,
@@ -83,7 +89,7 @@ def audit_players(trial):
 
 def source_fingerprint():
     root = Path(__file__).resolve().parents[1]
-    paths = ['werewolf/engine.py', 'werewolf/providers.py', 'werewolf/harness.py', 'werewolf/briefing_rules.py', 'werewolf/calculations.py',
+    paths = ['werewolf/engine.py', 'werewolf/providers.py', 'werewolf/chat_stream.py', 'werewolf/strict_tools.py', 'werewolf/harness.py', 'werewolf/briefing_rules.py', 'werewolf/calculations.py',
              'werewolf/codex_harness.py', 'werewolf/league.py', 'scripts/play_codex.py',
              'scripts/play_league.py', 'scripts/audit_tools.py', 'scripts/verify_codex.py',
              'werewolf/server.py', 'docs/rules-v1.md']
@@ -97,28 +103,35 @@ def source_fingerprint():
 def create_plan(output, seed):
     if output.exists():
         raise ValueError('Plan already exists; refusing to overwrite the preregistration.')
-    matches = schedule(seed)
-    plan = {'protocol': PROTOCOL, 'source_fingerprint': source_fingerprint(), 'matches': matches,
+    matches = schedule(seed, version=2)
+    plan = {'protocol': PROTOCOL_V2, 'source_fingerprint': source_fingerprint(), 'matches': matches,
             'configs': {m['id']: [asdict(c) for c in configs_for(m)] for m in matches},
-            'scoring': 'team-outcome-v1', 'max_batches': 300, 'workers_per_game': 4,
-            'failure_policy': 'Retain failed game without strategic points; no default, repair, replacement, or thread recreation.',
+            'scoring': 'team-outcome-v1', 'max_batches': 300, 'workers_per_game': 2, 'codex_turn_timeout_seconds': 600,
+            'deepseek_transport': {'stream': True, 'strict': True, 'attempts': 3, 'idle_seconds': 90, 'request_seconds': 900},
+            'failure_policy': 'Retain failed games; bounded logged transport retries only, no format repair, default, replacement or thread recreation.',
             'schedule_policy': 'Six paired layouts, complementary entries; fresh games and threads from the opening.',
-            'entries': {SOL: 'gpt-6.1-sol high, ChatGPT subscription, persistent seat Codex thread',
-                        DEEPSEEK: 'deepseek-flash high, native v12 tools, fresh decision context and own notes'}}
+            'entries': {SOL_V2: 'gpt-6.1-sol high, ChatGPT subscription, persistent seat Codex thread',
+                        DEEPSEEK_V13: 'deepseek-flash high, strict v13 SSE tools, fresh decision context and own notes'}}
     save(output, plan)
     return plan
 
 
-def verify_plan(plan):
-    require(plan['protocol'] == PROTOCOL and plan['scoring'] == 'team-outcome-v1', 'Unknown plan version.')
-    require(plan['source_fingerprint'] == source_fingerprint(), 'Code changed after preregistration; do not mix protocols.')
+def verify_plan(plan, *, execution=False):
+    require(plan['protocol'] in (PROTOCOL, PROTOCOL_V2) and plan['scoring'] == 'team-outcome-v1', 'Unknown plan version.')
+    if execution:
+        require(plan['protocol'] == PROTOCOL_V2, 'Legacy experiments are audit-only; create a fresh v2 plan.')
+        require(plan['source_fingerprint'] == source_fingerprint(), 'Code changed after preregistration; do not mix protocols.')
     validate_schedule(plan['matches'])
-    require(plan['max_batches'] == 300 and plan['workers_per_game'] == 4, 'Frozen execution limits changed.')
+    require(plan['max_batches'] == 300 and plan['workers_per_game'] == (2 if plan['protocol'] == PROTOCOL_V2 else 4), 'Frozen execution limits changed.')
+    require(season_entries(plan['matches']) == ((SOL_V2, DEEPSEEK_V13) if plan['protocol'] == PROTOCOL_V2 else (SOL, DEEPSEEK)), 'Configuration version mismatch.')
+    if plan['protocol'] == PROTOCOL_V2:
+        require(plan['codex_turn_timeout_seconds'] == 600 and plan['deepseek_transport'] == {'stream': True, 'strict': True, 'attempts': 3, 'idle_seconds': 90, 'request_seconds': 900}, 'Transport policy changed.')
     for match in plan['matches']:
         require(plan['configs'][match['id']] == [asdict(c) for c in configs_for(match)], 'Frozen configurations changed.')
 
 
 def verify_trial(trial, match, plan):
+    require(trial['protocol'] == plan['protocol'], 'Executed protocol differs from preregistration.')
     require(trial['source_seed'] == match['seed'], 'Wrong game seed.')
     require([p['role'] for p in sorted(trial['game']['players'], key=lambda p: p['seat'])] == match['roles'], 'Role layout changed.')
     require([p['config'] for p in sorted(trial['players'], key=lambda p: p['config']['seat'])] == plan['configs'][match['id']],
@@ -127,16 +140,16 @@ def verify_trial(trial, match, plan):
 
 
 def run_one(match, plan, output_dir):
-    verify_plan(plan)
+    verify_plan(plan, execution=True)
     stem = match['id']
     if any((output_dir/f'{stem}{suffix}').exists() for suffix in ('.json', '.private.json')):
         raise ValueError('Existing game evidence must not be overwritten.')
     with (output_dir/f'{stem}.claim.private.json').open('x') as claim:
         json.dump({'match_id': stem, 'attempt_claimed': True}, claim)
     try:
-        play(match['seed'], configs=configs_for(match), roles=match['roles'], protocol=PROTOCOL,
+        play(match['seed'], configs=configs_for(match), roles=match['roles'], protocol=plan['protocol'],
              artifact_stem=stem, output_dir=output_dir, workers=plan['workers_per_game'],
-             max_batches=plan['max_batches'], harness_factory=MixedHarness, audit_players=audit_players)
+             max_batches=plan['max_batches'], harness_factory=partial(MixedHarness, prompt_version='player-tools-v13'), audit_players=audit_players)
         trial = json.loads((output_dir/f'{stem}.private.json').read_text())
         report = verify_trial(trial, match, plan)
         report.update(match_id=stem, pair=match['pair'], model='mixed', effort='high')
@@ -150,11 +163,11 @@ def run_one(match, plan, output_dir):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--plan', type=Path, default=Path('artifacts/mixed-pilot-12000.private.json'))
+    parser.add_argument('--plan', type=Path, default=Path('artifacts/mixed-v2/plan.private.json'))
     parser.add_argument('--create-plan', action='store_true')
-    parser.add_argument('--seed', type=int, default=12000)
+    parser.add_argument('--seed', type=int, default=13000)
     parser.add_argument('--run', action='store_true')
-    parser.add_argument('--parallel-games', type=int, choices=(1, 2, 3), default=3)
+    parser.add_argument('--parallel-games', type=int, choices=(1, 2, 3), default=2)
     parser.add_argument('--audit', type=Path)
     args = parser.parse_args()
     if args.create_plan:
@@ -170,6 +183,7 @@ def main():
         return
     if not args.run:
         parser.error('Choose --create-plan, --run or --audit.')
+    verify_plan(plan, execution=True)
     load_local_credentials()
     for config in configs_for(plan['matches'][0]):
         if isinstance(config, p.PlayerConfig):
