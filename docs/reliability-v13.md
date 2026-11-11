@@ -59,6 +59,13 @@ Unattempted games remain visible and are not counted as failures or replacements
 of historical plans remains available after code changes; executing a plan
 still requires the exact preregistered source fingerprint and current protocol.
 
-Both real provider canaries passed. Full-game validation and then a new frozen
-12-game season are required before claiming the reliability problem resolved.
-Do not use old partial games or the validation game as rated outcomes.
+Both real provider canaries passed. A complete fresh mixed validation game
+(`13901`) ended with a Good victory on day 3: 216 committed actions in 89 batches.
+Independent replay and provider-input/tool audits passed. It had zero failed
+decisions, zero DeepSeek HTTP retries and zero Codex upstream retry notifications.
+The duration was 42.3 minutes. The application suite passes 226 tests.
+
+The [new twelve-game preregistration](../artifacts/mixed-v2/preregistration.json)
+pins the repaired season. The validation game and old partial games are excluded
+from its Elo fit. A successful validation game does not guarantee API availability
+throughout the subsequent season.
