@@ -8,3 +8,5 @@ artifacts/codex-match-*.progress*.json
 artifacts/pilot-*.progress.json
 
 artifacts/**/*.progress.json
+
+artifacts/**/*.log

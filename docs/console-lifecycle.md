@@ -36,3 +36,22 @@ Long-running verification should own its output independently of a chat/tool
 observer: launch it in a new process session with stdin disconnected and stdout
 and stderr redirected to a durable local log. Monitoring then reads progress
 files or tails the log; closing the monitor does not own the game's lifecycle.
+
+## Resumed execution
+
+The host-only revision is recorded in
+[console-execution-amendment.json](../artifacts/mixed-v3/console-execution-amendment.json).
+Eleven inference/rules files and the Codex actor/active-RPC ASTs were verified
+unchanged against the original preregistration. Matches, roles, configurations
+and transport settings remain identical. Only the eight unstarted games resume;
+the two host-interrupted games remain unscored.
+
+The resumed worker owns a new process session and a persistent local log. Its
+launcher has exited, and fresh progress from games 5 and 6 confirmed it continues
+independently. When the runner exits, its supervisor calculates ratings from
+audited completed games and records final status. The historic host failures
+can make the runner exit nonzero even when every remaining game succeeds.
+
+Operational files are local and ignored: `verification-process.private.json`,
+`verification-status.private.json`, and `verification.log` under the season
+directory. The application test suite passes 237 tests.
