@@ -260,8 +260,11 @@ class CodexRPC:
             self.process.kill()
             self.process.wait(timeout=5)
         self._reader.join(timeout=2)
-        self.process.stdin.close()
-        self.process.stdout.close()
+        for pipe in (self.process.stdin, self.process.stdout):
+            try:
+                pipe.close()
+            except OSError:
+                pass  # The process is already terminated; a closed pipe is cleanup, not a failed move.
 
 
 def seat_harness(observation, decision, notes=''):

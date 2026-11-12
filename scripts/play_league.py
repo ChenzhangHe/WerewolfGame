@@ -17,6 +17,7 @@ from werewolf.credentials import load_local_credentials
 from werewolf.league import PROTOCOL, PROTOCOL_V2, PROTOCOL_V3, SOL, DEEPSEEK, SOL_V2, DEEPSEEK_V13, DEEPSEEK_V14, schedule, configs_for, scoreboard, validate_schedule, season_entries
 from scripts.audit_tools import audit_records, require
 from scripts.play_codex import play, save, audit_match
+from scripts.run_logging import emit
 from scripts.verify_codex import audit_trial
 
 
@@ -91,7 +92,7 @@ def source_fingerprint():
     root = Path(__file__).resolve().parents[1]
     paths = ['werewolf/engine.py', 'werewolf/providers.py', 'werewolf/chat_stream.py', 'werewolf/strict_tools.py', 'werewolf/native_transaction.py', 'werewolf/harness.py', 'werewolf/briefing_rules.py', 'werewolf/calculations.py',
              'werewolf/codex_harness.py', 'werewolf/league.py', 'scripts/play_codex.py',
-             'scripts/play_league.py', 'scripts/audit_tools.py', 'scripts/verify_codex.py',
+             'scripts/play_league.py', 'scripts/run_logging.py', 'scripts/audit_tools.py', 'scripts/verify_codex.py',
              'werewolf/server.py', 'docs/rules-v1.md']
     digest = hashlib.sha256()
     for name in paths:
@@ -253,7 +254,7 @@ def main():
                                           parallel_games=args.parallel_games):
         reports.append(report)
         aggregate()
-        print(json.dumps({'game_result': report, 'scheduling_halted': halted}, ensure_ascii=False), flush=True)
+        emit({'game_result': report, 'scheduling_halted': halted})
     if not all(r.get('all_checks_passed') for r in reports) or (len(reports) != 12 and args.max_new_games == 12):
         raise SystemExit(1)
 

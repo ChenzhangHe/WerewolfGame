@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from scripts.play_codex import play, audit_match
 from werewolf.codex_harness import CodexGameHarness
@@ -42,6 +43,19 @@ def factory(scope):
 
 
 class CodexMatchTests(unittest.TestCase):
+    def test_disconnected_console_does_not_stop_a_full_game(self):
+        class Disconnected:
+            def write(self, value):
+                raise BrokenPipeError('Observer disconnected')
+            def flush(self):
+                raise BrokenPipeError('Observer disconnected')
+        with tempfile.TemporaryDirectory() as directory, patch('sys.stdout', Disconnected()):
+            report = play(1, output_dir=Path(directory), harness_factory=factory, progress=True)
+            self.assertTrue(report['all_checks_passed'])
+            trial = json.loads((Path(directory)/'codex-match-1.private.json').read_text())
+            self.assertEqual('finished', trial['status'])
+            self.assertNotIn('host_error', trial)
+
     def test_existing_private_evidence_is_not_overwritten(self):
         with tempfile.TemporaryDirectory() as directory:
             target = Path(directory)/'codex-match-1.private.json'

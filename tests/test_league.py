@@ -4,6 +4,7 @@ from copy import deepcopy
 import json
 from pathlib import Path
 import tempfile
+import sys
 import unittest
 from unittest.mock import patch
 
@@ -31,6 +32,32 @@ def send(config, body, **kwargs):
 
 
 class LeagueTests(unittest.TestCase):
+    def test_disconnected_console_does_not_drop_other_completed_season_results(self):
+        from scripts.play_league import main
+        class Disconnected:
+            def write(self, value): raise BrokenPipeError('Observer disconnected')
+            def flush(self): raise BrokenPipeError('Observer disconnected')
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root/'plan.private.json'
+            plan = create_plan(path, 17000)
+            first = plan['matches'][0]['id']
+            (root/(first+'.json')).write_text(json.dumps({'match_id': first, 'all_checks_passed': True, 'winner': 'good'}))
+            (root/(first+'.private.json')).write_text('{}')
+            def complete(match, **kwargs):
+                return {'match_id': match['id'], 'status': 'finished', 'all_checks_passed': True, 'winner': 'good'}
+            with patch.object(sys, 'argv', ['play_league', '--plan', str(path), '--run', '--max-new-games', '2']), \
+                 patch.object(sys, 'stdout', Disconnected()), \
+                 patch('scripts.play_league.load_local_credentials'), \
+                 patch.object(p, 'check_credentials'), \
+                 patch('scripts.play_league.verify_trial'), \
+                 patch('scripts.play_league.run_one', side_effect=complete):
+                main()
+            result = json.loads((root/'mixed-pilot-results.json').read_text())
+            self.assertEqual(3, len(result['reports']))
+            self.assertEqual({m['id'] for m in plan['matches'][:3]}, {r['match_id'] for r in result['reports']})
+            self.assertFalse(result['scheduler']['halted_on_failure'])
+
     def test_season_stops_new_games_after_failure_but_collects_inflight_result(self):
         import threading
         release_inflight = threading.Event()

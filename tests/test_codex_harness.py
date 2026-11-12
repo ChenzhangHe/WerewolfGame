@@ -101,6 +101,24 @@ class CodexHarnessTests(unittest.TestCase):
     def player(self, seat=1):
         return CodexPlayer(seat, f'Player {seat}', language='en')
 
+    def test_cleanup_of_terminated_process_tolerates_closed_pipes(self):
+        class Pipe:
+            def close(self):
+                raise BrokenPipeError('child already exited')
+        class Process:
+            stdin = Pipe()
+            stdout = Pipe()
+            def terminate(self): pass
+            def wait(self, timeout): pass
+        rpc = CodexRPC.__new__(CodexRPC)
+        rpc._lock = threading.Lock()
+        rpc._closed = False
+        rpc.process = Process()
+        rpc._reader = type('Reader', (), {'join': lambda self, timeout: None})()
+        rpc.close()
+        self.assertTrue(rpc._closed)
+        rpc.close()
+
     def test_upstream_error_notifications_preserve_codes_without_private_text(self):
         game = self.game()
         player = game.bind(self.player())

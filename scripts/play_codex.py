@@ -10,8 +10,8 @@ import argparse
 import json
 from pathlib import Path
 import sys
-import threading
 import time
+import traceback
 import uuid
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -20,8 +20,7 @@ from werewolf.engine import Game
 from werewolf.providers import ProviderError
 from werewolf.server import NAMES, PERSONALITIES
 from scripts.verify_codex import audit_trial, authorized_events, require
-
-PRINT_LOCK = threading.Lock()
+from scripts.run_logging import emit
 
 
 def save(path, value):
@@ -254,8 +253,7 @@ def play(seed, *, output_dir=Path('artifacts'), model='gpt-6.1-sol', effort='hig
                              'actions': sum(len(p['decisions']) for p in trial['players'])}
                     if progress:
                         save(progress_path, state)
-                        with PRINT_LOCK:
-                            print(encoded(state), flush=True)
+                        emit(state)
                     checkpoint()
                 if game.winner:
                     trial['status'] = 'finished'
@@ -264,14 +262,15 @@ def play(seed, *, output_dir=Path('artifacts'), model='gpt-6.1-sol', effort='hig
             checkpoint()
     except Exception as error:
         trial['status'] = 'error'
-        trial['host_error'] = {'category': getattr(error, 'validation_details', {}).get('category', type(error).__name__)}
+        trial['host_error'] = {'category': getattr(error, 'validation_details', {}).get('category', type(error).__name__),
+            'frames': [{'file': Path(frame.filename).name, 'function': frame.name, 'line': frame.lineno}
+                       for frame in traceback.extract_tb(error.__traceback__)[-8:]]}
         checkpoint()
         raise
     report = audit_match(trial, audit_players=audit_players)
     save(summary_path, report)
     if progress:
-        with PRINT_LOCK:
-            print(encoded({'seed': seed, 'result': report}), flush=True)
+        emit({'seed': seed, 'result': report})
     return report
 
 
