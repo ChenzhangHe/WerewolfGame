@@ -17,13 +17,14 @@ def now():
     return datetime.now(timezone.utc).isoformat()
 
 
-def worker(plan):
+def worker(plan, runner="pair"):
     root = plan.parent
     status = root/'verification-status.private.json'
     data = {'phase': 'running_games', 'pid': os.getpid(), 'at_utc': now()}
     save(status, data)
     try:
-        command = [sys.executable, '-u', 'scripts/play_codex_league.py', '--plan', str(plan)]
+        script = 'scripts/play_codex_trio.py' if runner == 'trio' else 'scripts/play_codex_league.py'
+        command = [sys.executable, '-u', script, '--plan', str(plan)]
         run = subprocess.run(command+['--run'])
         data['runner_exit_code'] = run.returncode
         rate = subprocess.run(command+['--rate'])
@@ -43,12 +44,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--plan', type=Path, default=DEFAULT_PLAN)
     parser.add_argument('--worker', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument('--runner', choices=('pair', 'trio'), default='pair')
     args = parser.parse_args()
     repo = Path(__file__).resolve().parents[1]
     plan = args.plan.resolve()
     if args.worker:
         os.chdir(repo)
-        worker(plan)
+        worker(plan, args.runner)
         return
     if not plan.exists():
         parser.error('Create the frozen plan first.')
@@ -57,11 +59,11 @@ def main():
     ownership = plan.parent/'verification-process.private.json'
     with ownership.open('x') as marker:
         with (plan.parent/'verification.log').open('x') as log:
-            child = subprocess.Popen([sys.executable, '-u', str(Path(__file__).resolve()), '--worker', '--plan', str(plan)],
+            child = subprocess.Popen([sys.executable, '-u', str(Path(__file__).resolve()), '--worker', '--plan', str(plan), '--runner', args.runner],
                                      cwd=repo, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
                                      start_new_session=True)
         data = {'pid': child.pid, 'process_group': child.pid, 'created_at_utc': now(), 'plan': str(plan),
-                'log': str(plan.parent/'verification.log')}
+                'log': str(plan.parent/'verification.log'), 'runner': args.runner}
         json.dump(data, marker)
         marker.write('\n')
     emit({'detached_pid': child.pid, 'plan': str(plan), 'log': data['log']})
