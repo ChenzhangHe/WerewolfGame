@@ -97,3 +97,32 @@ and the corresponding `canary-luna-medium` filenames to validate Luna. Each pilo
 has its own logs, progress, result ledger, ratings, ownership marker and OS lock.
 Each runs its first game as an audit gate, then at most two games concurrently.
 Six outcomes provide only preliminary ratings with substantial uncertainty.
+
+## Four-category pilot
+
+The separate `codex-quartet-v1` pilot uses six fresh 12-player games with three
+seats in each category: **Sol / medium**, **Sol / low**, **Terra / high**, and
+**Terra / low**. Each is an independent rating entry. The same prompts, seat
+tools, thread isolation, execution limits and rating policy apply to all four.
+
+Three complementary assignment pairs give each category 18 seats: 6 wolves,
+6 villagers and 6 special roles. Each individual special role appears once or
+twice per category; six appearances of a role cannot divide equally among four
+categories. Every possible two-category Wolf coalition occurs once, providing
+variation for the rating fit. Category, model, effort and personality remain
+fixed for each seat throughout a game. Earlier pilot outcomes remain separate.
+
+The exact four synthetic capability checks are re-audited before execution and
+frozen by hash. After placing their raw canary files in the fresh directory:
+
+```sh
+python3 scripts/play_codex_quartet.py --create-plan
+python3 scripts/launch_codex_league.py --runner quartet --plan artifacts/codex-quartet-v1/plan.private.json
+python3 scripts/play_codex_quartet.py --rate
+```
+
+The first game must complete and pass all audits before the remaining games
+start, with at most two quartet games in parallel. Failed attempts remain visible
+and unscored; new launches stop on a failure. Logs, progress, results and ratings
+live under `artifacts/codex-quartet-v1`. Six completed outcomes will provide only
+preliminary ratings, with uncertainty shown explicitly.

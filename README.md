@@ -85,6 +85,8 @@ configurations through the same isolated harness. The initial six-game pilot is
 It starts with an audited full-game gate and runs independently of the terminal.
 A separate six-game three-model pilot adds **GPT-6 Luna / medium**, with four
 seats per configuration and equal role exposure across the pilot.
+The four-category pilot compares **Sol medium/low and Terra high/low**, three
+seats per category in each of six fresh games. Earlier pilots retain separate results.
 
 ### DeepSeek Flash
 
