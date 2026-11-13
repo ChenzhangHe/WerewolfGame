@@ -150,3 +150,27 @@ a time, stopping new launches on failure. Outputs in the extension directory are
 18-game schedule. Cumulative ratings refit each valid outcome once with unchanged
 priors; they do not average cohort ratings. Layout group IDs are namespaced by
 cohort so different role layouts cannot accidentally share an intercept.
+
+## Queued final six-game rotation
+
+A six-game cohort at seed 21000 is preregistered with category rotation 3. It waits
+for the prior twelve-game extension to finish successfully, then independently
+re-audits all eighteen completed games before launching. A prior failure, missing
+completion, changed source or altered prior plan blocks new inference. The new
+batch runs at most two games concurrently, with fresh seat threads and unchanged
+models, efforts, prompts, tools, language and rating policy.
+
+```sh
+python3 scripts/queue_quartet.py --create-plan
+python3 scripts/queue_quartet.py --launch
+```
+
+This local continuation requires the earlier private plans and raw evidence; the
+portable replay-rating command remains available without them. The queued
+supervisor saves `waiting_for_previous`, `running_games`, `finished`, or a failure
+state under `artifacts/codex-quartet-21000/verification-status.private.json`, with
+file-backed logs. It checks the prior run's completion status and evidence before
+inference. Completed new games are audited and fitted individually and with all
+prior valid outcomes. Across the full planned 24 games, each configuration has
+24 wolves, 24 villagers and exactly 6 appearances in each special role. The
+source and category-role schedule are frozen before any of these six games run.
