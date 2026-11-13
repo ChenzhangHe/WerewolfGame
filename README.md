@@ -77,6 +77,13 @@ results are in [the match summary](artifacts/codex-matches.json); the first thre
 games completed with 707 actions, zero failed attempts, two Good wins and one
 Wolf win. Details and limitations are in the provider setup document.
 
+### Codex model and effort comparisons
+
+The [Codex league runner](docs/codex-league.md) compares fixed model/effort
+configurations through the same isolated harness. The initial six-game pilot is
+**GPT-6.1 Sol / medium versus GPT-6.1 Terra / low**, six seats each per game.
+It starts with an audited full-game gate and runs independently of the terminal.
+
 ### DeepSeek Flash
 
 1. Obtain an API key from the [DeepSeek platform](https://platform.deepseek.com/).
