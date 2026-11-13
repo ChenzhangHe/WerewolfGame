@@ -1,0 +1,459 @@
+{
+  "version": "hierarchical-team-elo-v1",
+  "policy": {
+    "version": "hierarchical-team-elo-v1",
+    "initial_rating": 1500,
+    "elo_scale": 400,
+    "configuration_prior_sd": 200,
+    "role_adjustment_prior_sd": 100,
+    "good_baseline_logit_prior_sd": 1,
+    "layout_logit_prior_sd": 0.5,
+    "role_weights": {
+      "wolf": 0.5,
+      "villager": 0.25,
+      "seer": 0.0625,
+      "witch": 0.0625,
+      "hunter": 0.0625,
+      "idiot": 0.0625
+    },
+    "outcome_unit": "one-result-per-game",
+    "inference": "MAP-with-Laplace-approximation",
+    "failure_policy": "retain-but-exclude-from-skill-fit"
+  },
+  "valid_games": 6,
+  "scheduled_games": 6,
+  "excluded": [],
+  "source_digest": "89d8020f56ebc88a5ecf522e0578ab9dae97da565708da7546635c2d36a67601",
+  "iterations": 3,
+  "converged": true,
+  "ratings": [
+    {
+      "entry": "sol-low",
+      "rating": 1567.4,
+      "sd": 182.12,
+      "approx_95_interval": [
+        1210.45,
+        1924.36
+      ],
+      "shared_component": {
+        "rating": 1561.04,
+        "sd": 179.94,
+        "approx_95_interval": [
+          1208.37,
+          1913.72
+        ]
+      },
+      "roles": {
+        "wolf": {
+          "rating": 1571.22,
+          "sd": 192.68,
+          "approx_95_interval": [
+            1193.57,
+            1948.87
+          ],
+          "appearances": 6
+        },
+        "villager": {
+          "rating": 1566.13,
+          "sd": 196.35,
+          "approx_95_interval": [
+            1181.28,
+            1950.98
+          ],
+          "appearances": 6
+        },
+        "seer": {
+          "rating": 1561.04,
+          "sd": 200.74,
+          "approx_95_interval": [
+            1167.59,
+            1954.48
+          ],
+          "appearances": 2
+        },
+        "witch": {
+          "rating": 1558.51,
+          "sd": 200.18,
+          "approx_95_interval": [
+            1166.15,
+            1950.87
+          ],
+          "appearances": 1
+        },
+        "hunter": {
+          "rating": 1561.04,
+          "sd": 198.58,
+          "approx_95_interval": [
+            1171.83,
+            1950.26
+          ],
+          "appearances": 2
+        },
+        "idiot": {
+          "rating": 1563.59,
+          "sd": 199.16,
+          "approx_95_interval": [
+            1173.23,
+            1953.94
+          ],
+          "appearances": 1
+        }
+      },
+      "seat_appearances": 18
+    },
+    {
+      "entry": "sol-medium",
+      "rating": 1567.16,
+      "sd": 182.18,
+      "approx_95_interval": [
+        1210.09,
+        1924.23
+      ],
+      "shared_component": {
+        "rating": 1560.83,
+        "sd": 179.99,
+        "approx_95_interval": [
+          1208.05,
+          1913.6
+        ]
+      },
+      "roles": {
+        "wolf": {
+          "rating": 1570.96,
+          "sd": 192.74,
+          "approx_95_interval": [
+            1193.19,
+            1948.74
+          ],
+          "appearances": 6
+        },
+        "villager": {
+          "rating": 1565.89,
+          "sd": 196.41,
+          "approx_95_interval": [
+            1180.94,
+            1950.85
+          ],
+          "appearances": 6
+        },
+        "seer": {
+          "rating": 1555.1,
+          "sd": 200.75,
+          "approx_95_interval": [
+            1161.63,
+            1948.57
+          ],
+          "appearances": 2
+        },
+        "witch": {
+          "rating": 1564.02,
+          "sd": 200.26,
+          "approx_95_interval": [
+            1171.51,
+            1956.52
+          ],
+          "appearances": 1
+        },
+        "hunter": {
+          "rating": 1560.17,
+          "sd": 198.66,
+          "approx_95_interval": [
+            1170.81,
+            1949.54
+          ],
+          "appearances": 2
+        },
+        "idiot": {
+          "rating": 1564.02,
+          "sd": 199.18,
+          "approx_95_interval": [
+            1173.63,
+            1954.4
+          ],
+          "appearances": 1
+        }
+      },
+      "seat_appearances": 18
+    },
+    {
+      "entry": "terra-low",
+      "rating": 1432.84,
+      "sd": 182.18,
+      "approx_95_interval": [
+        1075.77,
+        1789.91
+      ],
+      "shared_component": {
+        "rating": 1439.17,
+        "sd": 179.99,
+        "approx_95_interval": [
+          1086.4,
+          1791.95
+        ]
+      },
+      "roles": {
+        "wolf": {
+          "rating": 1429.04,
+          "sd": 192.74,
+          "approx_95_interval": [
+            1051.26,
+            1806.81
+          ],
+          "appearances": 6
+        },
+        "villager": {
+          "rating": 1434.11,
+          "sd": 196.41,
+          "approx_95_interval": [
+            1049.15,
+            1819.06
+          ],
+          "appearances": 6
+        },
+        "seer": {
+          "rating": 1442.36,
+          "sd": 200.26,
+          "approx_95_interval": [
+            1049.86,
+            1834.86
+          ],
+          "appearances": 1
+        },
+        "witch": {
+          "rating": 1438.52,
+          "sd": 200.75,
+          "approx_95_interval": [
+            1045.05,
+            1831.99
+          ],
+          "appearances": 2
+        },
+        "hunter": {
+          "rating": 1442.36,
+          "sd": 199.18,
+          "approx_95_interval": [
+            1051.98,
+            1832.75
+          ],
+          "appearances": 1
+        },
+        "idiot": {
+          "rating": 1433.45,
+          "sd": 198.66,
+          "approx_95_interval": [
+            1044.08,
+            1822.82
+          ],
+          "appearances": 2
+        }
+      },
+      "seat_appearances": 18
+    },
+    {
+      "entry": "terra-high",
+      "rating": 1432.6,
+      "sd": 182.12,
+      "approx_95_interval": [
+        1075.64,
+        1789.55
+      ],
+      "shared_component": {
+        "rating": 1438.96,
+        "sd": 179.94,
+        "approx_95_interval": [
+          1086.28,
+          1791.63
+        ]
+      },
+      "roles": {
+        "wolf": {
+          "rating": 1428.78,
+          "sd": 192.68,
+          "approx_95_interval": [
+            1051.13,
+            1806.43
+          ],
+          "appearances": 6
+        },
+        "villager": {
+          "rating": 1433.87,
+          "sd": 196.35,
+          "approx_95_interval": [
+            1049.02,
+            1818.72
+          ],
+          "appearances": 6
+        },
+        "seer": {
+          "rating": 1441.5,
+          "sd": 200.18,
+          "approx_95_interval": [
+            1049.14,
+            1833.86
+          ],
+          "appearances": 1
+        },
+        "witch": {
+          "rating": 1438.96,
+          "sd": 200.74,
+          "approx_95_interval": [
+            1045.51,
+            1832.4
+          ],
+          "appearances": 2
+        },
+        "hunter": {
+          "rating": 1436.42,
+          "sd": 199.16,
+          "approx_95_interval": [
+            1046.06,
+            1826.78
+          ],
+          "appearances": 1
+        },
+        "idiot": {
+          "rating": 1438.95,
+          "sd": 198.58,
+          "approx_95_interval": [
+            1049.73,
+            1828.16
+          ],
+          "appearances": 2
+        }
+      },
+      "seat_appearances": 18
+    }
+  ],
+  "comparisons": [
+    {
+      "a": "sol-low",
+      "b": "sol-medium",
+      "difference": {
+        "rating": 0.24,
+        "sd": 247.71,
+        "approx_95_interval": [
+          -485.26,
+          485.75
+        ]
+      },
+      "approx_probability_a_stronger": 0.5003889393751135
+    },
+    {
+      "a": "sol-low",
+      "b": "terra-high",
+      "difference": {
+        "rating": 134.81,
+        "sd": 248.98,
+        "approx_95_interval": [
+          -353.2,
+          622.81
+        ]
+      },
+      "approx_probability_a_stronger": 0.7058945092267841
+    },
+    {
+      "a": "sol-low",
+      "b": "terra-low",
+      "difference": {
+        "rating": 134.57,
+        "sd": 249.07,
+        "approx_95_interval": [
+          -353.61,
+          622.74
+        ]
+      },
+      "approx_probability_a_stronger": 0.7054937269828296
+    },
+    {
+      "a": "sol-medium",
+      "b": "terra-high",
+      "difference": {
+        "rating": 134.57,
+        "sd": 249.07,
+        "approx_95_interval": [
+          -353.61,
+          622.74
+        ]
+      },
+      "approx_probability_a_stronger": 0.7054937269828295
+    },
+    {
+      "a": "sol-medium",
+      "b": "terra-low",
+      "difference": {
+        "rating": 134.32,
+        "sd": 249.15,
+        "approx_95_interval": [
+          -354.02,
+          622.67
+        ]
+      },
+      "approx_probability_a_stronger": 0.7050974229902609
+    },
+    {
+      "a": "terra-high",
+      "b": "terra-low",
+      "difference": {
+        "rating": -0.24,
+        "sd": 247.71,
+        "approx_95_interval": [
+          -485.75,
+          485.26
+        ]
+      },
+      "approx_probability_a_stronger": 0.4996110606248865
+    }
+  ],
+  "good_baseline_probability_at_map": 0.5002057908428833,
+  "in_sample_probabilities": [
+    {
+      "match_id": "codex-quartet-18000-01",
+      "good_win_probability_at_map": 0.35207969630245556
+    },
+    {
+      "match_id": "codex-quartet-18000-02",
+      "good_win_probability_at_map": 0.6463786950095197
+    },
+    {
+      "match_id": "codex-quartet-18000-03",
+      "good_win_probability_at_map": 0.4444511695580359
+    },
+    {
+      "match_id": "codex-quartet-18000-04",
+      "good_win_probability_at_map": 0.44318469380854847
+    },
+    {
+      "match_id": "codex-quartet-18000-05",
+      "good_win_probability_at_map": 0.5565412909517163
+    },
+    {
+      "match_id": "codex-quartet-18000-06",
+      "good_win_probability_at_map": 0.5565412909517163
+    }
+  ],
+  "status": "exploratory-not-a-calibrated-leaderboard",
+  "uncertainty": "Marginal Laplace approximation with fixed priors, not MCMC or empirical confidence intervals.",
+  "tournament_points": {
+    "sol-low": {
+      "seat_appearances": 18,
+      "wins": 11,
+      "points": 12
+    },
+    "sol-medium": {
+      "seat_appearances": 18,
+      "wins": 11,
+      "points": 12
+    },
+    "terra-high": {
+      "seat_appearances": 18,
+      "wins": 7,
+      "points": -12
+    },
+    "terra-low": {
+      "seat_appearances": 18,
+      "wins": 7,
+      "points": -12
+    }
+  },
+  "evidence_scope": "Referee-validated portable gameplay; original model requests and private notes are intentionally excluded."
+}
