@@ -31,3 +31,36 @@ Reproduce the offline replay and fit without model calls:
 ```sh
 python3 scripts/play_codex_quartet.py --rate
 ```
+
+## Descriptive observations
+
+The [offline descriptive analysis](../artifacts/codex-quartet-v1/observations.json)
+is produced by `python3 scripts/analyze_quartet.py`; it contains aggregate counts,
+latencies and source hashes, without exporting private notes or speech content.
+
+| Setting | Median decision seconds | Note-tool writes | Good exile votes targeting wolves |
+| --- | ---: | ---: | ---: |
+| Sol medium | 6.04 | 5 | 26 / 31 |
+| Sol low | 6.59 | 0 | 22 / 33 |
+| Terra high | 3.91 | 0 | 24 / 38 |
+| Terra low | 4.38 | 0 | 28 / 32 |
+
+Terra was faster by median response time in this sample. The timing mix includes
+different roles, phases, tool calls and transport delays; it is not a controlled
+latency benchmark. Both models retain their seat-local thread history independently
+of optional private note writes. Vote target alignment is descriptive, not an
+optimality test or an independent skill estimate: votes share the same public
+information and are correlated within games. Terra low's raw vote alignment was
+highest despite its lower Elo estimate, illustrating that team outcomes and vote
+alignment measure different things.
+
+Good exiled 15 wolves and 7 good players. Witch poison targeted three wolves and
+one good player. In game 3, Good exiled three wolves but lost with one wolf left
+after all special roles died. In game 5, Good exiled three wolves without exiling
+a good player and poisoned the fourth wolf, winning on day 3.
+
+There were zero self-explosions across 686 explosion opportunities. Those pass
+choices account for about 47% of accepted actions, a potential inference-overhead
+optimization for later experiments. No mid-experiment rule or prompt change is
+being made. Two recovered upstream retry notifications occurred; no failed player
+decision, fallback action, cross-seat history or replay mismatch was detected.
