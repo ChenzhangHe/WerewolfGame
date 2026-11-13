@@ -184,6 +184,7 @@ function createSpeechPlayer({ synth, Utterance, onState = () => {} } = {}) {
       eliminated: 'Eliminated', alive: 'alive', hiddenRole: 'Unknown role', transcript: 'The conversation',
       autoScroll: 'Follow latest ↓', autoScrollOff: 'Follow latest', waitingTitle: 'Before the first whisper',
       waitingCopy: 'Start the game to watch the village come alive.', transcriptNote: 'Claims are not confirmed roles.',
+      exportReplay: 'Export replay JSON ↗', replayEnd: 'END', readonlyExportWarning: 'This replay includes every hidden role and private game action. It contains no model requests, private notes or reasoning. It will spoil the game.', replayLibrary: 'Replay library', replayLibraryCopy: 'Load a complete saved game. Playback never calls a model.', importReplay: 'Import replay JSON', replayReadonly: 'Saved replay · no model calls',
       timeline: 'TIMELINE', live: 'LIVE', playerDetail: 'Player dossier', voteLedger: 'Voting record',
       publicRecord: 'PUBLIC RECORD', footer: 'A game of imperfect information. A window into artificial minds.',
       export: 'Export archive ↗', nextSession: 'THE NEXT SESSION', setupTitle: 'Gather the village.',
@@ -245,6 +246,7 @@ function createSpeechPlayer({ synth, Utterance, onState = () => {} } = {}) {
       eliminated: '已出局', alive: '存活', hiddenRole: '身份未知', transcript: '场上记录',
       autoScroll: '跟随最新 ↓', autoScrollOff: '跟随最新', waitingTitle: '第一声低语之前',
       waitingCopy: '开始对局，静候村庄苏醒。', transcriptNote: '身份宣称不等于身份确认。',
+      exportReplay: '导出完整回放 JSON ↗', replayEnd: '结尾', readonlyExportWarning: '回放包含全部隐藏身份及夜间行动，会剧透；不包含模型请求、私人笔记或推理记录。', replayLibrary: '对局库', replayLibraryCopy: '加载完整历史对局。回放不会调用模型，可切换三种观战视角。', importReplay: '导入回放 JSON', replayReadonly: '历史回放 · 不调用模型',
       timeline: '时间线', live: '实时', playerDetail: '玩家档案', voteLedger: '投票记录',
       publicRecord: '公开信息', footer: '不完全信息的博弈，观察人工智能的窗口。',
       export: '导出存档 ↗', nextSession: '下一场对局', setupTitle: '让村庄集结。',
@@ -458,7 +460,59 @@ function createSpeechPlayer({ synth, Utterance, onState = () => {} } = {}) {
       if (version === state.requestVersion) notice(error.message, true);
     }
   }
+  let replayTimer = null;
+  function stopReplay() { clearTimeout(replayTimer); replayTimer = null; }
+  async function replayNext() {
+    const max = Number(state.snapshot?.max_step || 0);
+    const at = state.at ?? Number(state.snapshot?.step || 0);
+    if (at >= max) { stopReplay(); renderControls(); return false; }
+    state.at = at + 1; await refresh(); return true;
+  }
+  async function replayTick() {
+    if (await replayNext() && replayTimer !== null) replayTimer = setTimeout(replayTick, 5000);
+    else { stopReplay(); renderControls(); }
+  }
+  async function loadReplay(body, imported = false) {
+    stopReplay(); speechPlayer.stop();
+    state.requestVersion += 1;
+    state.busy = true; renderControls();
+    try {
+      await api(imported ? '/api/replays/import' : '/api/replays/load', body);
+      state.at = 0; state.lastEventSignature = ''; state.snapshot = null;
+      closeDialog('library-dialog'); await refresh();
+    } finally { state.busy = false; renderControls(); }
+  }
+  $('library-open').addEventListener('click', async () => {
+    stopReplay(); openDialog('library-dialog'); $('library-list').replaceChildren(); $('library-error').hidden = true;
+    try {
+      const data = await api('/api/replays');
+      for (const item of data.replays) {
+        const button = node('button', 'button secondary', item.title);
+        button.style.margin = '6px';
+        button.addEventListener('click', async () => {
+          try { await loadReplay({id: item.id}); }
+          catch (error) { $('library-error').textContent = error.message; $('library-error').hidden = false; }
+        });
+        $('library-list').append(button);
+      }
+    } catch (error) { $('library-error').textContent = error.message; $('library-error').hidden = false; }
+  });
+  $('library-close').addEventListener('click', () => closeDialog('library-dialog'));
+  $('replay-file').addEventListener('change', async (event) => {
+    try {
+      const file = event.target.files[0]; if (!file) return;
+      if (file.size > 1900000) throw new Error('Replay file exceeds 1.9 MB.');
+      await loadReplay({archive: JSON.parse(await file.text())}, true);
+    } catch (error) { $('library-error').textContent = error.message; $('library-error').hidden = false; }
+    finally { event.target.value = ''; }
+  });
   async function command(path) {
+    if (state.snapshot?.read_only) {
+      if (path === '/api/pause') { stopReplay(); renderControls(); return; }
+      if (path === '/api/step') { stopReplay(); await replayNext(); renderControls(); return; }
+      if (replayTimer !== null) { stopReplay(); renderControls(); return; }
+      replayTimer = setTimeout(replayTick, 0); renderControls(); return;
+    }
     if (state.busy) return;
     state.busy = true; renderControls();
     try {
@@ -488,17 +542,19 @@ function createSpeechPlayer({ synth, Utterance, onState = () => {} } = {}) {
 
   function renderControls() {
     const status = state.snapshot?.status || 'paused';
-    const running = status === 'running';
-    const finished = status === 'finished' || Boolean(state.snapshot?.winner);
+    const saved = Boolean(state.snapshot?.read_only);
+    const running = saved ? replayTimer !== null : status === 'running';
+    const finished = saved ? Number(state.at ?? state.snapshot?.step ?? 0) >= Number(state.snapshot?.max_step || 0) : status === 'finished' || Boolean(state.snapshot?.winner);
     const historical = state.at !== null;
     const liveBusy = Boolean(state.snapshot?.busy || state.snapshot?.playing);
     $('play').replaceChildren(node('span', '', running ? 'Ⅱ' : '▶'), node('span', '', t(running ? 'pause' : 'play')));
-    $('play').disabled = historical || state.busy || finished || !state.snapshot;
-    $('play').title = historical ? t('historyControls') : t(running ? 'pause' : 'play');
-    $('step').disabled = historical || state.busy || running || liveBusy || finished || !state.snapshot;
-    $('step').title = historical ? t('historyControls') : t('advanceTitle');
+    $('play').disabled = (historical && !saved) || state.busy || finished || !state.snapshot;
+    $('play').title = (historical && !saved) ? t('historyControls') : t(running ? 'pause' : 'play');
+    $('step').disabled = (historical && !saved) || state.busy || running || liveBusy || finished || !state.snapshot;
+    $('step').title = (historical && !saved) ? t('historyControls') : t('advanceTitle');
     $('setup-open').disabled = state.busy || running || liveBusy;
-    $('status-label').textContent = state.at === null ? t(status) : t('replay');
+    $('library-open').disabled = state.busy || running || liveBusy;
+    $('status-label').textContent = saved ? t('replayReadonly') : state.at === null ? t(status) : t('replay');
     $('status-dot').className = status;
     $('follow-seat').hidden = state.mode !== 'player';
     $('perspective').value = state.mode;
@@ -513,6 +569,9 @@ function createSpeechPlayer({ synth, Utterance, onState = () => {} } = {}) {
     $('go-live').title = state.at === null ? t('live') : t('replayHint');
     $('replay-back').disabled = !state.snapshot || index <= 0;
     $('export').disabled = !state.snapshot;
+    $('export').textContent = t(saved ? 'exportReplay' : 'export');
+    $('export-warning').textContent = t(saved ? 'readonlyExportWarning' : 'exportWarning');
+    $('go-live').querySelector('span').textContent = t(saved ? 'replayEnd' : 'live');
     renderSpeechControls();
   }
   function render() {
@@ -692,7 +751,7 @@ function createSpeechPlayer({ synth, Utterance, onState = () => {} } = {}) {
     const body = node('div'); const heading = node('div', 'dossier-heading');
     heading.append(node('h3', '', `${String(player.seat).padStart(2, '0')} · ${player.name}`), node('span', 'dossier-role', roleName(permittedRole(player))));
     body.append(heading);
-    body.append(node('p', 'dossier-config', config ? `${config.provider === 'demo' ? t('demoProvider') : config.provider} · ${config.model || '—'} · ${t(config.interaction_mode === 'tools' ? 'toolHarness' : 'jsonAction')}${player.sheriff ? ` · ${t('sheriff')}` : ''}` : t('noConfig')));
+    body.append(node('p', 'dossier-config', config ? `${config.provider === 'demo' ? t('demoProvider') : config.provider} · ${config.model || '—'}${config.reasoning_effort ? ` · ${config.reasoning_effort}` : ''} · ${t(config.interaction_mode === 'tools' ? 'toolHarness' : 'jsonAction')}${player.sheriff ? ` · ${t('sheriff')}` : ''}` : t('noConfig')));
     if (config?.personality) body.append(node('p', 'dossier-personality', config.personality));
     content.append(avatar, body);
     const privateNotes = node('div', 'private-notes'); privateNotes.append(node('h4', '', t('notes')));
@@ -864,11 +923,12 @@ function createSpeechPlayer({ synth, Utterance, onState = () => {} } = {}) {
     const language = state.snapshot?.language || state.locale;
     $('setup-language').value = language;
     const configs = state.snapshot?.configs;
-    state.draft = Array.isArray(configs) && configs.length === 12 ? configs.map((config) => ({ thinking: null, reasoning_effort: null, interaction_mode: 'json', ...config })) : freshDraft(language);
+    state.draft = !state.snapshot?.read_only && Array.isArray(configs) && configs.length === 12 ? configs.map((config) => ({ thinking: null, reasoning_effort: null, interaction_mode: 'json', ...config })) : freshDraft(language);
     state.flashApplied = false;
     $('setup-error').hidden = true; renderSetup(); openDialog('setup-dialog'); refreshProviderSetup();
   }
   async function createGame(event) {
+    stopReplay();
     event.preventDefault(); if (state.busy) return;
     if (state.draft.some((config) => !config.name.trim() || !config.model.trim())) {
       $('setup-error').textContent = t('invalidPlayers'); $('setup-error').hidden = false; return;
@@ -918,9 +978,9 @@ function createSpeechPlayer({ synth, Utterance, onState = () => {} } = {}) {
   });
   window.addEventListener('pagehide', () => speechPlayer.disable());
   $('autoscroll').addEventListener('click', () => { state.autoScroll = !state.autoScroll; renderControls(); if (state.autoScroll) $('transcript').scrollTop = $('transcript').scrollHeight; });
-  $('replay-range').addEventListener('input', (event) => { state.at = Number(event.target.value); changePerspective(); });
-  $('replay-back').addEventListener('click', () => { state.at = Math.max(0, (state.at ?? state.snapshot?.step ?? 0) - 1); changePerspective(); });
-  $('go-live').addEventListener('click', () => { state.at = null; changePerspective(); });
+  $('replay-range').addEventListener('input', (event) => { stopReplay(); state.at = Number(event.target.value); changePerspective(); });
+  $('replay-back').addEventListener('click', () => { stopReplay(); state.at = Math.max(0, (state.at ?? state.snapshot?.step ?? 0) - 1); changePerspective(); });
+  $('go-live').addEventListener('click', () => { stopReplay(); state.at = state.snapshot?.read_only ? Number(state.snapshot.max_step) : null; changePerspective(); });
   $('setup-open').addEventListener('click', openSetup);
   $('setup-close').addEventListener('click', () => closeDialog('setup-dialog'));
   $('setup-cancel').addEventListener('click', () => closeDialog('setup-dialog'));

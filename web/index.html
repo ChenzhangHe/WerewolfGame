@@ -12,7 +12,7 @@
   <div class="app-shell">
     <header class="topbar">
       <a class="brand" href="/" aria-label="Werewolf home"><span class="brand-mark" aria-hidden="true">◒</span><span>WEREWOLF</span></a>
-      <div class="topbar-end"><span class="game-language" id="game-language">ENGLISH GAME</span><div class="locale-switch" aria-label="Interface language"><button id="locale-en" type="button" lang="en">EN</button><button id="locale-zh" type="button" lang="zh">中文</button></div><button class="button secondary compact" id="setup-open" data-i18n="newGame">New game</button></div>
+      <div class="topbar-end"><span class="game-language" id="game-language">ENGLISH GAME</span><div class="locale-switch" aria-label="Interface language"><button id="locale-en" type="button" lang="en">EN</button><button id="locale-zh" type="button" lang="zh">中文</button></div><button class="button secondary compact" id="library-open" data-i18n="replayLibrary">Replay library</button><button class="button secondary compact" id="setup-open" data-i18n="newGame">New game</button></div>
     </header>
 
     <main>
@@ -50,6 +50,12 @@
     <section id="ledger-panel" class="ledger-panel drawer-panel" role="tabpanel" aria-labelledby="votes-tab" hidden><div class="panel-heading"><span class="eyebrow" data-i18n="publicRecord">PUBLIC RECORD</span></div><div id="vote-ledger" class="ledger"></div></section>
   </dialog>
 
+  <dialog id="library-dialog" aria-labelledby="library-title">
+    <div class="dialog-header"><h2 id="library-title" data-i18n="replayLibrary">Replay library</h2><button type="button" class="icon-button" id="library-close" aria-label="Close">×</button></div>
+    <p class="muted" data-i18n="replayLibraryCopy">Load a complete saved game. Playback never calls a model.</p>
+    <div id="library-list"></div><p id="library-error" role="alert" hidden></p>
+    <label class="button secondary" for="replay-file" data-i18n="importReplay">Import replay JSON</label><input id="replay-file" type="file" accept=".json,application/json" hidden>
+  </dialog>
   <dialog id="setup-dialog" aria-labelledby="setup-title">
     <form id="setup-form">
       <div class="dialog-header"><div><p class="eyebrow" data-i18n="nextSession">THE NEXT SESSION</p><h2 id="setup-title" data-i18n="setupTitle">Gather the village.</h2></div><button type="button" class="icon-button" id="setup-close" aria-label="Close setup">×</button></div>
@@ -70,6 +76,6 @@
       <div class="dialog-actions"><button type="button" class="button secondary" id="setup-cancel" data-i18n="cancel">Cancel</button><button type="submit" class="button primary" id="setup-create" data-i18n="createGame">Create game</button></div>
     </form>
   </dialog>
-  <dialog id="export-dialog" aria-labelledby="export-title"><div class="dialog-header"><h2 id="export-title" data-i18n="exportTitle">Reveal the full archive?</h2><button class="icon-button" id="export-close" aria-label="Close">×</button></div><p data-i18n="exportWarning">This download contains every hidden role, private action, player note, and provider request. It will spoil a mystery game. Keep it away from active players.</p><div class="dialog-actions"><button class="button secondary" id="export-cancel" data-i18n="cancel">Cancel</button><button class="button primary" id="export-download" data-i18n="downloadArchive">Download archive</button></div></dialog>
+  <dialog id="export-dialog" aria-labelledby="export-title"><div class="dialog-header"><h2 id="export-title" data-i18n="exportTitle">Reveal the full archive?</h2><button class="icon-button" id="export-close" aria-label="Close">×</button></div><p id="export-warning" data-i18n="exportWarning">This download contains every hidden role, private action, player note, and provider request. It will spoil a mystery game. Keep it away from active players.</p><div class="dialog-actions"><button class="button secondary" id="export-cancel" data-i18n="cancel">Cancel</button><button class="button primary" id="export-download" data-i18n="downloadArchive">Download archive</button></div></dialog>
 </body>
 </html>

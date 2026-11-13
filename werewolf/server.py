@@ -17,6 +17,7 @@ from . import providers
 from .credentials import load_local_credentials
 from .providers import PlayerConfig
 from .runner import Runner
+from .replays import ReplayRunner, library, load_replay
 
 
 WEB_ROOT = Path(__file__).resolve().parent.parent / "web"
@@ -161,6 +162,23 @@ class Controller:
             self._capture()
             return self.snapshot()
 
+    def load_saved(self, body, *, imported=False):
+        expected = {"archive"} if imported else {"id"}
+        if set(body) != expected:
+            raise ValueError("Choose one saved replay or a portable replay archive.")
+        with self.condition:
+            if self.busy or self.playing or self.step_requested:
+                raise RuntimeError("Pause and wait for the current turn before loading a replay.")
+        runner = ReplayRunner(body["archive"]) if imported else load_replay(body["id"])
+        with self.condition:
+            if self.busy or self.playing or self.step_requested:
+                raise RuntimeError("Pause and wait for the current turn before loading a replay.")
+            self.runner = runner
+            self.history = []
+            self.failure = None
+            self._capture()
+            return self.snapshot(at=0)
+
     def snapshot(self, mode="mystery", seat=None, at=None):
         if mode not in {"mystery", "omniscient", "player"}:
             raise ValueError("Unknown spectator perspective.")
@@ -168,6 +186,8 @@ class Controller:
             raise ValueError("Follow a player requires a seat from 1 through 12.")
         key = f"player:{seat}" if mode == "player" else mode
         with self.condition:
+            if at is None and getattr(self.runner, "read_only", False):
+                at = 0
             if at is None:
                 result = deepcopy(self.views[key])
                 if self.failure:
@@ -190,6 +210,8 @@ class Controller:
 
     def control(self, action):
         with self.condition:
+            if getattr(self.runner, "read_only", False) and action != "pause":
+                raise ValueError("Saved games are read-only; use the replay timeline.")
             if action == "pause":
                 self.playing = False
                 self.step_requested = False
@@ -304,6 +326,8 @@ class Handler(BaseHTTPRequestHandler):
                 seat = int(query["seat"][0]) if "seat" in query else None
                 at = int(query["at"][0]) if "at" in query else None
                 self._send(200, self.server.controller.snapshot(query.get("mode", ["mystery"])[0], seat, at))
+            elif route.path == "/api/replays":
+                self._send(200, {"replays": library()})
             elif route.path == "/api/providers":
                 load_local_credentials()
                 self._send(200, {"deepseek": {
@@ -344,7 +368,8 @@ class Handler(BaseHTTPRequestHandler):
             return
         try:
             length = int(self.headers.get("Content-Length", "0"))
-            if not 0 <= length <= 131072:
+            limit = 2_000_000 if urlsplit(self.path).path == "/api/replays/import" else 131072
+            if not 0 <= length <= limit:
                 raise ValueError("Request exceeds the allowed size.")
             body = json.loads(self.rfile.read(length) or b"{}")
             if not isinstance(body, dict):
@@ -352,6 +377,8 @@ class Handler(BaseHTTPRequestHandler):
             path = urlsplit(self.path).path
             if path == "/api/game":
                 result = self.server.controller.create(body)
+            elif path in {"/api/replays/load", "/api/replays/import"}:
+                result = self.server.controller.load_saved(body, imported=path.endswith("/import"))
             elif path == "/api/providers/deepseek/check":
                 if set(body) - {"language"} or body.get("language", "en") not in {"en", "zh"}:
                     raise ValueError("Connection check accepts only language en or zh.")
