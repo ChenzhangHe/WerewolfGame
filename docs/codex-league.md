@@ -69,3 +69,31 @@ A future seven-entry experiment can use `--profile seven` with a fresh directory
 containing canaries for all seven configurations. Fourteen games provide exact
 role and position balance; six provide only approximate balance. Neither profile
 is started by the initial pair pilot.
+
+## Three-model pilot
+
+The separate `codex-trio-v1` pilot compares **Sol / medium**, **Terra / low** and
+**Luna / medium** in six new games, with four seats per configuration per game.
+Two three-game rotation blocks give each entry 8 wolves, 8 villagers, and 2 of
+each special role. Every configuration occupies each seat/personality twice.
+Wolf composition varies across games. Efforts differ deliberately, so the result
+compares these configurations, rather than isolating model identity at equal effort.
+
+The previously passed synthetic canaries for these exact configurations are
+re-audited and their hashes frozen. No previous game data or canary observations
+are supplied to the new game players. The pair pilot keeps its existing plan,
+source fingerprint, results and in-flight games.
+
+After placing those three canary files in the new directory:
+
+```sh
+python3 scripts/play_codex_trio.py --create-plan
+python3 scripts/launch_codex_league.py --runner trio --plan artifacts/codex-trio-v1/plan.private.json
+python3 scripts/play_codex_trio.py --rate
+```
+
+Use the same synthetic-canary command above with `gpt-6-luna`, effort `medium`,
+and the corresponding `canary-luna-medium` filenames to validate Luna. Each pilot
+has its own logs, progress, result ledger, ratings, ownership marker and OS lock.
+Each runs its first game as an audit gate, then at most two games concurrently.
+Six outcomes provide only preliminary ratings with substantial uncertainty.

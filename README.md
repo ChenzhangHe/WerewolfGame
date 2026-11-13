@@ -83,6 +83,8 @@ The [Codex league runner](docs/codex-league.md) compares fixed model/effort
 configurations through the same isolated harness. The initial six-game pilot is
 **GPT-6.1 Sol / medium versus GPT-6.1 Terra / low**, six seats each per game.
 It starts with an audited full-game gate and runs independently of the terminal.
+A separate six-game three-model pilot adds **GPT-6 Luna / medium**, with four
+seats per configuration and equal role exposure across the pilot.
 
 ### DeepSeek Flash
 
