@@ -23,7 +23,8 @@ def worker(plan, runner="pair"):
     data = {'phase': 'running_games', 'pid': os.getpid(), 'at_utc': now()}
     save(status, data)
     try:
-        script = 'scripts/play_codex_trio.py' if runner == 'trio' else 'scripts/play_codex_league.py'
+        script = {'pair': 'scripts/play_codex_league.py', 'trio': 'scripts/play_codex_trio.py',
+                  'quartet': 'scripts/play_codex_quartet.py'}[runner]
         command = [sys.executable, '-u', script, '--plan', str(plan)]
         run = subprocess.run(command+['--run'])
         data['runner_exit_code'] = run.returncode
@@ -44,7 +45,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--plan', type=Path, default=DEFAULT_PLAN)
     parser.add_argument('--worker', action='store_true', help=argparse.SUPPRESS)
-    parser.add_argument('--runner', choices=('pair', 'trio'), default='pair')
+    parser.add_argument('--runner', choices=('pair', 'trio', 'quartet'), default='pair')
     args = parser.parse_args()
     repo = Path(__file__).resolve().parents[1]
     plan = args.plan.resolve()
