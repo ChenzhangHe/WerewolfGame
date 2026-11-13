@@ -126,3 +126,27 @@ start, with at most two quartet games in parallel. Failed attempts remain visibl
 and unscored; new launches stop on a failure. Logs, progress, results and ratings
 live under `artifacts/codex-quartet-v1`. Six completed outcomes will provide only
 preliminary ratings, with uncertainty shown explicitly.
+
+## Twelve-game extension
+
+The separately frozen continuation adds 12 fresh games to the completed six-game
+four-category pilot. Model, effort, prompt, tools, language, harness limits and
+rating policy are unchanged. Two fresh six-game cohorts use seeds 19000 and 20000,
+with category-label rotations of one and two positions. This reduces the original
+special-role exposure imbalance. Across all 18 planned games, each category has
+18 wolves, 18 villagers, and 4 or 5 appearances in each special role.
+
+```sh
+python3 scripts/extend_codex_quartet.py --create-plan
+python3 scripts/launch_codex_league.py --runner extension --plan artifacts/codex-quartet-extension-v1/plan.private.json
+python3 scripts/extend_codex_quartet.py --rate
+```
+
+The completed baseline is re-audited and its plan, result ledger and six private
+archive hashes are frozen. The 12 new games receive fresh threads and no previous
+game information. They run behind one new full-game gate and then at most two at
+a time, stopping new launches on failure. Outputs in the extension directory are
+`ratings.json` for new games alone and `cumulative-ratings.json` for the combined
+18-game schedule. Cumulative ratings refit each valid outcome once with unchanged
+priors; they do not average cohort ratings. Layout group IDs are namespaced by
+cohort so different role layouts cannot accidentally share an intercept.
