@@ -174,3 +174,25 @@ inference. Completed new games are audited and fitted individually and with all
 prior valid outcomes. Across the full planned 24 games, each configuration has
 24 wolves, 24 villagers and exactly 6 appearances in each special role. The
 source and category-role schedule are frozen before any of these six games run.
+
+## Fresh six-game continuation at seed 22000
+
+A new six-game cohort (`artifacts/codex-quartet-22000`) follows the completed
+24-game comparison, bringing the planned total to 30. The four entries remain
+Sol/medium, Sol/low, Terra/high and Terra/low, with three seats per entry per game.
+Each entry receives six Wolves, six Villagers and six special-role seats in this
+cohort; individual special roles appear once or twice. The first game is a full
+replay/isolation audit gate, followed by at most two games concurrently. Original
+outcomes and failed-attempt policies remain intact; each seat gets a fresh thread.
+
+The frozen source includes the subsequently added spectator UI/library, but eleven
+inference/rules/loop files were verified byte-for-byte unchanged against commit
+`b438e78`. Models, efforts, prompts, tools, language and rating policy are unchanged.
+Capability canaries for those same four configurations were independently re-audited.
+The earlier 24-game cumulative result is preserved; this cohort reports its own
+results and ratings separately until a subsequent cumulative refit.
+
+```sh
+python3 scripts/play_codex_quartet.py --create-plan --plan artifacts/codex-quartet-22000/plan.private.json --seed 22000
+python3 scripts/launch_codex_league.py --runner quartet --plan artifacts/codex-quartet-22000/plan.private.json
+```
