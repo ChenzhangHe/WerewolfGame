@@ -4,6 +4,7 @@ from dataclasses import asdict
 import json
 from pathlib import Path
 import tempfile
+import threading
 import unittest
 from unittest.mock import patch
 
@@ -56,6 +57,29 @@ class QuartetTests(unittest.TestCase):
             record['notes_before'] = 'Another player private note'
             with self.assertRaisesRegex(AssertionError, 'notes'):
                 verify_trial(trial, match, plan)
+
+    def test_six_way_execution_starts_all_six_before_any_result_returns(self):
+        barrier = threading.Barrier(6)
+        started = []; lock = threading.Lock()
+        with tempfile.TemporaryDirectory() as directory, \
+             patch('scripts.play_codex_quartet.check_canaries', return_value={'tested': True}), \
+             patch('scripts.play_codex_quartet.parallel_baseline', return_value={'baseline': 'audited'}):
+            root = Path(directory)
+            plan = create_plan(root/'plan.private.json', 23000, parallel_games=6)
+            self.assertEqual(0, plan['initial_gate_games'])
+            self.assertEqual(6, plan['parallel_games_after_gate'])
+            verify_plan(plan, execution=True)
+            changed = deepcopy(plan); changed['parallel_games_after_gate'] = 2
+            with self.assertRaisesRegex(AssertionError, 'Execution settings'):
+                verify_plan(changed)
+            def finish(match, *args):
+                with lock: started.append(match['id'])
+                barrier.wait(timeout=5)
+                return {'match_id': match['id'], 'status': 'finished', 'winner': 'good', 'all_checks_passed': True}
+            with patch('scripts.play_codex_quartet.run_one', side_effect=finish), patch('scripts.play_codex_quartet.emit'):
+                self.assertEqual(0, run_season(plan, root))
+            self.assertEqual(6, len(set(started)))
+            self.assertEqual(6, json.loads((root/'ratings.json').read_text())['valid_games'])
 
     def test_plan_freezes_settings_and_failed_gate_prevents_further_launches(self):
         with tempfile.TemporaryDirectory() as directory:

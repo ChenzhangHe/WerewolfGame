@@ -196,3 +196,26 @@ results and ratings separately until a subsequent cumulative refit.
 python3 scripts/play_codex_quartet.py --create-plan --plan artifacts/codex-quartet-22000/plan.private.json --seed 22000
 python3 scripts/launch_codex_league.py --runner quartet --plan artifacts/codex-quartet-22000/plan.private.json
 ```
+
+## Six games in parallel
+
+The seed-23000 batch explicitly preregisters six simultaneous games using the
+same Sol/medium, Sol/low, Terra/high and Terra/low configurations. Each game still
+has twelve isolated seat threads and two concurrent decision workers: six games
+can therefore have at most twelve in-flight seat decisions. Models, efforts,
+prompts, tool scopes and rules are unchanged.
+
+```sh
+python3 scripts/play_codex_quartet.py --create-plan --seed 23000 --parallel-games 6 --plan artifacts/codex-quartet-23000/plan.private.json
+python3 scripts/launch_codex_league.py --runner quartet --plan artifacts/codex-quartet-23000/plan.private.json
+```
+
+The new v2 plan has no sequential first-game gate. It instead independently
+re-audits the completed seed-22000 baseline before launch and freezes hashes of
+its plan and reports. Missing or failed baseline validation prevents inference.
+Old v1 plans retain their original one-game gate and two-game parallelism; replay
+audits remain supported. Concurrency is a frozen per-batch setting, not a runtime
+resume override. The six-way barrier regression proves all six games start
+before any result returns. Each result is independently audited and retained;
+no failed attempt is silently replaced, and in-flight games are collected after
+a failure. Subscription rate limits may affect actual throughput.

@@ -18,6 +18,7 @@ from scripts.run_logging import emit
 from scripts.verify_codex import require
 
 VERSION = 'codex-quartet-league-v1'
+PARALLEL_VERSION = 'codex-quartet-league-v2'
 DEFAULT_PLAN = Path('artifacts/codex-quartet-v1/plan.private.json')
 
 
@@ -29,17 +30,36 @@ def fingerprint():
     return digest.hexdigest()
 
 
-def create_plan(path, seed):
+def parallel_baseline(*, audit=False):
+    root = Path('artifacts/codex-quartet-22000')
+    baseline = json.loads((root/'plan.private.json').read_text())
+    verify_plan(baseline)
+    status = json.loads((root/'verification-status.private.json').read_text())
+    require(status['phase'] == 'finished' and status['completed_games'] == 6 and status.get('runner_exit_code') == 0,
+            'Six-way execution requires a successfully completed baseline.')
+    paths = [root/'plan.private.json', root/'results.json']+[root/f"{m['id']}.json" for m in baseline['matches']]
+    if audit:
+        reports, remaining = collect_existing(baseline, root)
+        require(not remaining and len(reports) == 6 and all(r['all_checks_passed'] for r in reports),
+                'Six-way baseline failed offline audit.')
+    return {str(p): hashlib.sha256(p.read_bytes()).hexdigest() for p in paths}
+
+
+def create_plan(path, seed, *, parallel_games=2):
     if path.exists():
         raise ValueError('Do not overwrite a frozen plan.')
+    if parallel_games not in (2, 6):
+        raise ValueError('Choose two or six parallel games.')
     matches = schedule(seed)
-    plan = {'protocol': VERSION, 'source_fingerprint': fingerprint(), 'schedule_seed': seed,
+    plan = {'protocol': PARALLEL_VERSION if parallel_games == 6 else VERSION, 'source_fingerprint': fingerprint(), 'schedule_seed': seed,
             'matches': matches, 'entries': {e: {'model': m, 'effort': f} for e, (m, f) in ENTRIES.items()},
             'configs': {m['id']: [asdict(c) for c in configs_for(m)] for m in matches},
             'canary_digests': check_canaries(path.parent, ENTRIES), 'rating_policy': POLICY,
             'max_batches': 300, 'workers_per_game': 2, 'codex_turn_timeout_seconds': 600,
-            'initial_gate_games': 1, 'parallel_games_after_gate': 2,
+            'initial_gate_games': 0 if parallel_games == 6 else 1, 'parallel_games_after_gate': parallel_games,
             'failure_policy': 'Retain every attempt; halt new games on failure; no replacements, default actions or thread recreation.'}
+    if parallel_games == 6:
+        plan['validated_baseline'] = parallel_baseline(audit=True)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open('x') as stream:
         json.dump(plan, stream, ensure_ascii=False, indent=2); stream.write('\n')
@@ -52,14 +72,17 @@ def create_plan(path, seed):
 
 
 def verify_plan(plan, execution=False):
-    require(plan['protocol'] == VERSION, 'Wrong comparison protocol.')
+    require(plan['protocol'] in (VERSION, PARALLEL_VERSION), 'Wrong comparison protocol.')
     require(plan['matches'] == schedule(plan['schedule_seed']), 'Frozen quartet schedule changed.')
     validate_schedule(plan['matches'])
     require(plan['entries'] == {e: {'model': m, 'effort': f} for e, (m, f) in ENTRIES.items()}, 'Entries changed.')
     require(plan['configs'] == {m['id']: [asdict(c) for c in configs_for(m)] for m in plan['matches']}, 'Fixed seat settings changed.')
     require(plan['rating_policy'] == POLICY, 'Rating policy changed.')
+    expected = (300, 2, 600, 0, 6) if plan['protocol'] == PARALLEL_VERSION else (300, 2, 600, 1, 2)
     require((plan['max_batches'], plan['workers_per_game'], plan['codex_turn_timeout_seconds'],
-             plan['initial_gate_games'], plan['parallel_games_after_gate']) == (300, 2, 600, 1, 2), 'Execution settings changed.')
+             plan['initial_gate_games'], plan['parallel_games_after_gate']) == expected, 'Execution settings changed.')
+    if execution and plan['protocol'] == PARALLEL_VERSION:
+        require(plan['validated_baseline'] == parallel_baseline(), 'Validated baseline changed.')
     if execution:
         require(plan['source_fingerprint'] == fingerprint(), 'Code changed since preregistration.')
 
@@ -86,18 +109,20 @@ def run_one(match, plan, root):
 def run_season(plan, root):
     verify_plan(plan, execution=True)
     require(check_canaries(root, ENTRIES) == plan['canary_digests'], 'Canary evidence changed.')
+    if plan['protocol'] == PARALLEL_VERSION:
+        require(plan['validated_baseline'] == parallel_baseline(audit=True), 'Validated baseline changed.')
     reports, remaining = collect_existing(plan, root)
     halted = any(not r.get('all_checks_passed') for r in reports)
     write_results(plan, root, reports, halted)
     if halted:
         return 1
-    if not reports and remaining:
+    if not reports and remaining and plan['initial_gate_games']:
         gate = run_one(remaining.pop(0), plan, root)
         reports.append(gate); halted = not gate.get('all_checks_passed')
         write_results(plan, root, reports, halted)
         emit({'gate': gate['match_id'], 'passed': not halted})
     if not halted:
-        for report, halted in scheduled_games(remaining, lambda m: run_one(m, plan, root), parallel_games=2):
+        for report, halted in scheduled_games(remaining, lambda m: run_one(m, plan, root), parallel_games=plan['parallel_games_after_gate']):
             reports.append(report); write_results(plan, root, reports, halted)
             emit({'match_id': report['match_id'], 'status': report['status'], 'winner': report.get('winner'),
                   'all_checks_passed': report.get('all_checks_passed'), 'scheduling_halted': halted})
@@ -108,13 +133,14 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--plan', type=Path, default=DEFAULT_PLAN)
     parser.add_argument('--seed', type=int, default=18000)
+    parser.add_argument('--parallel-games', type=int, choices=(2, 6), default=2)
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--create-plan', action='store_true')
     group.add_argument('--run', action='store_true')
     group.add_argument('--rate', action='store_true')
     args = parser.parse_args()
     if args.create_plan:
-        plan = create_plan(args.plan, args.seed)
+        plan = create_plan(args.plan, args.seed, parallel_games=args.parallel_games)
         emit({'plan': str(args.plan), 'games': len(plan['matches']), 'entries': list(ENTRIES)})
         return
     plan = json.loads(args.plan.read_text()); root = args.plan.parent
