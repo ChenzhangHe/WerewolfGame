@@ -9,17 +9,26 @@ fixed player configurations, three spectator perspectives, and historical replay
 It supports English and Simplified Chinese, including player speech and referee
 announcements in the language selected before the game.
 
+## Current comparison: Sol vs. Terra
+
+The active schedule uses **Sol / medium** versus **Terra / low**, six seats each.
+Scoring has just **Sol** and **Terra** entries. All 35 valid historical games are
+retained under model-family grouping; the failed upstream attempt stays excluded.
+Historical efforts differ, so the pooled score is not an equal-effort comparison.
+See [scoring continuity](docs/sol-terra-scoring.md) and the new batch's
+[preregistration](artifacts/codex-sol-terra-26000/preregistration.json).
+
 ## Saved games and scoring
 
-Twenty-four complete, referee-validated games are tracked in [replays/](replays/).
+Thirty-five complete, referee-validated games are tracked in [replays/](replays/).
 Open the local UI and choose **Replay library / 对局库** to load one, or import
 its JSON file. Playback supports all three perspectives and never calls a model.
 Private game actions are preserved; model requests, notes and reasoning are excluded.
 
-[24-game results](docs/codex-quartet-results-24.md) · [积分与评级共识（中文）](docs/scoring-agreement.md) · [Rating mathematics](docs/ratings.md)
+[Current Sol/Terra scores](docs/sol-terra-scoring.md) · [Historical four-setting results](docs/codex-quartet-results-35.md) · [积分与评级共识（中文）](docs/scoring-agreement.md) · [Rating mathematics](docs/ratings.md)
 
 ```sh
-python3 scripts/rate_replays.py --output artifacts/replay-ratings.json
+python3 scripts/rate_replays.py --grouping model-family --output artifacts/model-family-ratings.json
 ```
 
 This recomputes both tournament points and Elo-style ratings from Git-tracked games,

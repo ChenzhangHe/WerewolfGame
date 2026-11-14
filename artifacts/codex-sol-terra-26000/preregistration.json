@@ -1,0 +1,126 @@
+{
+  "protocol": "codex-sol-terra-v1",
+  "source_fingerprint": "fc97a5a1b6b24805b3b72d1f6b976ea404069d42ef074b35a8b15b8195e578f0",
+  "schedule_seed": 26000,
+  "games": 6,
+  "profile": "sol-terra",
+  "entries": {
+    "Sol": {
+      "model": "gpt-6.1-sol",
+      "effort": "medium"
+    },
+    "Terra": {
+      "model": "gpt-6.1-terra",
+      "effort": "low"
+    }
+  },
+  "canary_digests": {
+    "Sol": "344763b5b1356fe9a90304cfb5a914b1e6eeb8d62c8918c5c5fea49d44ea2384",
+    "Terra": "58dfba31da5fd10550e0420e531be9abf90a3054e69fc6cda0d2f7813f549c81"
+  },
+  "rating_policy": {
+    "version": "hierarchical-team-elo-v1",
+    "initial_rating": 1500,
+    "elo_scale": 400,
+    "configuration_prior_sd": 200,
+    "role_adjustment_prior_sd": 100,
+    "good_baseline_logit_prior_sd": 1,
+    "layout_logit_prior_sd": 0.5,
+    "role_weights": {
+      "wolf": 0.5,
+      "villager": 0.25,
+      "seer": 0.0625,
+      "witch": 0.0625,
+      "hunter": 0.0625,
+      "idiot": 0.0625
+    },
+    "outcome_unit": "one-result-per-game",
+    "inference": "MAP-with-Laplace-approximation",
+    "failure_policy": "retain-but-exclude-from-skill-fit"
+  },
+  "max_batches": 300,
+  "workers_per_game": 2,
+  "codex_turn_timeout_seconds": 600,
+  "initial_gate_games": 0,
+  "parallel_games_after_gate": 6,
+  "failure_policy": "Retain every attempt; halt new games on failure; no replacement, default action or thread recreation.",
+  "validated_baseline": {
+    "artifacts/codex-sol-medium-terra-low-v1/plan.private.json": "ea78562322e42bba60017c89c4839b8660107d20e1e2d8e23c20fc847d01653f",
+    "artifacts/codex-sol-medium-terra-low-v1/results.json": "977d3885ca06c74c9d5525e552056eaffbe93b93250c91f578240e1518b4f622",
+    "artifacts/codex-sol-medium-terra-low-v1/codex-pair-16000-01.json": "97dbfae12c5131b4140bc2e80e8c36b66d849edea9c414f11c284f7cfaec80c3",
+    "artifacts/codex-sol-medium-terra-low-v1/codex-pair-16000-02.json": "7d041441905daec87b2c0506989daede8c3c5cf508985fadc5adc2d2ec569a17",
+    "artifacts/codex-sol-medium-terra-low-v1/codex-pair-16000-03.json": "1e0e2423e484e2e1e55c7d713d159b8965bb514e304045202e0e8227e70b2a0e",
+    "artifacts/codex-sol-medium-terra-low-v1/codex-pair-16000-04.json": "243870b0407e73343dab164d974bea312c14dc39c58c2303d425e374720f7fc7",
+    "artifacts/codex-sol-medium-terra-low-v1/codex-pair-16000-05.json": "fc5b65b9da123bc7a5e08cb56b4d65b605320db34dfa3b4ac701664e76e3eae0",
+    "artifacts/codex-sol-medium-terra-low-v1/codex-pair-16000-06.json": "d02b546bf688d02a50134454343f00dbbbbf81676a6e73bdb7d49b560ad3189b"
+  },
+  "historical_replays": {
+    "codex-quartet-18000-01.json": "27d5aa39ae935c03189373c1d12386378a2482a3a99e6bcaa7cc2d916f310c20",
+    "codex-quartet-18000-02.json": "12fc49d707ee2431a9b4c72693f94cdc02ced5345cfcd2044e854c9ef10eab1c",
+    "codex-quartet-18000-03.json": "fd489dc3f5d2661b4add6dd2cbd3733b5828c3c65d6e00121feb261cc808622f",
+    "codex-quartet-18000-04.json": "7191b156278c285741a1263df32a39ea91f8e5b5884dc4fc65f432089fd47301",
+    "codex-quartet-18000-05.json": "6198526d4d8be7cf8269a1419024538c1d6f4a78029360809fe20b448d66b355",
+    "codex-quartet-18000-06.json": "a84efff251f3644ec0ae52f3d9269c5e74e79381cb34168da31696c733c41816",
+    "codex-quartet-19000-01.json": "47bed0a244a15987b15e88f581a6ceace7704f083d8beae865497a7174895ba4",
+    "codex-quartet-19000-02.json": "76c7b52c7cf4ac2f302986fb21a1f1ab724622fdff2cac370574d363d49d3938",
+    "codex-quartet-19000-03.json": "de2153bdc4e727df188d214dba5f9b7a5d98400b674ba77bf06eb40dd8bb840d",
+    "codex-quartet-19000-04.json": "7b717bd35bcaec566eee0f63e9082134575d7433c1eeb2681893886cd637d8fa",
+    "codex-quartet-19000-05.json": "b7b291e371b77e472933cee8de5d75c669d588b61fff1d2dbd3b2dc0163e0744",
+    "codex-quartet-19000-06.json": "d02740389be1a5911b3c908f7c82ad25110f76b40d5f6c3410f45f5f2b0d16e4",
+    "codex-quartet-20000-01.json": "a14abe672dea7cdc8fc26f0352532394212333513624029dc100c3e9f17cc059",
+    "codex-quartet-20000-02.json": "7e92c63efe93f480f70812af62b3a695fdc30309c67f642381438ef1a886c1c4",
+    "codex-quartet-20000-03.json": "ed98d4c2f74f875ffeb05d0f3379a31c471a262dae472f9ef308e5e349f582d7",
+    "codex-quartet-20000-04.json": "c18c4bad3471495ef6732cd62854ec8e9cb127e5820e58e40e0935dcf5ae90b1",
+    "codex-quartet-20000-05.json": "f1a6c1ad6ec920db11c906e5df4d3e09462c6f695972dd4bd6dafa6cca7f9c7a",
+    "codex-quartet-20000-06.json": "4a57083e17b01546ecafb02ad8d978f31ccc97c69b54bc39f0dfb8f45ea95227",
+    "codex-quartet-21000-01.json": "eb3bc5ea0fa5f48b6ddcac64d0d039fa7168fc38b37a29a0baf628722b34e783",
+    "codex-quartet-21000-02.json": "797c3e37c9cef88739a63fc644ca867b4b19a0e2519ff67b8724e6a418b9c680",
+    "codex-quartet-21000-03.json": "b79afbae8d7010f4c4931471e91f4627a5807902939723cf6abb3bd3d17f5ee7",
+    "codex-quartet-21000-04.json": "588bba0e8bfe1587020b7c31a8e3a96ade85a3e64bdc5c6b0f28a1c271242353",
+    "codex-quartet-21000-05.json": "0ff660b97909243a218ec8744cf10b0a1f1bdb17b62bfd4127cfb1e74448f7c2",
+    "codex-quartet-21000-06.json": "1e77b7725c92af052be5c70b4b8e322a3d98d33bacf96d7c5cbe97c8a3ec411b",
+    "codex-quartet-22000-01.json": "1f9cc4c74337ef6ce1240993860f56c05e8b3f55a569fda0be3f8142016aea4b",
+    "codex-quartet-22000-02.json": "760904679c0817c1343d0bbf1d7b5afd0c5a5e46b6caaa0896563cd704654b12",
+    "codex-quartet-22000-03.json": "44021ede3f9622cc20721748349a908dec1e887db06238e2d26b68e9a3065479",
+    "codex-quartet-22000-04.json": "276815b0d94d79737263e4b81549aa62a9cc4f67ac0a6a47f21310609902f9ae",
+    "codex-quartet-22000-05.json": "d0df862d12d6325d4c4f841546b6b16155be999dd1109eb4c67cc28f22135bd1",
+    "codex-quartet-22000-06.json": "a0282455053b357af261cd606736d5a863bf82e1ebb1d0833891571e7406f163",
+    "codex-quartet-23000-01.json": "c596a9da2ddb858f061656cb28a75d55e4636e99a59508ddd14c2e7ad5d46666",
+    "codex-quartet-23000-02.json": "88557eee3767de4071c629f72e3561763b94158385ce8da41b769c17a69da415",
+    "codex-quartet-23000-04.json": "c1b960cee0c0d37576c732dd363b29a9a4a1788f5a9d4ec121cb5f7c83c87b39",
+    "codex-quartet-23000-05.json": "e02c52fd9768cd709a16c7538e5f5fd05c79d54b962ac41a6abcbea41f58b342",
+    "codex-quartet-23000-06.json": "9a881634c818dd9ce01761f1475142308ce299180aa77f06a22485c2c90284fa"
+  },
+  "scoring_grouping": "model-family",
+  "historical_reliability": {
+    "attempts": 36,
+    "valid_games": 35,
+    "excluded": [
+      {
+        "match_id": "codex-quartet-23000-03",
+        "status": "error"
+      }
+    ]
+  },
+  "scheduled_games": 6,
+  "role_exposure_per_entry": {
+    "Sol": {
+      "wolf": 12,
+      "villager": 12,
+      "seer": 3,
+      "witch": 3,
+      "hunter": 3,
+      "idiot": 3
+    },
+    "Terra": {
+      "wolf": 12,
+      "villager": 12,
+      "seer": 3,
+      "witch": 3,
+      "hunter": 3,
+      "idiot": 3
+    }
+  },
+  "schedule_digest": "a090649c9de10cb12c324b83a78742423c2f3e94fdbeb0317a651e5604d65a50",
+  "revision_note": "User requested reuse of all existing valid games under Sol/Terra model-family labels before any inference in this batch. Unused earlier declaration is retained separately."
+}

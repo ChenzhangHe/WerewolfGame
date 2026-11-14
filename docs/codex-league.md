@@ -219,3 +219,24 @@ resume override. The six-way barrier regression proves all six games start
 before any result returns. Each result is independently audited and retained;
 no failed attempt is silently replaced, and in-flight games are collected after
 a failure. Subscription rate limits may affect actual throughput.
+
+## Current two-model scoring with historical continuity
+
+The seed-26000 profile `sol-terra` fixes Sol/medium and Terra/low, with six seats
+per model and six games in parallel. Scoring uses only capitalized `Sol` and
+`Terra` entries. All 35 valid historical games are retained by mapping model
+families, and their replay hashes are frozen in the plan. The original four-entry
+results and the excluded upstream failure are kept as historical evidence.
+Effort differences in historical games are disclosed; they are not silently
+represented as equal-effort results. An unused pre-scoring-revision declaration
+is retained, but no game inference occurred before the current revision.
+
+```sh
+python3 scripts/play_codex_league.py --create-plan --profile sol-terra --parallel-games 6 --seed 26000 --plan artifacts/codex-sol-terra-26000/plan.private.json
+python3 scripts/launch_codex_league.py --runner pair --plan artifacts/codex-sol-terra-26000/plan.private.json
+```
+
+`ratings.json` refits history plus current games exactly once; `batch-ratings.json`
+reports only new outcomes. Both use the same two entries. Historical game data is
+read only for offline referee validation and scoring, never delivered to a player.
+The native actor still receives only its own fresh game's authorized observations.

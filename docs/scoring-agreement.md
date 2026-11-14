@@ -15,7 +15,22 @@
 正则化的 Bradley–Terry 团队模型，不是固定 K 值的传统在线 Elo。
 每场已完成且通过审计的游戏只提供一个阵营胜负结果。
 
-## 配置与角色
+## 当前只报告 Sol 与 Terra
+
+当前分组为 `model-family`：历史 Sol low/medium 归入 Sol，历史 Terra high/low
+归入 Terra；全部 35 场有效旧对局继续使用，上游失败局仍然排除。新赛程固定
+Sol medium 与 Terra low，不混用同一席位设置。按原始阵营胜负重新拟合，
+不是平均旧 Elo，也不是从 1500 清零后丢弃旧结果。
+
+分组发生在观察历史结果之后，因此是明确披露的回顾性模型级汇总。历史思考
+强度不同，不能解读成控制相同思考强度后的纯模型效果。原四配置结果保留为
+历史报告。见 [分组与延续说明](sol-terra-scoring.md)。
+
+```sh
+python3 scripts/rate_replays.py --grouping model-family --output artifacts/model-family-ratings.json
+```
+
+## 历史配置与角色
 
 Sol medium、Sol low、Terra high、Terra low 是四个独立配置。
 一局中的模型、思考强度、性格和语言始终固定，席位间不共享模型线程。
@@ -45,17 +60,19 @@ logit P(好人胜) = 好人方基准 + 布局效应 + ln(10)/400 * D
 完整数学说明见 [ratings.md](ratings.md)，固定策略文件见
 [积分策略](../artifacts/mixed-pilot-rating-policy.json)。
 
-## 复算最新 24 场
+## 复算历史配置级结果
 
 ```sh
-python3 scripts/rate_replays.py --directory replays --output artifacts/replay-ratings.json
+python3 scripts/rate_replays.py --directory replays --grouping configuration --output artifacts/replay-ratings.json
 ```
 
-结果应为：Sol low 1608.43、Sol medium 1536.47、Terra low 1462.81、
-Terra high 1392.29。比赛积分分别为 +42、+18、−6、−30。
+当前 35 场历史配置级结果为：Sol low 1627.18、Sol medium 1544.16、
+Terra low 1455.02、Terra high 1373.64。当前模型级分组结果为 Sol 1602.60、
+Terra 1397.40；两种分组对应不同的参数定义，不应把它们的分值直接拼接。
 
-完整结果和角色胜率见 [24 场报告](codex-quartet-results-24.md)。
-[首批六场报告](codex-quartet-results.md)保留为历史批次结果。
+完整四配置结果见 [35 场历史报告](codex-quartet-results-35.md)。
+[24 场报告](codex-quartet-results-24.md)和[首批六场报告](codex-quartet-results.md)
+保留为各自历史批次结果。
 
 `replays/*.json` 包含所有实际发言、投票和夜间行动，能够让规则引擎逐步
 重建整局并核对行动是否合法。它不包含模型请求、私人笔记或推理记录，

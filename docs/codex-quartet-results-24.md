@@ -29,9 +29,11 @@
 本次点估计顺序为 Sol low、Sol medium、Terra low、Terra high，但所有两两评级差值的近似 95% 区间仍包含 0，尚不足以确认稳定排名或低思考强度的优势。提示词、模型、思考强度、工具权限和评级策略均未在这些对局中修改。四个六场批次分别使用种子组 18000、19000、20000、21000，后续三批轮换配置与角色的对应，布局组按批次命名。
 
 ```sh
-python3 scripts/rate_replays.py --directory replays --output artifacts/replay-ratings.json
+python3 scripts/rate_replays.py --directory replays --grouping configuration --output artifacts/replay-ratings.json
 ```
 
 [完整回放](../replays/) · [胜率与对局汇总](../artifacts/quartet-24-results.json) · [可复算评级与积分](../artifacts/replay-ratings.json) · [累计评级原始报告](../artifacts/codex-quartet-21000/cumulative-ratings.json) · [积分共识](scoring-agreement.md)
 
 [首批 6 场结果](codex-quartet-results.md)保留原样，属于历史批次，不应与最新累计结果混淆。回放中保留全部棋局行动，但不含模型请求、私人笔记或推理。原始输入审计依赖本机私有档案；Git 回放可独立复核棋局合法性并复算评级。
+
+该报告固定于 24 场数据版本；上方命令应使用该版本的回放目录。最新仓库已加入更多对局，当前模型级汇总见 [Sol/Terra 说明](sol-terra-scoring.md)。
