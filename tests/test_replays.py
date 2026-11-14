@@ -16,7 +16,7 @@ class ReplayTests(unittest.TestCase):
 
     def test_all_games_are_in_catalog_without_roles_or_winners(self):
         catalog = library()
-        self.assertEqual(6, len(catalog))
+        self.assertEqual(24, len(catalog))
         for row in catalog:
             self.assertEqual({'id','title','language','steps'},set(row))
 
