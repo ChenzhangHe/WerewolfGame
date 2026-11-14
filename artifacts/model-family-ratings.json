@@ -1,0 +1,364 @@
+{
+  "version": "hierarchical-team-elo-v1",
+  "policy": {
+    "version": "hierarchical-team-elo-v1",
+    "initial_rating": 1500,
+    "elo_scale": 400,
+    "configuration_prior_sd": 200,
+    "role_adjustment_prior_sd": 100,
+    "good_baseline_logit_prior_sd": 1,
+    "layout_logit_prior_sd": 0.5,
+    "role_weights": {
+      "wolf": 0.5,
+      "villager": 0.25,
+      "seer": 0.0625,
+      "witch": 0.0625,
+      "hunter": 0.0625,
+      "idiot": 0.0625
+    },
+    "outcome_unit": "one-result-per-game",
+    "inference": "MAP-with-Laplace-approximation",
+    "failure_policy": "retain-but-exclude-from-skill-fit"
+  },
+  "valid_games": 35,
+  "scheduled_games": 35,
+  "excluded": [],
+  "source_digest": "be697235f886bfeffea6a4bf8a429414ded47e2ed43adc33f142031377005ba3",
+  "iterations": 4,
+  "converged": true,
+  "ratings": [
+    {
+      "entry": "Sol",
+      "rating": 1602.6,
+      "sd": 156.84,
+      "approx_95_interval": [
+        1295.18,
+        1910.01
+      ],
+      "shared_component": {
+        "rating": 1592.92,
+        "sd": 161.32,
+        "approx_95_interval": [
+          1276.74,
+          1909.1
+        ]
+      },
+      "roles": {
+        "wolf": {
+          "rating": 1608.41,
+          "sd": 161.17,
+          "approx_95_interval": [
+            1292.51,
+            1924.3
+          ],
+          "appearances": 70
+        },
+        "villager": {
+          "rating": 1600.66,
+          "sd": 169.1,
+          "approx_95_interval": [
+            1269.22,
+            1932.11
+          ],
+          "appearances": 70
+        },
+        "seer": {
+          "rating": 1592.03,
+          "sd": 177.55,
+          "approx_95_interval": [
+            1244.03,
+            1940.04
+          ],
+          "appearances": 19
+        },
+        "witch": {
+          "rating": 1589.93,
+          "sd": 177.6,
+          "approx_95_interval": [
+            1241.84,
+            1938.02
+          ],
+          "appearances": 16
+        },
+        "hunter": {
+          "rating": 1588.99,
+          "sd": 174.24,
+          "approx_95_interval": [
+            1247.48,
+            1930.5
+          ],
+          "appearances": 19
+        },
+        "idiot": {
+          "rating": 1600.72,
+          "sd": 174.29,
+          "approx_95_interval": [
+            1259.12,
+            1942.33
+          ],
+          "appearances": 16
+        }
+      },
+      "seat_appearances": 210
+    },
+    {
+      "entry": "Terra",
+      "rating": 1397.4,
+      "sd": 156.84,
+      "approx_95_interval": [
+        1089.99,
+        1704.82
+      ],
+      "shared_component": {
+        "rating": 1407.08,
+        "sd": 161.32,
+        "approx_95_interval": [
+          1090.9,
+          1723.26
+        ]
+      },
+      "roles": {
+        "wolf": {
+          "rating": 1391.59,
+          "sd": 161.17,
+          "approx_95_interval": [
+            1075.7,
+            1707.49
+          ],
+          "appearances": 70
+        },
+        "villager": {
+          "rating": 1399.34,
+          "sd": 169.1,
+          "approx_95_interval": [
+            1067.89,
+            1730.78
+          ],
+          "appearances": 70
+        },
+        "seer": {
+          "rating": 1407.97,
+          "sd": 177.55,
+          "approx_95_interval": [
+            1059.96,
+            1755.97
+          ],
+          "appearances": 16
+        },
+        "witch": {
+          "rating": 1410.07,
+          "sd": 177.6,
+          "approx_95_interval": [
+            1061.98,
+            1758.16
+          ],
+          "appearances": 19
+        },
+        "hunter": {
+          "rating": 1411.01,
+          "sd": 174.24,
+          "approx_95_interval": [
+            1069.5,
+            1752.52
+          ],
+          "appearances": 16
+        },
+        "idiot": {
+          "rating": 1399.28,
+          "sd": 174.29,
+          "approx_95_interval": [
+            1057.67,
+            1740.88
+          ],
+          "appearances": 19
+        }
+      },
+      "seat_appearances": 210
+    }
+  ],
+  "comparisons": [
+    {
+      "a": "Sol",
+      "b": "Terra",
+      "difference": {
+        "rating": 205.2,
+        "sd": 135.65,
+        "approx_95_interval": [
+          -60.67,
+          471.07
+        ]
+      },
+      "approx_probability_a_stronger": 0.9348250316030842
+    }
+  ],
+  "good_baseline_probability_at_map": 0.5958016712581635,
+  "in_sample_probabilities": [
+    {
+      "match_id": "codex-quartet-18000-01",
+      "good_win_probability_at_map": 0.36191196014832105
+    },
+    {
+      "match_id": "codex-quartet-18000-02",
+      "good_win_probability_at_map": 0.7810189448504022
+    },
+    {
+      "match_id": "codex-quartet-18000-03",
+      "good_win_probability_at_map": 0.5290973665704192
+    },
+    {
+      "match_id": "codex-quartet-18000-04",
+      "good_win_probability_at_map": 0.5290973665704192
+    },
+    {
+      "match_id": "codex-quartet-18000-05",
+      "good_win_probability_at_map": 0.6407727143791322
+    },
+    {
+      "match_id": "codex-quartet-18000-06",
+      "good_win_probability_at_map": 0.6361771314409361
+    },
+    {
+      "match_id": "codex-quartet-19000-01",
+      "good_win_probability_at_map": 0.5830516806237439
+    },
+    {
+      "match_id": "codex-quartet-19000-02",
+      "good_win_probability_at_map": 0.5878836055855781
+    },
+    {
+      "match_id": "codex-quartet-19000-03",
+      "good_win_probability_at_map": 0.5281529925737268
+    },
+    {
+      "match_id": "codex-quartet-19000-04",
+      "good_win_probability_at_map": 0.5331116716322072
+    },
+    {
+      "match_id": "codex-quartet-19000-05",
+      "good_win_probability_at_map": 0.7810189448504024
+    },
+    {
+      "match_id": "codex-quartet-19000-06",
+      "good_win_probability_at_map": 0.36191196014832105
+    },
+    {
+      "match_id": "codex-quartet-20000-01",
+      "good_win_probability_at_map": 0.8174279143962548
+    },
+    {
+      "match_id": "codex-quartet-20000-02",
+      "good_win_probability_at_map": 0.41588919331128255
+    },
+    {
+      "match_id": "codex-quartet-20000-03",
+      "good_win_probability_at_map": 0.6399112402422495
+    },
+    {
+      "match_id": "codex-quartet-20000-04",
+      "good_win_probability_at_map": 0.6399112402422495
+    },
+    {
+      "match_id": "codex-quartet-20000-05",
+      "good_win_probability_at_map": 0.5331116716322072
+    },
+    {
+      "match_id": "codex-quartet-20000-06",
+      "good_win_probability_at_map": 0.5281529925737268
+    },
+    {
+      "match_id": "codex-quartet-21000-01",
+      "good_win_probability_at_map": 0.5878836055855781
+    },
+    {
+      "match_id": "codex-quartet-21000-02",
+      "good_win_probability_at_map": 0.5830516806237439
+    },
+    {
+      "match_id": "codex-quartet-21000-03",
+      "good_win_probability_at_map": 0.5878836055855781
+    },
+    {
+      "match_id": "codex-quartet-21000-04",
+      "good_win_probability_at_map": 0.5830516806237439
+    },
+    {
+      "match_id": "codex-quartet-21000-05",
+      "good_win_probability_at_map": 0.41588919331128255
+    },
+    {
+      "match_id": "codex-quartet-21000-06",
+      "good_win_probability_at_map": 0.8174279143962548
+    },
+    {
+      "match_id": "codex-quartet-22000-01",
+      "good_win_probability_at_map": 0.36191196014832105
+    },
+    {
+      "match_id": "codex-quartet-22000-02",
+      "good_win_probability_at_map": 0.7810189448504022
+    },
+    {
+      "match_id": "codex-quartet-22000-03",
+      "good_win_probability_at_map": 0.6370420713085211
+    },
+    {
+      "match_id": "codex-quartet-22000-04",
+      "good_win_probability_at_map": 0.6370420713085211
+    },
+    {
+      "match_id": "codex-quartet-22000-05",
+      "good_win_probability_at_map": 0.5830516806237439
+    },
+    {
+      "match_id": "codex-quartet-22000-06",
+      "good_win_probability_at_map": 0.5878836055855781
+    },
+    {
+      "match_id": "codex-quartet-23000-01",
+      "good_win_probability_at_map": 0.8174279143962548
+    },
+    {
+      "match_id": "codex-quartet-23000-02",
+      "good_win_probability_at_map": 0.41588919331128255
+    },
+    {
+      "match_id": "codex-quartet-23000-04",
+      "good_win_probability_at_map": 0.6169968252493883
+    },
+    {
+      "match_id": "codex-quartet-23000-05",
+      "good_win_probability_at_map": 0.5878836055855781
+    },
+    {
+      "match_id": "codex-quartet-23000-06",
+      "good_win_probability_at_map": 0.5830516806237439
+    }
+  ],
+  "status": "exploratory-not-a-calibrated-leaderboard",
+  "uncertainty": "Marginal Laplace approximation with fixed priors, not MCMC or empirical confidence intervals.",
+  "tournament_points": {
+    "Sol": {
+      "seat_appearances": 210,
+      "wins": 124,
+      "points": 114
+    },
+    "Terra": {
+      "seat_appearances": 210,
+      "wins": 100,
+      "points": -30
+    }
+  },
+  "entry_grouping": "model-family",
+  "thinking_effort_exposure": {
+    "Sol": {
+      "medium": 105,
+      "low": 105
+    },
+    "Terra": {
+      "high": 105,
+      "low": 105
+    }
+  },
+  "evidence_scope": "Referee-validated portable gameplay; original model requests and private notes are excluded.",
+  "interpretation": "Model-level pooled historical scores; historical thinking efforts differ. Not an equal-effort comparison."
+}

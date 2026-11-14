@@ -17,6 +17,8 @@ ROLE_COUNTS = Counter(wolf=4, villager=4, seer=1, witch=1, hunter=1, idiot=1)
 def selected_entries(profile):
     if profile == "pair":
         return {e: ENTRIES[e] for e in ("sol-medium", "terra-low")}
+    if profile == "sol-terra":
+        return {"Sol": ENTRIES["sol-medium"], "Terra": ENTRIES["terra-low"]}
     if profile == "seven":
         return dict(ENTRIES)
     raise ValueError("Unknown comparison profile.")
@@ -24,7 +26,7 @@ def selected_entries(profile):
 
 def schedule(seed=16000, *, games=6, profile="pair"):
     """Six-game exploratory rotation, or two complete rotations for exact balance."""
-    if profile == "pair":
+    if profile in ("pair", "sol-terra"):
         if games != 6:
             raise ValueError("The initial pair pilot has six games.")
         rng = random.Random(seed)
@@ -75,10 +77,12 @@ def schedule(seed=16000, *, games=6, profile="pair"):
 def validate_schedule(matches):
     if len(matches) not in (6, 14) or len({m['id'] for m in matches}) != len(matches):
         raise ValueError('Expected six or fourteen unique games.')
-    if {e for m in matches for e in m['entries']} == set(selected_entries('pair')):
+    found = {e for m in matches for e in m['entries']}
+    pair_profile = next((p for p in ('pair', 'sol-terra') if found == set(selected_entries(p))), None)
+    if pair_profile:
         if len(matches) != 6:
             raise ValueError('Pair pilot requires six games.')
-        a, b = selected_entries('pair')
+        a, b = selected_entries(pair_profile)
         for m in matches:
             if Counter(m['entries']) != Counter({a: 6, b: 6}) or Counter(m['roles']) != ROLE_COUNTS:
                 raise ValueError('Pair game composition changed.')
@@ -128,6 +132,7 @@ def validate_schedule(matches):
 
 
 def configs_for(match):
-    return [CodexPlayer(s, NAMES[s-1], model=ENTRIES[e][0], effort=ENTRIES[e][1],
+    entries = {**ENTRIES, **selected_entries("sol-terra")}
+    return [CodexPlayer(s, NAMES[s-1], model=entries[e][0], effort=entries[e][1],
                         language='zh', personality=PERSONALITIES[s-1])
             for s, e in enumerate(match['entries'], 1)]
