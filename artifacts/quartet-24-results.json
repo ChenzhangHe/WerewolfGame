@@ -1,0 +1,331 @@
+{
+  "valid_games": 24,
+  "failed_games": 0,
+  "accepted_actions": 5889,
+  "failed_decisions": 0,
+  "faction_wins": {
+    "wolves": 11,
+    "good": 13
+  },
+  "rating_version": "hierarchical-team-elo-v1",
+  "role_statistics": {
+    "sol-medium": {
+      "overall": {
+        "wins": 39,
+        "appearances": 72,
+        "win_rate": 0.541667
+      },
+      "wolf": {
+        "wins": 12,
+        "appearances": 24,
+        "win_rate": 0.5
+      },
+      "seer": {
+        "wins": 3,
+        "appearances": 6,
+        "win_rate": 0.5
+      },
+      "villager": {
+        "wins": 14,
+        "appearances": 24,
+        "win_rate": 0.583333
+      },
+      "hunter": {
+        "wins": 4,
+        "appearances": 6,
+        "win_rate": 0.666667
+      },
+      "idiot": {
+        "wins": 3,
+        "appearances": 6,
+        "win_rate": 0.5
+      },
+      "witch": {
+        "wins": 3,
+        "appearances": 6,
+        "win_rate": 0.5
+      }
+    },
+    "sol-low": {
+      "overall": {
+        "wins": 43,
+        "appearances": 72,
+        "win_rate": 0.597222
+      },
+      "wolf": {
+        "wins": 14,
+        "appearances": 24,
+        "win_rate": 0.583333
+      },
+      "witch": {
+        "wins": 3,
+        "appearances": 6,
+        "win_rate": 0.5
+      },
+      "idiot": {
+        "wins": 6,
+        "appearances": 6,
+        "win_rate": 1.0
+      },
+      "villager": {
+        "wins": 16,
+        "appearances": 24,
+        "win_rate": 0.666667
+      },
+      "seer": {
+        "wins": 2,
+        "appearances": 6,
+        "win_rate": 0.333333
+      },
+      "hunter": {
+        "wins": 2,
+        "appearances": 6,
+        "win_rate": 0.333333
+      }
+    },
+    "terra-high": {
+      "overall": {
+        "wins": 31,
+        "appearances": 72,
+        "win_rate": 0.430556
+      },
+      "villager": {
+        "wins": 10,
+        "appearances": 24,
+        "win_rate": 0.416667
+      },
+      "hunter": {
+        "wins": 3,
+        "appearances": 6,
+        "win_rate": 0.5
+      },
+      "wolf": {
+        "wins": 8,
+        "appearances": 24,
+        "win_rate": 0.333333
+      },
+      "seer": {
+        "wins": 5,
+        "appearances": 6,
+        "win_rate": 0.833333
+      },
+      "idiot": {
+        "wins": 2,
+        "appearances": 6,
+        "win_rate": 0.333333
+      },
+      "witch": {
+        "wins": 3,
+        "appearances": 6,
+        "win_rate": 0.5
+      }
+    },
+    "terra-low": {
+      "overall": {
+        "wins": 35,
+        "appearances": 72,
+        "win_rate": 0.486111
+      },
+      "idiot": {
+        "wins": 2,
+        "appearances": 6,
+        "win_rate": 0.333333
+      },
+      "villager": {
+        "wins": 12,
+        "appearances": 24,
+        "win_rate": 0.5
+      },
+      "wolf": {
+        "wins": 10,
+        "appearances": 24,
+        "win_rate": 0.416667
+      },
+      "witch": {
+        "wins": 4,
+        "appearances": 6,
+        "win_rate": 0.666667
+      },
+      "hunter": {
+        "wins": 4,
+        "appearances": 6,
+        "win_rate": 0.666667
+      },
+      "seer": {
+        "wins": 3,
+        "appearances": 6,
+        "win_rate": 0.5
+      }
+    }
+  },
+  "games": [
+    {
+      "match_id": "codex-quartet-18000-01",
+      "winner": "wolves",
+      "day": 5,
+      "accepted_actions": 277,
+      "all_checks_passed": true
+    },
+    {
+      "match_id": "codex-quartet-18000-02",
+      "winner": "good",
+      "day": 4,
+      "accepted_actions": 230,
+      "all_checks_passed": true
+    },
+    {
+      "match_id": "codex-quartet-18000-03",
+      "winner": "wolves",
+      "day": 5,
+      "accepted_actions": 236,
+      "all_checks_passed": true
+    },
+    {
+      "match_id": "codex-quartet-18000-04",
+      "winner": "wolves",
+      "day": 5,
+      "accepted_actions": 226,
+      "all_checks_passed": true
+    },
+    {
+      "match_id": "codex-quartet-18000-05",
+      "winner": "good",
+      "day": 3,
+      "accepted_actions": 199,
+      "all_checks_passed": true
+    },
+    {
+      "match_id": "codex-quartet-18000-06",
+      "winner": "good",
+      "day": 5,
+      "accepted_actions": 306,
+      "all_checks_passed": true
+    },
+    {
+      "match_id": "codex-quartet-19000-01",
+      "winner": "good",
+      "day": 5,
+      "accepted_actions": 248,
+      "all_checks_passed": true
+    },
+    {
+      "match_id": "codex-quartet-19000-02",
+      "winner": "wolves",
+      "day": 5,
+      "accepted_actions": 271,
+      "all_checks_passed": true
+    },
+    {
+      "match_id": "codex-quartet-19000-03",
+      "winner": "wolves",
+      "day": 3,
+      "accepted_actions": 183,
+      "all_checks_passed": true
+    },
+    {
+      "match_id": "codex-quartet-19000-04",
+      "winner": "wolves",
+      "day": 3,
+      "accepted_actions": 253,
+      "all_checks_passed": true
+    },
+    {
+      "match_id": "codex-quartet-19000-05",
+      "winner": "good",
+      "day": 3,
+      "accepted_actions": 216,
+      "all_checks_passed": true
+    },
+    {
+      "match_id": "codex-quartet-19000-06",
+      "winner": "wolves",
+      "day": 5,
+      "accepted_actions": 243,
+      "all_checks_passed": true
+    },
+    {
+      "match_id": "codex-quartet-20000-01",
+      "winner": "good",
+      "day": 3,
+      "accepted_actions": 228,
+      "all_checks_passed": true
+    },
+    {
+      "match_id": "codex-quartet-20000-02",
+      "winner": "good",
+      "day": 4,
+      "accepted_actions": 234,
+      "all_checks_passed": true
+    },
+    {
+      "match_id": "codex-quartet-20000-03",
+      "winner": "good",
+      "day": 5,
+      "accepted_actions": 242,
+      "all_checks_passed": true
+    },
+    {
+      "match_id": "codex-quartet-20000-04",
+      "winner": "good",
+      "day": 4,
+      "accepted_actions": 245,
+      "all_checks_passed": true
+    },
+    {
+      "match_id": "codex-quartet-20000-05",
+      "winner": "wolves",
+      "day": 4,
+      "accepted_actions": 261,
+      "all_checks_passed": true
+    },
+    {
+      "match_id": "codex-quartet-20000-06",
+      "winner": "wolves",
+      "day": 5,
+      "accepted_actions": 245,
+      "all_checks_passed": true
+    },
+    {
+      "match_id": "codex-quartet-21000-01",
+      "winner": "good",
+      "day": 4,
+      "accepted_actions": 255,
+      "all_checks_passed": true
+    },
+    {
+      "match_id": "codex-quartet-21000-02",
+      "winner": "wolves",
+      "day": 4,
+      "accepted_actions": 283,
+      "all_checks_passed": true
+    },
+    {
+      "match_id": "codex-quartet-21000-03",
+      "winner": "good",
+      "day": 5,
+      "accepted_actions": 279,
+      "all_checks_passed": true
+    },
+    {
+      "match_id": "codex-quartet-21000-04",
+      "winner": "wolves",
+      "day": 5,
+      "accepted_actions": 265,
+      "all_checks_passed": true
+    },
+    {
+      "match_id": "codex-quartet-21000-05",
+      "winner": "good",
+      "day": 5,
+      "accepted_actions": 253,
+      "all_checks_passed": true
+    },
+    {
+      "match_id": "codex-quartet-21000-06",
+      "winner": "good",
+      "day": 3,
+      "accepted_actions": 211,
+      "all_checks_passed": true
+    }
+  ]
+}

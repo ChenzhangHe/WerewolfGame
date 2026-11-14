@@ -45,14 +45,17 @@ logit P(好人胜) = 好人方基准 + 布局效应 + ln(10)/400 * D
 完整数学说明见 [ratings.md](ratings.md)，固定策略文件见
 [积分策略](../artifacts/mixed-pilot-rating-policy.json)。
 
-## 复算首批六场
+## 复算最新 24 场
 
 ```sh
 python3 scripts/rate_replays.py --directory replays --output artifacts/replay-ratings.json
 ```
 
-结果应为：Sol low 1567.40、Sol medium 1567.16、Terra low 1432.84、
-Terra high 1432.60。比赛积分分别为 +12、+12、−12、−12。
+结果应为：Sol low 1608.43、Sol medium 1536.47、Terra low 1462.81、
+Terra high 1392.29。比赛积分分别为 +42、+18、−6、−30。
+
+完整结果和角色胜率见 [24 场报告](codex-quartet-results-24.md)。
+[首批六场报告](codex-quartet-results.md)保留为历史批次结果。
 
 `replays/*.json` 包含所有实际发言、投票和夜间行动，能够让规则引擎逐步
 重建整局并核对行动是否合法。它不包含模型请求、私人笔记或推理记录，

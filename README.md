@@ -11,12 +11,12 @@ announcements in the language selected before the game.
 
 ## Saved games and scoring
 
-Six complete, referee-validated games are tracked in [replays/](replays/).
+Twenty-four complete, referee-validated games are tracked in [replays/](replays/).
 Open the local UI and choose **Replay library / 对局库** to load one, or import
 its JSON file. Playback supports all three perspectives and never calls a model.
 Private game actions are preserved; model requests, notes and reasoning are excluded.
 
-[积分与评级共识（中文）](docs/scoring-agreement.md) · [Rating mathematics](docs/ratings.md)
+[24-game results](docs/codex-quartet-results-24.md) · [积分与评级共识（中文）](docs/scoring-agreement.md) · [Rating mathematics](docs/ratings.md)
 
 ```sh
 python3 scripts/rate_replays.py --output artifacts/replay-ratings.json
