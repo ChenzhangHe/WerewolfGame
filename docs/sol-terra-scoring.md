@@ -22,3 +22,17 @@ python3 scripts/play_codex_league.py --rate --plan artifacts/codex-sol-terra-260
 ```
 
 [Historical four-setting results](codex-quartet-results-35.md) · [Model-family ratings](../artifacts/model-family-ratings.json) · [Current batch preregistration](../artifacts/codex-sol-terra-26000/preregistration.json)
+
+## Subsequent host interruption and continued collection
+
+The seed-26000 batch completed four games. Two remaining partial games stopped
+when their supervisor and worker exited; neither recorded a model-decision error.
+Their referee checkpoints replay correctly but lack all pending responses, so
+they are retained as host interruptions, never assigned invented outcomes.
+This produces **39 valid games from 42 attempts**, preserving every prior valid
+outcome. The earlier table is the 35-game historical starting point; current
+pooled values are in `artifacts/model-family-ratings.json` and live campaign data.
+
+The next twelve games (27000/28000) are independent additional games, six at a
+time. Every new outcome is appended once to the pooled Sol/Terra fit. Old model
+reasoning, private notes and observations are never delivered to new actors.

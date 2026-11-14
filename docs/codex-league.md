@@ -240,3 +240,37 @@ python3 scripts/launch_codex_league.py --runner pair --plan artifacts/codex-sol-
 reports only new outcomes. Both use the same two entries. Historical game data is
 read only for offline referee validation and scoring, never delivered to a player.
 The native actor still receives only its own fresh game's authorized observations.
+
+## More Sol/Terra data: two six-game cohorts
+
+The seed-27000/28000 campaign predeclares twelve new games, running six at a time.
+Sol remains medium, Terra remains low; each game has six seats per model, fresh
+seat threads and no historical game input to actors. Historical data is used only
+for offline audit and model-family scoring. The campaign freezes the 39 currently
+valid replay files, keeps all prior outcomes, and never overwrites attempted games.
+
+Before this campaign, seed 26000 completed four games. Its supervisor and worker
+then disappeared, leaving two incomplete archived games without model-decision
+errors. Their original archives are retained and independently replay, but pending
+responses are missing, so no outcomes are inferred. They are recorded as host
+interruptions. Together with the earlier upstream failure there are 42 prior
+attempts and 39 valid outcomes; the new twelve are additional attempts, not
+replacements. The underlying host-exit cause is not established.
+
+```sh
+python3 scripts/run_sol_terra_batches.py --create-plan --seed 27000 --batches 2
+python3 scripts/run_sol_terra_batches.py --launch
+```
+
+The detached parent owns file-backed logs, records the child PID, updates its
+heartbeat every ten seconds while that child runs, and preserves its exit code.
+After each six-game cohort it re-audits results, records any interrupted claims,
+exports only valid completed gameplay, and carries those outcomes into the next
+cohort's frozen historical baseline. Failure stops new cohorts while retaining
+all completed and interrupted evidence. It does not promise recovery from an
+external kill of the entire process tree; stale state must be checked against
+process ownership. No model or rule code changed for this campaign.
+
+Live status, results and cumulative two-entry ratings are under
+`artifacts/codex-sol-terra-more-v1/`. Per-game progress and archives are under
+`artifacts/codex-sol-terra-27000/` and `artifacts/codex-sol-terra-28000/`.

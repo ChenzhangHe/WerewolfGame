@@ -12,15 +12,15 @@ announcements in the language selected before the game.
 ## Current comparison: Sol vs. Terra
 
 The active schedule uses **Sol / medium** versus **Terra / low**, six seats each.
-Scoring has just **Sol** and **Terra** entries. All 35 valid historical games are
-retained under model-family grouping; the failed upstream attempt stays excluded.
+Scoring has just **Sol** and **Terra** entries. All 39 valid historical games are
+retained under model-family grouping; the upstream failure and two host interruptions stay excluded.
 Historical efforts differ, so the pooled score is not an equal-effort comparison.
-See [scoring continuity](docs/sol-terra-scoring.md) and the new batch's
-[preregistration](artifacts/codex-sol-terra-26000/preregistration.json).
+See [scoring continuity](docs/sol-terra-scoring.md) and the twelve-game campaign's
+[preregistration](artifacts/codex-sol-terra-more-v1/preregistration.json).
 
 ## Saved games and scoring
 
-Thirty-five complete, referee-validated games are tracked in [replays/](replays/).
+Thirty-nine complete, referee-validated games are tracked in [replays/](replays/).
 Open the local UI and choose **Replay library / 对局库** to load one, or import
 its JSON file. Playback supports all three perspectives and never calls a model.
 Private game actions are preserved; model requests, notes and reasoning are excluded.
