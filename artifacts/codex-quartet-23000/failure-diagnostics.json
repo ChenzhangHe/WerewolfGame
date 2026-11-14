@@ -1,0 +1,19 @@
+{
+  "match_id": "codex-quartet-23000-03",
+  "status": "upstream-failed-excluded-from-ratings",
+  "referee_replay_verified": true,
+  "failed_decisions": 1,
+  "seat": 12,
+  "model": "gpt-6.1-terra",
+  "effort": "low",
+  "batch": 95,
+  "elapsed_seconds": 0.67,
+  "category": "codex_upstream_error",
+  "provider": {
+    "code": "other",
+    "will_retry": false
+  },
+  "model_tool_calls": 0,
+  "reported_usage": {},
+  "cause": "Not established: upstream error details were sanitized to other; no evidence identifies concurrency, account, network or model reasoning as the underlying cause."
+}

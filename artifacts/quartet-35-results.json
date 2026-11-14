@@ -1,0 +1,135 @@
+{
+  "attempts": 36,
+  "valid_games": 35,
+  "failed_games": 1,
+  "valid_game_actions": 8485,
+  "faction_wins": {
+    "wolves": 14,
+    "good": 21
+  },
+  "configuration_role_wins": {
+    "terra-high": {
+      "all": [
+        47,
+        105
+      ],
+      "villager": [
+        16,
+        34
+      ],
+      "hunter": [
+        4,
+        8
+      ],
+      "wolf": [
+        10,
+        36
+      ],
+      "witch": [
+        6,
+        10
+      ],
+      "seer": [
+        7,
+        8
+      ],
+      "idiot": [
+        4,
+        9
+      ]
+    },
+    "sol-medium": {
+      "all": [
+        59,
+        105
+      ],
+      "wolf": [
+        16,
+        36
+      ],
+      "seer": [
+        6,
+        10
+      ],
+      "idiot": [
+        4,
+        8
+      ],
+      "villager": [
+        22,
+        34
+      ],
+      "hunter": [
+        7,
+        9
+      ],
+      "witch": [
+        4,
+        8
+      ]
+    },
+    "terra-low": {
+      "all": [
+        53,
+        105
+      ],
+      "idiot": [
+        5,
+        10
+      ],
+      "villager": [
+        20,
+        36
+      ],
+      "hunter": [
+        5,
+        8
+      ],
+      "wolf": [
+        12,
+        34
+      ],
+      "witch": [
+        7,
+        9
+      ],
+      "seer": [
+        4,
+        8
+      ]
+    },
+    "sol-low": {
+      "all": [
+        65,
+        105
+      ],
+      "wolf": [
+        18,
+        34
+      ],
+      "witch": [
+        4,
+        8
+      ],
+      "seer": [
+        4,
+        9
+      ],
+      "villager": [
+        26,
+        36
+      ],
+      "idiot": [
+        8,
+        8
+      ],
+      "hunter": [
+        5,
+        10
+      ]
+    }
+  },
+  "excluded": [
+    "codex-quartet-23000-03"
+  ]
+}
