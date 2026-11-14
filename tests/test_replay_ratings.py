@@ -8,12 +8,12 @@ from werewolf.replays import REPLAY_ROOT
 
 
 class PortableRatingTests(unittest.TestCase):
-    def test_all_replays_reproduce_twenty_four_game_ratings(self):
+    def test_all_replays_reproduce_thirty_five_valid_game_ratings(self):
         result=calculate(REPLAY_ROOT)
-        expected=json.loads(Path('artifacts/codex-quartet-21000/cumulative-ratings.json').read_text())
-        self.assertEqual(24,result['valid_games'])
+        expected=json.loads(Path('artifacts/codex-quartet-23000/cumulative-ratings.json').read_text())
+        self.assertEqual(35,result['valid_games'])
         self.assertEqual([(r['entry'],r['rating']) for r in expected['ratings']],[(r['entry'],r['rating']) for r in result['ratings']])
-        self.assertEqual(288,sum(r['seat_appearances'] for r in result['tournament_points'].values()))
+        self.assertEqual(420,sum(r['seat_appearances'] for r in result['tournament_points'].values()))
 
 
     def test_first_six_games_still_reproduce_original_pilot(self):
@@ -25,3 +25,4 @@ class PortableRatingTests(unittest.TestCase):
         expected=json.loads(Path('artifacts/codex-quartet-v1/ratings.json').read_text())
         self.assertEqual(6,result['valid_games'])
         self.assertEqual([(r['entry'],r['rating']) for r in expected['ratings']],[(r['entry'],r['rating']) for r in result['ratings']])
+

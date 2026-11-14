@@ -20,308 +20,308 @@
     "inference": "MAP-with-Laplace-approximation",
     "failure_policy": "retain-but-exclude-from-skill-fit"
   },
-  "valid_games": 24,
-  "scheduled_games": 24,
+  "valid_games": 35,
+  "scheduled_games": 35,
   "excluded": [],
-  "source_digest": "3beb8b015bc4ca58f7d913db908c49b9ac7b145d85a5151b41aeed83ea228924",
-  "iterations": 3,
+  "source_digest": "fcfd245dfd8cb77ac5e470aa96424232b14348431acd598c056f4cfc7a8865e8",
+  "iterations": 4,
   "converged": true,
   "ratings": [
     {
       "entry": "sol-low",
-      "rating": 1608.43,
-      "sd": 150.96,
+      "rating": 1627.18,
+      "sd": 142.83,
       "approx_95_interval": [
-        1312.54,
-        1904.32
+        1347.24,
+        1907.13
       ],
       "shared_component": {
-        "rating": 1598.2,
-        "sd": 154.49,
+        "rating": 1615.19,
+        "sd": 148.0,
         "approx_95_interval": [
-          1295.41,
-          1900.99
+          1325.1,
+          1905.27
         ]
       },
       "roles": {
         "wolf": {
-          "rating": 1614.57,
-          "sd": 159.81,
+          "rating": 1634.38,
+          "sd": 151.23,
           "approx_95_interval": [
-            1301.34,
-            1927.79
+            1337.97,
+            1930.8
           ],
-          "appearances": 24
+          "appearances": 34
         },
         "villager": {
-          "rating": 1606.38,
-          "sd": 169.01,
+          "rating": 1624.78,
+          "sd": 162.06,
           "approx_95_interval": [
-            1275.12,
-            1937.64
+            1307.14,
+            1942.42
           ],
-          "appearances": 24
+          "appearances": 36
         },
         "seer": {
-          "rating": 1591.29,
-          "sd": 178.87,
+          "rating": 1608.06,
+          "sd": 173.6,
           "approx_95_interval": [
-            1240.71,
-            1941.87
+            1267.81,
+            1948.3
           ],
-          "appearances": 6
+          "appearances": 9
         },
         "witch": {
-          "rating": 1601.01,
-          "sd": 178.92,
+          "rating": 1617.52,
+          "sd": 173.48,
           "approx_95_interval": [
-            1250.33,
-            1951.7
+            1277.49,
+            1957.54
           ],
-          "appearances": 6
+          "appearances": 8
         },
         "hunter": {
-          "rating": 1589.08,
-          "sd": 175.0,
+          "rating": 1606.51,
+          "sd": 168.71,
           "approx_95_interval": [
-            1246.07,
-            1932.09
+            1275.83,
+            1937.19
           ],
-          "appearances": 6
+          "appearances": 10
         },
         "idiot": {
-          "rating": 1611.41,
-          "sd": 175.19,
+          "rating": 1628.66,
+          "sd": 169.57,
           "approx_95_interval": [
-            1268.03,
-            1954.79
+            1296.3,
+            1961.01
           ],
-          "appearances": 6
+          "appearances": 8
         }
       },
-      "seat_appearances": 72
+      "seat_appearances": 105
     },
     {
       "entry": "sol-medium",
-      "rating": 1536.47,
-      "sd": 150.96,
+      "rating": 1544.16,
+      "sd": 142.99,
       "approx_95_interval": [
-        1240.59,
-        1832.35
+        1263.9,
+        1824.41
       ],
       "shared_component": {
-        "rating": 1533.03,
-        "sd": 154.48,
+        "rating": 1539.99,
+        "sd": 148.13,
         "approx_95_interval": [
-          1230.25,
-          1835.82
+          1249.66,
+          1830.33
         ]
       },
       "roles": {
         "wolf": {
-          "rating": 1538.54,
-          "sd": 159.8,
+          "rating": 1546.66,
+          "sd": 151.4,
           "approx_95_interval": [
-            1225.32,
-            1851.76
+            1249.92,
+            1843.4
           ],
-          "appearances": 24
+          "appearances": 36
         },
         "villager": {
-          "rating": 1535.79,
-          "sd": 169.01,
+          "rating": 1543.32,
+          "sd": 162.2,
           "approx_95_interval": [
-            1204.53,
-            1867.04
+            1225.42,
+            1861.23
           ],
-          "appearances": 24
+          "appearances": 34
         },
         "seer": {
-          "rating": 1534.38,
-          "sd": 178.92,
+          "rating": 1544.8,
+          "sd": 173.93,
           "approx_95_interval": [
-            1183.7,
-            1885.06
+            1203.9,
+            1885.7
           ],
-          "appearances": 6
+          "appearances": 10
         },
         "witch": {
-          "rating": 1530.31,
-          "sd": 178.87,
+          "rating": 1533.52,
+          "sd": 173.35,
           "approx_95_interval": [
-            1179.73,
-            1880.89
+            1193.76,
+            1873.28
           ],
-          "appearances": 6
+          "appearances": 8
         },
         "hunter": {
-          "rating": 1534.93,
-          "sd": 175.17,
+          "rating": 1545.65,
+          "sd": 169.26,
           "approx_95_interval": [
-            1191.6,
-            1878.26
+            1213.9,
+            1877.39
           ],
-          "appearances": 6
+          "appearances": 9
         },
         "idiot": {
-          "rating": 1532.51,
-          "sd": 175.02,
+          "rating": 1536.0,
+          "sd": 169.26,
           "approx_95_interval": [
-            1189.47,
-            1875.56
+            1204.26,
+            1867.74
           ],
-          "appearances": 6
+          "appearances": 8
         }
       },
-      "seat_appearances": 72
+      "seat_appearances": 105
     },
     {
       "entry": "terra-low",
-      "rating": 1462.81,
-      "sd": 150.96,
+      "rating": 1455.02,
+      "sd": 142.98,
       "approx_95_interval": [
-        1166.93,
-        1758.68
+        1174.77,
+        1735.27
       ],
       "shared_component": {
-        "rating": 1466.31,
-        "sd": 154.48,
+        "rating": 1459.27,
+        "sd": 148.13,
         "approx_95_interval": [
-          1163.53,
-          1769.1
+          1168.93,
+          1749.6
         ]
       },
       "roles": {
         "wolf": {
-          "rating": 1460.7,
-          "sd": 159.8,
+          "rating": 1452.48,
+          "sd": 151.4,
           "approx_95_interval": [
-            1147.48,
-            1773.92
+            1155.74,
+            1749.21
           ],
-          "appearances": 24
+          "appearances": 34
         },
         "villager": {
-          "rating": 1463.51,
-          "sd": 169.01,
+          "rating": 1455.87,
+          "sd": 162.19,
           "approx_95_interval": [
-            1132.26,
-            1794.76
+            1137.97,
+            1773.77
           ],
-          "appearances": 24
+          "appearances": 36
         },
         "seer": {
-          "rating": 1465.44,
-          "sd": 178.97,
+          "rating": 1454.91,
+          "sd": 173.65,
           "approx_95_interval": [
-            1114.65,
-            1816.22
+            1114.56,
+            1795.26
           ],
-          "appearances": 6
+          "appearances": 8
         },
         "witch": {
-          "rating": 1468.6,
-          "sd": 178.81,
+          "rating": 1465.32,
+          "sd": 173.64,
           "approx_95_interval": [
-            1118.12,
-            1819.07
+            1124.98,
+            1805.65
           ],
-          "appearances": 6
+          "appearances": 9
         },
         "hunter": {
-          "rating": 1470.34,
-          "sd": 175.13,
+          "rating": 1459.56,
+          "sd": 169.58,
           "approx_95_interval": [
-            1127.08,
-            1813.6
+            1127.19,
+            1791.93
           ],
-          "appearances": 6
+          "appearances": 8
         },
         "idiot": {
-          "rating": 1460.89,
-          "sd": 175.05,
+          "rating": 1457.28,
+          "sd": 168.92,
           "approx_95_interval": [
-            1117.78,
-            1804.0
+            1126.19,
+            1788.36
           ],
-          "appearances": 6
+          "appearances": 10
         }
       },
-      "seat_appearances": 72
+      "seat_appearances": 105
     },
     {
       "entry": "terra-high",
-      "rating": 1392.29,
-      "sd": 150.96,
+      "rating": 1373.64,
+      "sd": 142.83,
       "approx_95_interval": [
-        1096.4,
-        1688.18
+        1093.7,
+        1653.58
       ],
       "shared_component": {
-        "rating": 1402.45,
-        "sd": 154.48,
+        "rating": 1385.56,
+        "sd": 148.0,
         "approx_95_interval": [
-          1099.66,
-          1705.24
+          1095.47,
+          1675.64
         ]
       },
       "roles": {
         "wolf": {
-          "rating": 1386.2,
-          "sd": 159.81,
+          "rating": 1366.48,
+          "sd": 151.23,
           "approx_95_interval": [
-            1072.97,
-            1699.42
+            1070.07,
+            1662.89
           ],
-          "appearances": 24
+          "appearances": 36
         },
         "villager": {
-          "rating": 1394.32,
-          "sd": 169.01,
+          "rating": 1376.02,
+          "sd": 162.06,
           "approx_95_interval": [
-            1063.06,
-            1725.58
+            1058.38,
+            1693.66
           ],
-          "appearances": 24
+          "appearances": 34
         },
         "seer": {
-          "rating": 1408.89,
-          "sd": 178.82,
+          "rating": 1392.23,
+          "sd": 173.16,
           "approx_95_interval": [
-            1058.4,
-            1759.38
+            1052.84,
+            1731.62
           ],
-          "appearances": 6
+          "appearances": 8
         },
         "witch": {
-          "rating": 1400.08,
-          "sd": 178.98,
+          "rating": 1383.65,
+          "sd": 173.92,
           "approx_95_interval": [
-            1049.29,
-            1750.87
+            1042.76,
+            1724.54
           ],
-          "appearances": 6
+          "appearances": 10
         },
         "hunter": {
-          "rating": 1405.66,
-          "sd": 175.08,
+          "rating": 1388.28,
+          "sd": 169.2,
           "approx_95_interval": [
-            1062.51,
-            1748.81
+            1056.65,
+            1719.92
           ],
-          "appearances": 6
+          "appearances": 8
         },
         "idiot": {
-          "rating": 1395.19,
-          "sd": 175.12,
+          "rating": 1378.06,
+          "sd": 169.07,
           "approx_95_interval": [
-            1051.96,
-            1738.41
+            1046.68,
+            1709.44
           ],
-          "appearances": 6
+          "appearances": 9
         }
       },
-      "seat_appearances": 72
+      "seat_appearances": 105
     }
   ],
   "comparisons": [
@@ -329,202 +329,246 @@
       "a": "sol-low",
       "b": "sol-medium",
       "difference": {
-        "rating": 71.95,
-        "sd": 182.81,
+        "rating": 83.03,
+        "sd": 164.97,
         "approx_95_interval": [
-          -286.34,
-          430.25
+          -240.32,
+          406.37
         ]
       },
-      "approx_probability_a_stronger": 0.6530661684682125
+      "approx_probability_a_stronger": 0.6926155838931071
     },
     {
       "a": "sol-low",
       "b": "terra-high",
       "difference": {
-        "rating": 216.14,
-        "sd": 185.82,
+        "rating": 253.55,
+        "sd": 168.96,
         "approx_95_interval": [
-          -148.06,
-          580.33
+          -77.62,
+          584.72
         ]
       },
-      "approx_probability_a_stronger": 0.8776213096639389
+      "approx_probability_a_stronger": 0.9332692413005335
     },
     {
       "a": "sol-low",
       "b": "terra-low",
       "difference": {
-        "rating": 145.62,
-        "sd": 185.4,
+        "rating": 172.16,
+        "sd": 165.91,
         "approx_95_interval": [
-          -217.76,
-          509.01
+          -153.02,
+          497.34
         ]
       },
-      "approx_probability_a_stronger": 0.783905367109702
+      "approx_probability_a_stronger": 0.8502917188597343
     },
     {
       "a": "sol-medium",
       "b": "terra-high",
       "difference": {
-        "rating": 144.18,
-        "sd": 185.4,
+        "rating": 170.52,
+        "sd": 165.91,
         "approx_95_interval": [
-          -219.2,
-          507.57
+          -154.66,
+          495.7
         ]
       },
-      "approx_probability_a_stronger": 0.7816215293132324
+      "approx_probability_a_stronger": 0.847975956010429
     },
     {
       "a": "sol-medium",
       "b": "terra-low",
       "difference": {
-        "rating": 73.67,
-        "sd": 185.8,
+        "rating": 89.14,
+        "sd": 169.5,
         "approx_95_interval": [
-          -290.5,
-          437.83
+          -243.08,
+          421.35
         ]
       },
-      "approx_probability_a_stronger": 0.6541307123309189
+      "approx_probability_a_stronger": 0.7005143695058063
     },
     {
       "a": "terra-high",
       "b": "terra-low",
       "difference": {
-        "rating": -70.51,
-        "sd": 182.8,
+        "rating": -81.39,
+        "sd": 164.96,
         "approx_95_interval": [
-          -428.81,
-          287.78
+          -404.71,
+          241.94
         ]
       },
-      "approx_probability_a_stronger": 0.3498467033215579
+      "approx_probability_a_stronger": 0.3108815787514096
     }
   ],
-  "good_baseline_probability_at_map": 0.53716570272788,
+  "good_baseline_probability_at_map": 0.592551788437812,
   "in_sample_probabilities": [
     {
       "match_id": "codex-quartet-18000-01",
-      "good_win_probability_at_map": 0.37497777643103825
+      "good_win_probability_at_map": 0.39638965911836743
     },
     {
       "match_id": "codex-quartet-18000-02",
-      "good_win_probability_at_map": 0.6889808622860536
+      "good_win_probability_at_map": 0.7544938124171162
     },
     {
       "match_id": "codex-quartet-18000-03",
-      "good_win_probability_at_map": 0.39807497532759656
+      "good_win_probability_at_map": 0.43618595224652834
     },
     {
       "match_id": "codex-quartet-18000-04",
-      "good_win_probability_at_map": 0.554019524659411
+      "good_win_probability_at_map": 0.6158574665394583
     },
     {
       "match_id": "codex-quartet-18000-05",
-      "good_win_probability_at_map": 0.5862922879097806
+      "good_win_probability_at_map": 0.6330564508145147
     },
     {
       "match_id": "codex-quartet-18000-06",
-      "good_win_probability_at_map": 0.5853666880399254
+      "good_win_probability_at_map": 0.6323699514382995
     },
     {
       "match_id": "codex-quartet-19000-01",
-      "good_win_probability_at_map": 0.5305264675189721
+      "good_win_probability_at_map": 0.5790878745511648
     },
     {
       "match_id": "codex-quartet-19000-02",
-      "good_win_probability_at_map": 0.5314765035901248
+      "good_win_probability_at_map": 0.5798077579619659
     },
     {
       "match_id": "codex-quartet-19000-03",
-      "good_win_probability_at_map": 0.5547384175703003
+      "good_win_probability_at_map": 0.6154162287460093
     },
     {
       "match_id": "codex-quartet-19000-04",
-      "good_win_probability_at_map": 0.39934569651314566
+      "good_win_probability_at_map": 0.4363074033058556
     },
     {
       "match_id": "codex-quartet-19000-05",
-      "good_win_probability_at_map": 0.6889808622860536
+      "good_win_probability_at_map": 0.7544938124171162
     },
     {
       "match_id": "codex-quartet-19000-06",
-      "good_win_probability_at_map": 0.37497777643103825
+      "good_win_probability_at_map": 0.39638965911836743
     },
     {
       "match_id": "codex-quartet-20000-01",
-      "good_win_probability_at_map": 0.7350387243984818
+      "good_win_probability_at_map": 0.7939745828790551
     },
     {
       "match_id": "codex-quartet-20000-02",
-      "good_win_probability_at_map": 0.4289981127497372
+      "good_win_probability_at_map": 0.4516009781038765
     },
     {
       "match_id": "codex-quartet-20000-03",
-      "good_win_probability_at_map": 0.6653680934422679
+      "good_win_probability_at_map": 0.7179524592562971
     },
     {
       "match_id": "codex-quartet-20000-04",
-      "good_win_probability_at_map": 0.510282549622903
+      "good_win_probability_at_map": 0.5473019005802786
     },
     {
       "match_id": "codex-quartet-20000-05",
-      "good_win_probability_at_map": 0.4759745328215316
+      "good_win_probability_at_map": 0.5248467638596129
     },
     {
       "match_id": "codex-quartet-20000-06",
-      "good_win_probability_at_map": 0.47502312042445854
+      "good_win_probability_at_map": 0.5241100042559752
     },
     {
       "match_id": "codex-quartet-21000-01",
-      "good_win_probability_at_map": 0.5314765035901248
+      "good_win_probability_at_map": 0.5798077579619659
     },
     {
       "match_id": "codex-quartet-21000-02",
-      "good_win_probability_at_map": 0.5305264675189721
+      "good_win_probability_at_map": 0.5790878745511648
     },
     {
       "match_id": "codex-quartet-21000-03",
-      "good_win_probability_at_map": 0.6132916034017071
+      "good_win_probability_at_map": 0.6708541827861885
     },
     {
       "match_id": "codex-quartet-21000-04",
-      "good_win_probability_at_map": 0.453288097281061
+      "good_win_probability_at_map": 0.49128583588677466
     },
     {
       "match_id": "codex-quartet-21000-05",
-      "good_win_probability_at_map": 0.4289981127497372
+      "good_win_probability_at_map": 0.4516009781038765
     },
     {
       "match_id": "codex-quartet-21000-06",
-      "good_win_probability_at_map": 0.7350387243984818
+      "good_win_probability_at_map": 0.7939745828790551
+    },
+    {
+      "match_id": "codex-quartet-22000-01",
+      "good_win_probability_at_map": 0.39638965911836743
+    },
+    {
+      "match_id": "codex-quartet-22000-02",
+      "good_win_probability_at_map": 0.7544938124171162
+    },
+    {
+      "match_id": "codex-quartet-22000-03",
+      "good_win_probability_at_map": 0.5475409358466291
+    },
+    {
+      "match_id": "codex-quartet-22000-04",
+      "good_win_probability_at_map": 0.7149193603686658
+    },
+    {
+      "match_id": "codex-quartet-22000-05",
+      "good_win_probability_at_map": 0.5790878745511648
+    },
+    {
+      "match_id": "codex-quartet-22000-06",
+      "good_win_probability_at_map": 0.5798077579619659
+    },
+    {
+      "match_id": "codex-quartet-23000-01",
+      "good_win_probability_at_map": 0.7939745828790551
+    },
+    {
+      "match_id": "codex-quartet-23000-02",
+      "good_win_probability_at_map": 0.4516009781038765
+    },
+    {
+      "match_id": "codex-quartet-23000-04",
+      "good_win_probability_at_map": 0.6925110370390738
+    },
+    {
+      "match_id": "codex-quartet-23000-05",
+      "good_win_probability_at_map": 0.5798077579619659
+    },
+    {
+      "match_id": "codex-quartet-23000-06",
+      "good_win_probability_at_map": 0.5790878745511648
     }
   ],
   "status": "exploratory-not-a-calibrated-leaderboard",
   "uncertainty": "Marginal Laplace approximation with fixed priors, not MCMC or empirical confidence intervals.",
   "tournament_points": {
     "sol-low": {
-      "seat_appearances": 72,
-      "wins": 43,
-      "points": 42
+      "seat_appearances": 105,
+      "wins": 65,
+      "points": 75
     },
     "sol-medium": {
-      "seat_appearances": 72,
-      "wins": 39,
-      "points": 18
+      "seat_appearances": 105,
+      "wins": 59,
+      "points": 39
     },
     "terra-high": {
-      "seat_appearances": 72,
-      "wins": 31,
-      "points": -30
+      "seat_appearances": 105,
+      "wins": 47,
+      "points": -33
     },
     "terra-low": {
-      "seat_appearances": 72,
-      "wins": 35,
-      "points": -6
+      "seat_appearances": 105,
+      "wins": 53,
+      "points": 3
     }
   },
   "evidence_scope": "Referee-validated portable gameplay; original model requests and private notes are intentionally excluded."
