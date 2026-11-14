@@ -20,160 +20,160 @@
     "inference": "MAP-with-Laplace-approximation",
     "failure_policy": "retain-but-exclude-from-skill-fit"
   },
-  "valid_games": 35,
-  "scheduled_games": 35,
+  "valid_games": 39,
+  "scheduled_games": 39,
   "excluded": [],
-  "source_digest": "be697235f886bfeffea6a4bf8a429414ded47e2ed43adc33f142031377005ba3",
+  "source_digest": "d6d7978f442721cb6329ba0f2d58938743fcafbb958efa50bde486b3bbd79987",
   "iterations": 4,
   "converged": true,
   "ratings": [
     {
       "entry": "Sol",
-      "rating": 1602.6,
-      "sd": 156.84,
+      "rating": 1629.53,
+      "sd": 155.95,
       "approx_95_interval": [
-        1295.18,
-        1910.01
+        1323.87,
+        1935.19
       ],
       "shared_component": {
-        "rating": 1592.92,
-        "sd": 161.32,
+        "rating": 1618.53,
+        "sd": 160.42,
         "approx_95_interval": [
-          1276.74,
-          1909.1
+          1304.12,
+          1932.95
         ]
       },
       "roles": {
         "wolf": {
-          "rating": 1608.41,
-          "sd": 161.17,
+          "rating": 1638.29,
+          "sd": 159.94,
           "approx_95_interval": [
-            1292.51,
-            1924.3
+            1324.8,
+            1951.77
           ],
-          "appearances": 70
+          "appearances": 77
         },
         "villager": {
-          "rating": 1600.66,
-          "sd": 169.1,
+          "rating": 1621.21,
+          "sd": 169.08,
           "approx_95_interval": [
-            1269.22,
-            1932.11
+            1289.81,
+            1952.61
           ],
-          "appearances": 70
+          "appearances": 79
         },
         "seer": {
-          "rating": 1592.03,
-          "sd": 177.55,
+          "rating": 1620.62,
+          "sd": 176.1,
           "approx_95_interval": [
-            1244.03,
-            1940.04
+            1275.46,
+            1965.78
           ],
-          "appearances": 19
+          "appearances": 21
         },
         "witch": {
-          "rating": 1589.93,
-          "sd": 177.6,
+          "rating": 1619.61,
+          "sd": 176.27,
           "approx_95_interval": [
-            1241.84,
-            1938.02
+            1274.11,
+            1965.11
           ],
-          "appearances": 16
+          "appearances": 18
         },
         "hunter": {
-          "rating": 1588.99,
-          "sd": 174.24,
+          "rating": 1616.67,
+          "sd": 173.32,
           "approx_95_interval": [
-            1247.48,
-            1930.5
+            1276.96,
+            1956.38
           ],
-          "appearances": 19
+          "appearances": 22
         },
         "idiot": {
-          "rating": 1600.72,
-          "sd": 174.29,
+          "rating": 1624.42,
+          "sd": 173.52,
           "approx_95_interval": [
-            1259.12,
-            1942.33
+            1284.33,
+            1964.52
           ],
-          "appearances": 16
+          "appearances": 17
         }
       },
-      "seat_appearances": 210
+      "seat_appearances": 234
     },
     {
       "entry": "Terra",
-      "rating": 1397.4,
-      "sd": 156.84,
+      "rating": 1370.47,
+      "sd": 155.95,
       "approx_95_interval": [
-        1089.99,
-        1704.82
+        1064.81,
+        1676.13
       ],
       "shared_component": {
-        "rating": 1407.08,
-        "sd": 161.32,
+        "rating": 1381.47,
+        "sd": 160.42,
         "approx_95_interval": [
-          1090.9,
-          1723.26
+          1067.05,
+          1695.88
         ]
       },
       "roles": {
         "wolf": {
-          "rating": 1391.59,
-          "sd": 161.17,
+          "rating": 1361.71,
+          "sd": 159.94,
           "approx_95_interval": [
-            1075.7,
-            1707.49
+            1048.23,
+            1675.2
           ],
-          "appearances": 70
+          "appearances": 79
         },
         "villager": {
-          "rating": 1399.34,
-          "sd": 169.1,
+          "rating": 1378.79,
+          "sd": 169.08,
           "approx_95_interval": [
-            1067.89,
-            1730.78
+            1047.39,
+            1710.19
           ],
-          "appearances": 70
+          "appearances": 77
         },
         "seer": {
-          "rating": 1407.97,
-          "sd": 177.55,
+          "rating": 1379.38,
+          "sd": 176.1,
           "approx_95_interval": [
-            1059.96,
-            1755.97
+            1034.22,
+            1724.54
           ],
-          "appearances": 16
+          "appearances": 18
         },
         "witch": {
-          "rating": 1410.07,
-          "sd": 177.6,
+          "rating": 1380.39,
+          "sd": 176.27,
           "approx_95_interval": [
-            1061.98,
-            1758.16
+            1034.89,
+            1725.89
           ],
-          "appearances": 19
+          "appearances": 21
         },
         "hunter": {
-          "rating": 1411.01,
-          "sd": 174.24,
+          "rating": 1383.33,
+          "sd": 173.32,
           "approx_95_interval": [
-            1069.5,
-            1752.52
+            1043.62,
+            1723.04
           ],
-          "appearances": 16
+          "appearances": 17
         },
         "idiot": {
-          "rating": 1399.28,
-          "sd": 174.29,
+          "rating": 1375.58,
+          "sd": 173.52,
           "approx_95_interval": [
-            1057.67,
-            1740.88
+            1035.48,
+            1715.67
           ],
-          "appearances": 19
+          "appearances": 22
         }
       },
-      "seat_appearances": 210
+      "seat_appearances": 234
     }
   ],
   "comparisons": [
@@ -181,181 +181,197 @@
       "a": "Sol",
       "b": "Terra",
       "difference": {
-        "rating": 205.2,
-        "sd": 135.65,
+        "rating": 259.06,
+        "sd": 131.46,
         "approx_95_interval": [
-          -60.67,
-          471.07
+          1.39,
+          516.72
         ]
       },
-      "approx_probability_a_stronger": 0.9348250316030842
+      "approx_probability_a_stronger": 0.9756152749115361
     }
   ],
-  "good_baseline_probability_at_map": 0.5958016712581635,
+  "good_baseline_probability_at_map": 0.6128337227339048,
   "in_sample_probabilities": [
     {
+      "match_id": "codex-pair-26000-01",
+      "good_win_probability_at_map": 0.8268059832060828
+    },
+    {
+      "match_id": "codex-pair-26000-02",
+      "good_win_probability_at_map": 0.32704031303515324
+    },
+    {
+      "match_id": "codex-pair-26000-03",
+      "good_win_probability_at_map": 0.7483367591645935
+    },
+    {
+      "match_id": "codex-pair-26000-05",
+      "good_win_probability_at_map": 0.632907278912299
+    },
+    {
       "match_id": "codex-quartet-18000-01",
-      "good_win_probability_at_map": 0.36191196014832105
+      "good_win_probability_at_map": 0.3263587463898649
     },
     {
       "match_id": "codex-quartet-18000-02",
-      "good_win_probability_at_map": 0.7810189448504022
+      "good_win_probability_at_map": 0.8272651246450654
     },
     {
       "match_id": "codex-quartet-18000-03",
-      "good_win_probability_at_map": 0.5290973665704192
+      "good_win_probability_at_map": 0.5453093639735901
     },
     {
       "match_id": "codex-quartet-18000-04",
-      "good_win_probability_at_map": 0.5290973665704192
+      "good_win_probability_at_map": 0.5453093639735901
     },
     {
       "match_id": "codex-quartet-18000-05",
-      "good_win_probability_at_map": 0.6407727143791322
+      "good_win_probability_at_map": 0.6545259151200279
     },
     {
       "match_id": "codex-quartet-18000-06",
-      "good_win_probability_at_map": 0.6361771314409361
+      "good_win_probability_at_map": 0.6516698536891447
     },
     {
       "match_id": "codex-quartet-19000-01",
-      "good_win_probability_at_map": 0.5830516806237439
+      "good_win_probability_at_map": 0.5992959569722682
     },
     {
       "match_id": "codex-quartet-19000-02",
-      "good_win_probability_at_map": 0.5878836055855781
+      "good_win_probability_at_map": 0.6023193889602868
     },
     {
       "match_id": "codex-quartet-19000-03",
-      "good_win_probability_at_map": 0.5281529925737268
+      "good_win_probability_at_map": 0.5448161751948306
     },
     {
       "match_id": "codex-quartet-19000-04",
-      "good_win_probability_at_map": 0.5331116716322072
+      "good_win_probability_at_map": 0.5479405989893894
     },
     {
       "match_id": "codex-quartet-19000-05",
-      "good_win_probability_at_map": 0.7810189448504024
+      "good_win_probability_at_map": 0.8272651246450654
     },
     {
       "match_id": "codex-quartet-19000-06",
-      "good_win_probability_at_map": 0.36191196014832105
+      "good_win_probability_at_map": 0.3263587463898649
     },
     {
       "match_id": "codex-quartet-20000-01",
-      "good_win_probability_at_map": 0.8174279143962548
+      "good_win_probability_at_map": 0.8576257741268493
     },
     {
       "match_id": "codex-quartet-20000-02",
-      "good_win_probability_at_map": 0.41588919331128255
+      "good_win_probability_at_map": 0.378631952658509
     },
     {
       "match_id": "codex-quartet-20000-03",
-      "good_win_probability_at_map": 0.6399112402422495
+      "good_win_probability_at_map": 0.6540852760484763
     },
     {
       "match_id": "codex-quartet-20000-04",
-      "good_win_probability_at_map": 0.6399112402422495
+      "good_win_probability_at_map": 0.6540852760484763
     },
     {
       "match_id": "codex-quartet-20000-05",
-      "good_win_probability_at_map": 0.5331116716322072
+      "good_win_probability_at_map": 0.5479405989893894
     },
     {
       "match_id": "codex-quartet-20000-06",
-      "good_win_probability_at_map": 0.5281529925737268
+      "good_win_probability_at_map": 0.5448161751948306
     },
     {
       "match_id": "codex-quartet-21000-01",
-      "good_win_probability_at_map": 0.5878836055855781
+      "good_win_probability_at_map": 0.6023193889602868
     },
     {
       "match_id": "codex-quartet-21000-02",
-      "good_win_probability_at_map": 0.5830516806237439
+      "good_win_probability_at_map": 0.5992959569722682
     },
     {
       "match_id": "codex-quartet-21000-03",
-      "good_win_probability_at_map": 0.5878836055855781
+      "good_win_probability_at_map": 0.6023193889602868
     },
     {
       "match_id": "codex-quartet-21000-04",
-      "good_win_probability_at_map": 0.5830516806237439
+      "good_win_probability_at_map": 0.5992959569722682
     },
     {
       "match_id": "codex-quartet-21000-05",
-      "good_win_probability_at_map": 0.41588919331128255
+      "good_win_probability_at_map": 0.378631952658509
     },
     {
       "match_id": "codex-quartet-21000-06",
-      "good_win_probability_at_map": 0.8174279143962548
+      "good_win_probability_at_map": 0.8576257741268493
     },
     {
       "match_id": "codex-quartet-22000-01",
-      "good_win_probability_at_map": 0.36191196014832105
+      "good_win_probability_at_map": 0.3263587463898649
     },
     {
       "match_id": "codex-quartet-22000-02",
-      "good_win_probability_at_map": 0.7810189448504022
+      "good_win_probability_at_map": 0.8272651246450654
     },
     {
       "match_id": "codex-quartet-22000-03",
-      "good_win_probability_at_map": 0.6370420713085211
+      "good_win_probability_at_map": 0.6521117863922117
     },
     {
       "match_id": "codex-quartet-22000-04",
-      "good_win_probability_at_map": 0.6370420713085211
+      "good_win_probability_at_map": 0.6521117863922117
     },
     {
       "match_id": "codex-quartet-22000-05",
-      "good_win_probability_at_map": 0.5830516806237439
+      "good_win_probability_at_map": 0.5992959569722682
     },
     {
       "match_id": "codex-quartet-22000-06",
-      "good_win_probability_at_map": 0.5878836055855781
+      "good_win_probability_at_map": 0.6023193889602868
     },
     {
       "match_id": "codex-quartet-23000-01",
-      "good_win_probability_at_map": 0.8174279143962548
+      "good_win_probability_at_map": 0.8576257741268493
     },
     {
       "match_id": "codex-quartet-23000-02",
-      "good_win_probability_at_map": 0.41588919331128255
+      "good_win_probability_at_map": 0.378631952658509
     },
     {
       "match_id": "codex-quartet-23000-04",
-      "good_win_probability_at_map": 0.6169968252493883
+      "good_win_probability_at_map": 0.6332265828221646
     },
     {
       "match_id": "codex-quartet-23000-05",
-      "good_win_probability_at_map": 0.5878836055855781
+      "good_win_probability_at_map": 0.6023193889602868
     },
     {
       "match_id": "codex-quartet-23000-06",
-      "good_win_probability_at_map": 0.5830516806237439
+      "good_win_probability_at_map": 0.5992959569722682
     }
   ],
   "status": "exploratory-not-a-calibrated-leaderboard",
   "uncertainty": "Marginal Laplace approximation with fixed priors, not MCMC or empirical confidence intervals.",
   "tournament_points": {
     "Sol": {
-      "seat_appearances": 210,
-      "wins": 124,
-      "points": 114
+      "seat_appearances": 234,
+      "wins": 143,
+      "points": 156
     },
     "Terra": {
-      "seat_appearances": 210,
-      "wins": 100,
-      "points": -30
+      "seat_appearances": 234,
+      "wins": 109,
+      "points": -48
     }
   },
   "entry_grouping": "model-family",
   "thinking_effort_exposure": {
-    "Sol": {
-      "medium": 105,
-      "low": 105
-    },
     "Terra": {
-      "high": 105,
+      "low": 129,
+      "high": 105
+    },
+    "Sol": {
+      "medium": 129,
       "low": 105
     }
   },

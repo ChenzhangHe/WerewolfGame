@@ -1,0 +1,1 @@
+{"match_id":"codex-pair-26000-06","pair":3,"seed":26006,"status":"interrupted","category":"host_process_exit","all_checks_passed":false,"referee_replay_verified":true,"committed_actions":251,"failed_model_decisions":0,"note":"Supervisor and worker no longer running; preserve the partial original archive and do not recreate its seat threads."}

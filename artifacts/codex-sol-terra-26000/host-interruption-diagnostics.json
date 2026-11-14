@@ -1,0 +1,28 @@
+{
+  "classification": "host-process-interruption",
+  "supervisor_pid": 18884,
+  "observed_supervisor_alive": false,
+  "observed_worker_alive": false,
+  "log_has_process_owner": false,
+  "cause": "Not established; do not infer a model failure or a particular operating-system signal.",
+  "completed_games_retained": 4,
+  "partial_games_retained": [
+    {
+      "match_id": "codex-pair-26000-04",
+      "referee_replay_verified": true,
+      "committed_actions": 243,
+      "saved_pending_responses": 4,
+      "required_pending_responses": 8,
+      "failed_model_decisions": 0
+    },
+    {
+      "match_id": "codex-pair-26000-06",
+      "referee_replay_verified": true,
+      "committed_actions": 251,
+      "saved_pending_responses": 4,
+      "required_pending_responses": 5,
+      "failed_model_decisions": 0
+    }
+  ],
+  "policy": "Keep original raw archives unchanged; no default actions, thread recreation or replacement outcomes."
+}
