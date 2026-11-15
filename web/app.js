@@ -1017,8 +1017,16 @@ function createSpeechPlayer({ synth, Utterance, onState = () => {} } = {}) {
     dialog.addEventListener('close', () => document.body.classList.remove('dialog-open'));
   });
 
+  // BEGIN SAVED REPLAY LINK
+  async function initializeSession() {
+    const id = new URLSearchParams(window.location.search).get('replay');
+    if (!id) { await refresh(); return; }
+    try { await loadReplay({ id }); }
+    catch (error) { await refresh(); notice(error.message, true); }
+  }
+  // END SAVED REPLAY LINK
   setLocale(state.locale);
-  refresh();
+  initializeSession();
   // Polling fetches spectator projections only; it never drives inference.
   setInterval(() => { if (!state.busy && !$('setup-dialog').open) refresh(); }, 1200);
 })();

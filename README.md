@@ -12,7 +12,7 @@ announcements in the language selected before the game.
 ## Current comparison: Sol vs. Terra
 
 The active schedule uses **Sol / medium** versus **Terra / low**, six seats each.
-Scoring has just **Sol** and **Terra** entries. All 39 valid historical games are
+Scoring has just **Sol** and **Terra** entries. All 51 valid historical games are
 retained under model-family grouping; the upstream failure and two host interruptions stay excluded.
 Historical efforts differ, so the pooled score is not an equal-effort comparison.
 See [scoring continuity](docs/sol-terra-scoring.md) and the twelve-game campaign's
@@ -20,7 +20,9 @@ See [scoring continuity](docs/sol-terra-scoring.md) and the twelve-game campaign
 
 ## Saved games and scoring
 
-Thirty-nine complete, referee-validated games are tracked in [replays/](replays/).
+[精选观战对局（从全部 51 场挑选）](docs/curated-games.md) · Direct links load saved games from the opening mystery view.
+
+Fifty-one complete, referee-validated games are tracked in [replays/](replays/).
 Open the local UI and choose **Replay library / 对局库** to load one, or import
 its JSON file. Playback supports all three perspectives and never calls a model.
 Private game actions are preserved; model requests, notes and reasoning are excluded.
