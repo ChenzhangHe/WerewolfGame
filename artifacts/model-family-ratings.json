@@ -400,6 +400,2640 @@
   ],
   "status": "exploratory-not-a-calibrated-leaderboard",
   "uncertainty": "Marginal Laplace approximation with fixed priors, not MCMC or empirical confidence intervals.",
+  "win_rates": {
+    "valid_games": 51,
+    "models": [
+      "Sol",
+      "Terra"
+    ],
+    "overall": {
+      "Sol": {
+        "wins": 185,
+        "losses": 121,
+        "appearances": 306,
+        "win_rate": 0.604575
+      },
+      "Terra": {
+        "wins": 139,
+        "losses": 167,
+        "appearances": 306,
+        "win_rate": 0.454248
+      }
+    },
+    "by_seat": {
+      "1": {
+        "Sol": {
+          "wins": 16,
+          "losses": 11,
+          "appearances": 27,
+          "win_rate": 0.592593
+        },
+        "Terra": {
+          "wins": 14,
+          "losses": 10,
+          "appearances": 24,
+          "win_rate": 0.583333
+        }
+      },
+      "2": {
+        "Sol": {
+          "wins": 22,
+          "losses": 7,
+          "appearances": 29,
+          "win_rate": 0.758621
+        },
+        "Terra": {
+          "wins": 8,
+          "losses": 14,
+          "appearances": 22,
+          "win_rate": 0.363636
+        }
+      },
+      "3": {
+        "Sol": {
+          "wins": 12,
+          "losses": 13,
+          "appearances": 25,
+          "win_rate": 0.48
+        },
+        "Terra": {
+          "wins": 16,
+          "losses": 10,
+          "appearances": 26,
+          "win_rate": 0.615385
+        }
+      },
+      "4": {
+        "Sol": {
+          "wins": 13,
+          "losses": 15,
+          "appearances": 28,
+          "win_rate": 0.464286
+        },
+        "Terra": {
+          "wins": 12,
+          "losses": 11,
+          "appearances": 23,
+          "win_rate": 0.521739
+        }
+      },
+      "5": {
+        "Sol": {
+          "wins": 15,
+          "losses": 9,
+          "appearances": 24,
+          "win_rate": 0.625
+        },
+        "Terra": {
+          "wins": 10,
+          "losses": 17,
+          "appearances": 27,
+          "win_rate": 0.37037
+        }
+      },
+      "6": {
+        "Sol": {
+          "wins": 17,
+          "losses": 12,
+          "appearances": 29,
+          "win_rate": 0.586207
+        },
+        "Terra": {
+          "wins": 8,
+          "losses": 14,
+          "appearances": 22,
+          "win_rate": 0.363636
+        }
+      },
+      "7": {
+        "Sol": {
+          "wins": 11,
+          "losses": 12,
+          "appearances": 23,
+          "win_rate": 0.478261
+        },
+        "Terra": {
+          "wins": 16,
+          "losses": 12,
+          "appearances": 28,
+          "win_rate": 0.571429
+        }
+      },
+      "8": {
+        "Sol": {
+          "wins": 11,
+          "losses": 13,
+          "appearances": 24,
+          "win_rate": 0.458333
+        },
+        "Terra": {
+          "wins": 13,
+          "losses": 14,
+          "appearances": 27,
+          "win_rate": 0.481481
+        }
+      },
+      "9": {
+        "Sol": {
+          "wins": 14,
+          "losses": 11,
+          "appearances": 25,
+          "win_rate": 0.56
+        },
+        "Terra": {
+          "wins": 6,
+          "losses": 20,
+          "appearances": 26,
+          "win_rate": 0.230769
+        }
+      },
+      "10": {
+        "Sol": {
+          "wins": 23,
+          "losses": 1,
+          "appearances": 24,
+          "win_rate": 0.958333
+        },
+        "Terra": {
+          "wins": 13,
+          "losses": 14,
+          "appearances": 27,
+          "win_rate": 0.481481
+        }
+      },
+      "11": {
+        "Sol": {
+          "wins": 16,
+          "losses": 8,
+          "appearances": 24,
+          "win_rate": 0.666667
+        },
+        "Terra": {
+          "wins": 11,
+          "losses": 16,
+          "appearances": 27,
+          "win_rate": 0.407407
+        }
+      },
+      "12": {
+        "Sol": {
+          "wins": 15,
+          "losses": 9,
+          "appearances": 24,
+          "win_rate": 0.625
+        },
+        "Terra": {
+          "wins": 12,
+          "losses": 15,
+          "appearances": 27,
+          "win_rate": 0.444444
+        }
+      }
+    },
+    "by_role": {
+      "wolf": {
+        "Sol": {
+          "wins": 53,
+          "losses": 48,
+          "appearances": 101,
+          "win_rate": 0.524752
+        },
+        "Terra": {
+          "wins": 31,
+          "losses": 72,
+          "appearances": 103,
+          "win_rate": 0.300971
+        }
+      },
+      "villager": {
+        "Sol": {
+          "wins": 68,
+          "losses": 35,
+          "appearances": 103,
+          "win_rate": 0.660194
+        },
+        "Terra": {
+          "wins": 52,
+          "losses": 49,
+          "appearances": 101,
+          "win_rate": 0.514851
+        }
+      },
+      "seer": {
+        "Sol": {
+          "wins": 14,
+          "losses": 13,
+          "appearances": 27,
+          "win_rate": 0.518519
+        },
+        "Terra": {
+          "wins": 16,
+          "losses": 8,
+          "appearances": 24,
+          "win_rate": 0.666667
+        }
+      },
+      "witch": {
+        "Sol": {
+          "wins": 13,
+          "losses": 11,
+          "appearances": 24,
+          "win_rate": 0.541667
+        },
+        "Terra": {
+          "wins": 17,
+          "losses": 10,
+          "appearances": 27,
+          "win_rate": 0.62963
+        }
+      },
+      "hunter": {
+        "Sol": {
+          "wins": 20,
+          "losses": 8,
+          "appearances": 28,
+          "win_rate": 0.714286
+        },
+        "Terra": {
+          "wins": 10,
+          "losses": 13,
+          "appearances": 23,
+          "win_rate": 0.434783
+        }
+      },
+      "idiot": {
+        "Sol": {
+          "wins": 17,
+          "losses": 6,
+          "appearances": 23,
+          "win_rate": 0.73913
+        },
+        "Terra": {
+          "wins": 13,
+          "losses": 15,
+          "appearances": 28,
+          "win_rate": 0.464286
+        }
+      }
+    },
+    "by_seat_and_role": {
+      "1": {
+        "wolf": {
+          "Sol": {
+            "wins": 6,
+            "losses": 1,
+            "appearances": 7,
+            "win_rate": 0.857143
+          },
+          "Terra": {
+            "wins": 2,
+            "losses": 7,
+            "appearances": 9,
+            "win_rate": 0.222222
+          }
+        },
+        "villager": {
+          "Sol": {
+            "wins": 8,
+            "losses": 6,
+            "appearances": 14,
+            "win_rate": 0.571429
+          },
+          "Terra": {
+            "wins": 8,
+            "losses": 3,
+            "appearances": 11,
+            "win_rate": 0.727273
+          }
+        },
+        "seer": {
+          "Sol": {
+            "wins": 1,
+            "losses": 3,
+            "appearances": 4,
+            "win_rate": 0.25
+          },
+          "Terra": {
+            "wins": 2,
+            "losses": 0,
+            "appearances": 2,
+            "win_rate": 1.0
+          }
+        },
+        "witch": {
+          "Sol": {
+            "wins": 1,
+            "losses": 0,
+            "appearances": 1,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          }
+        },
+        "hunter": {
+          "Sol": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          }
+        },
+        "idiot": {
+          "Sol": {
+            "wins": 0,
+            "losses": 1,
+            "appearances": 1,
+            "win_rate": 0.0
+          },
+          "Terra": {
+            "wins": 2,
+            "losses": 0,
+            "appearances": 2,
+            "win_rate": 1.0
+          }
+        }
+      },
+      "2": {
+        "wolf": {
+          "Sol": {
+            "wins": 5,
+            "losses": 2,
+            "appearances": 7,
+            "win_rate": 0.714286
+          },
+          "Terra": {
+            "wins": 2,
+            "losses": 5,
+            "appearances": 7,
+            "win_rate": 0.285714
+          }
+        },
+        "villager": {
+          "Sol": {
+            "wins": 11,
+            "losses": 3,
+            "appearances": 14,
+            "win_rate": 0.785714
+          },
+          "Terra": {
+            "wins": 4,
+            "losses": 6,
+            "appearances": 10,
+            "win_rate": 0.4
+          }
+        },
+        "seer": {
+          "Sol": {
+            "wins": 2,
+            "losses": 1,
+            "appearances": 3,
+            "win_rate": 0.666667
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 2,
+            "appearances": 2,
+            "win_rate": 0.0
+          }
+        },
+        "witch": {
+          "Sol": {
+            "wins": 1,
+            "losses": 1,
+            "appearances": 2,
+            "win_rate": 0.5
+          },
+          "Terra": {
+            "wins": 2,
+            "losses": 0,
+            "appearances": 2,
+            "win_rate": 1.0
+          }
+        },
+        "hunter": {
+          "Sol": {
+            "wins": 1,
+            "losses": 0,
+            "appearances": 1,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 1,
+            "appearances": 1,
+            "win_rate": 0.0
+          }
+        },
+        "idiot": {
+          "Sol": {
+            "wins": 2,
+            "losses": 0,
+            "appearances": 2,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          }
+        }
+      },
+      "3": {
+        "wolf": {
+          "Sol": {
+            "wins": 5,
+            "losses": 3,
+            "appearances": 8,
+            "win_rate": 0.625
+          },
+          "Terra": {
+            "wins": 2,
+            "losses": 6,
+            "appearances": 8,
+            "win_rate": 0.25
+          }
+        },
+        "villager": {
+          "Sol": {
+            "wins": 3,
+            "losses": 4,
+            "appearances": 7,
+            "win_rate": 0.428571
+          },
+          "Terra": {
+            "wins": 7,
+            "losses": 1,
+            "appearances": 8,
+            "win_rate": 0.875
+          }
+        },
+        "seer": {
+          "Sol": {
+            "wins": 1,
+            "losses": 3,
+            "appearances": 4,
+            "win_rate": 0.25
+          },
+          "Terra": {
+            "wins": 3,
+            "losses": 1,
+            "appearances": 4,
+            "win_rate": 0.75
+          }
+        },
+        "witch": {
+          "Sol": {
+            "wins": 1,
+            "losses": 2,
+            "appearances": 3,
+            "win_rate": 0.333333
+          },
+          "Terra": {
+            "wins": 2,
+            "losses": 1,
+            "appearances": 3,
+            "win_rate": 0.666667
+          }
+        },
+        "hunter": {
+          "Sol": {
+            "wins": 0,
+            "losses": 1,
+            "appearances": 1,
+            "win_rate": 0.0
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 1,
+            "appearances": 1,
+            "win_rate": 0.0
+          }
+        },
+        "idiot": {
+          "Sol": {
+            "wins": 2,
+            "losses": 0,
+            "appearances": 2,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 2,
+            "losses": 0,
+            "appearances": 2,
+            "win_rate": 1.0
+          }
+        }
+      },
+      "4": {
+        "wolf": {
+          "Sol": {
+            "wins": 3,
+            "losses": 9,
+            "appearances": 12,
+            "win_rate": 0.25
+          },
+          "Terra": {
+            "wins": 4,
+            "losses": 3,
+            "appearances": 7,
+            "win_rate": 0.571429
+          }
+        },
+        "villager": {
+          "Sol": {
+            "wins": 5,
+            "losses": 3,
+            "appearances": 8,
+            "win_rate": 0.625
+          },
+          "Terra": {
+            "wins": 4,
+            "losses": 5,
+            "appearances": 9,
+            "win_rate": 0.444444
+          }
+        },
+        "seer": {
+          "Sol": {
+            "wins": 1,
+            "losses": 1,
+            "appearances": 2,
+            "win_rate": 0.5
+          },
+          "Terra": {
+            "wins": 2,
+            "losses": 0,
+            "appearances": 2,
+            "win_rate": 1.0
+          }
+        },
+        "witch": {
+          "Sol": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 0,
+            "appearances": 1,
+            "win_rate": 1.0
+          }
+        },
+        "hunter": {
+          "Sol": {
+            "wins": 2,
+            "losses": 2,
+            "appearances": 4,
+            "win_rate": 0.5
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 1,
+            "appearances": 2,
+            "win_rate": 0.5
+          }
+        },
+        "idiot": {
+          "Sol": {
+            "wins": 2,
+            "losses": 0,
+            "appearances": 2,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 2,
+            "appearances": 2,
+            "win_rate": 0.0
+          }
+        }
+      },
+      "5": {
+        "wolf": {
+          "Sol": {
+            "wins": 2,
+            "losses": 3,
+            "appearances": 5,
+            "win_rate": 0.4
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 5,
+            "appearances": 6,
+            "win_rate": 0.166667
+          }
+        },
+        "villager": {
+          "Sol": {
+            "wins": 7,
+            "losses": 2,
+            "appearances": 9,
+            "win_rate": 0.777778
+          },
+          "Terra": {
+            "wins": 5,
+            "losses": 5,
+            "appearances": 10,
+            "win_rate": 0.5
+          }
+        },
+        "seer": {
+          "Sol": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          }
+        },
+        "witch": {
+          "Sol": {
+            "wins": 2,
+            "losses": 1,
+            "appearances": 3,
+            "win_rate": 0.666667
+          },
+          "Terra": {
+            "wins": 3,
+            "losses": 1,
+            "appearances": 4,
+            "win_rate": 0.75
+          }
+        },
+        "hunter": {
+          "Sol": {
+            "wins": 2,
+            "losses": 3,
+            "appearances": 5,
+            "win_rate": 0.4
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 2,
+            "appearances": 3,
+            "win_rate": 0.333333
+          }
+        },
+        "idiot": {
+          "Sol": {
+            "wins": 2,
+            "losses": 0,
+            "appearances": 2,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 4,
+            "appearances": 4,
+            "win_rate": 0.0
+          }
+        }
+      },
+      "6": {
+        "wolf": {
+          "Sol": {
+            "wins": 4,
+            "losses": 7,
+            "appearances": 11,
+            "win_rate": 0.363636
+          },
+          "Terra": {
+            "wins": 3,
+            "losses": 5,
+            "appearances": 8,
+            "win_rate": 0.375
+          }
+        },
+        "villager": {
+          "Sol": {
+            "wins": 5,
+            "losses": 0,
+            "appearances": 5,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 4,
+            "appearances": 5,
+            "win_rate": 0.2
+          }
+        },
+        "seer": {
+          "Sol": {
+            "wins": 1,
+            "losses": 1,
+            "appearances": 2,
+            "win_rate": 0.5
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 1,
+            "appearances": 2,
+            "win_rate": 0.5
+          }
+        },
+        "witch": {
+          "Sol": {
+            "wins": 3,
+            "losses": 3,
+            "appearances": 6,
+            "win_rate": 0.5
+          },
+          "Terra": {
+            "wins": 3,
+            "losses": 1,
+            "appearances": 4,
+            "win_rate": 0.75
+          }
+        },
+        "hunter": {
+          "Sol": {
+            "wins": 3,
+            "losses": 0,
+            "appearances": 3,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 1,
+            "appearances": 1,
+            "win_rate": 0.0
+          }
+        },
+        "idiot": {
+          "Sol": {
+            "wins": 1,
+            "losses": 1,
+            "appearances": 2,
+            "win_rate": 0.5
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 2,
+            "appearances": 2,
+            "win_rate": 0.0
+          }
+        }
+      },
+      "7": {
+        "wolf": {
+          "Sol": {
+            "wins": 3,
+            "losses": 6,
+            "appearances": 9,
+            "win_rate": 0.333333
+          },
+          "Terra": {
+            "wins": 5,
+            "losses": 5,
+            "appearances": 10,
+            "win_rate": 0.5
+          }
+        },
+        "villager": {
+          "Sol": {
+            "wins": 3,
+            "losses": 3,
+            "appearances": 6,
+            "win_rate": 0.5
+          },
+          "Terra": {
+            "wins": 2,
+            "losses": 5,
+            "appearances": 7,
+            "win_rate": 0.285714
+          }
+        },
+        "seer": {
+          "Sol": {
+            "wins": 0,
+            "losses": 1,
+            "appearances": 1,
+            "win_rate": 0.0
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 0,
+            "appearances": 1,
+            "win_rate": 1.0
+          }
+        },
+        "witch": {
+          "Sol": {
+            "wins": 2,
+            "losses": 1,
+            "appearances": 3,
+            "win_rate": 0.666667
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 2,
+            "appearances": 3,
+            "win_rate": 0.333333
+          }
+        },
+        "hunter": {
+          "Sol": {
+            "wins": 2,
+            "losses": 1,
+            "appearances": 3,
+            "win_rate": 0.666667
+          },
+          "Terra": {
+            "wins": 4,
+            "losses": 0,
+            "appearances": 4,
+            "win_rate": 1.0
+          }
+        },
+        "idiot": {
+          "Sol": {
+            "wins": 1,
+            "losses": 0,
+            "appearances": 1,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 3,
+            "losses": 0,
+            "appearances": 3,
+            "win_rate": 1.0
+          }
+        }
+      },
+      "8": {
+        "wolf": {
+          "Sol": {
+            "wins": 3,
+            "losses": 4,
+            "appearances": 7,
+            "win_rate": 0.428571
+          },
+          "Terra": {
+            "wins": 2,
+            "losses": 7,
+            "appearances": 9,
+            "win_rate": 0.222222
+          }
+        },
+        "villager": {
+          "Sol": {
+            "wins": 5,
+            "losses": 6,
+            "appearances": 11,
+            "win_rate": 0.454545
+          },
+          "Terra": {
+            "wins": 4,
+            "losses": 6,
+            "appearances": 10,
+            "win_rate": 0.4
+          }
+        },
+        "seer": {
+          "Sol": {
+            "wins": 1,
+            "losses": 0,
+            "appearances": 1,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 0,
+            "appearances": 1,
+            "win_rate": 1.0
+          }
+        },
+        "witch": {
+          "Sol": {
+            "wins": 1,
+            "losses": 1,
+            "appearances": 2,
+            "win_rate": 0.5
+          },
+          "Terra": {
+            "wins": 3,
+            "losses": 1,
+            "appearances": 4,
+            "win_rate": 0.75
+          }
+        },
+        "hunter": {
+          "Sol": {
+            "wins": 1,
+            "losses": 1,
+            "appearances": 2,
+            "win_rate": 0.5
+          },
+          "Terra": {
+            "wins": 2,
+            "losses": 0,
+            "appearances": 2,
+            "win_rate": 1.0
+          }
+        },
+        "idiot": {
+          "Sol": {
+            "wins": 0,
+            "losses": 1,
+            "appearances": 1,
+            "win_rate": 0.0
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 0,
+            "appearances": 1,
+            "win_rate": 1.0
+          }
+        }
+      },
+      "9": {
+        "wolf": {
+          "Sol": {
+            "wins": 6,
+            "losses": 6,
+            "appearances": 12,
+            "win_rate": 0.5
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 11,
+            "appearances": 12,
+            "win_rate": 0.083333
+          }
+        },
+        "villager": {
+          "Sol": {
+            "wins": 5,
+            "losses": 2,
+            "appearances": 7,
+            "win_rate": 0.714286
+          },
+          "Terra": {
+            "wins": 2,
+            "losses": 5,
+            "appearances": 7,
+            "win_rate": 0.285714
+          }
+        },
+        "seer": {
+          "Sol": {
+            "wins": 1,
+            "losses": 2,
+            "appearances": 3,
+            "win_rate": 0.333333
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 1,
+            "appearances": 2,
+            "win_rate": 0.5
+          }
+        },
+        "witch": {
+          "Sol": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 2,
+            "appearances": 2,
+            "win_rate": 0.0
+          }
+        },
+        "hunter": {
+          "Sol": {
+            "wins": 1,
+            "losses": 0,
+            "appearances": 1,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 1,
+            "appearances": 1,
+            "win_rate": 0.0
+          }
+        },
+        "idiot": {
+          "Sol": {
+            "wins": 1,
+            "losses": 1,
+            "appearances": 2,
+            "win_rate": 0.5
+          },
+          "Terra": {
+            "wins": 2,
+            "losses": 0,
+            "appearances": 2,
+            "win_rate": 1.0
+          }
+        }
+      },
+      "10": {
+        "wolf": {
+          "Sol": {
+            "wins": 7,
+            "losses": 1,
+            "appearances": 8,
+            "win_rate": 0.875
+          },
+          "Terra": {
+            "wins": 4,
+            "losses": 4,
+            "appearances": 8,
+            "win_rate": 0.5
+          }
+        },
+        "villager": {
+          "Sol": {
+            "wins": 5,
+            "losses": 0,
+            "appearances": 5,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 4,
+            "losses": 3,
+            "appearances": 7,
+            "win_rate": 0.571429
+          }
+        },
+        "seer": {
+          "Sol": {
+            "wins": 3,
+            "losses": 0,
+            "appearances": 3,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 3,
+            "losses": 1,
+            "appearances": 4,
+            "win_rate": 0.75
+          }
+        },
+        "witch": {
+          "Sol": {
+            "wins": 1,
+            "losses": 0,
+            "appearances": 1,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 1,
+            "appearances": 1,
+            "win_rate": 0.0
+          }
+        },
+        "hunter": {
+          "Sol": {
+            "wins": 4,
+            "losses": 0,
+            "appearances": 4,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 3,
+            "appearances": 4,
+            "win_rate": 0.25
+          }
+        },
+        "idiot": {
+          "Sol": {
+            "wins": 3,
+            "losses": 0,
+            "appearances": 3,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 2,
+            "appearances": 3,
+            "win_rate": 0.333333
+          }
+        }
+      },
+      "11": {
+        "wolf": {
+          "Sol": {
+            "wins": 5,
+            "losses": 4,
+            "appearances": 9,
+            "win_rate": 0.555556
+          },
+          "Terra": {
+            "wins": 2,
+            "losses": 6,
+            "appearances": 8,
+            "win_rate": 0.25
+          }
+        },
+        "villager": {
+          "Sol": {
+            "wins": 6,
+            "losses": 2,
+            "appearances": 8,
+            "win_rate": 0.75
+          },
+          "Terra": {
+            "wins": 5,
+            "losses": 5,
+            "appearances": 10,
+            "win_rate": 0.5
+          }
+        },
+        "seer": {
+          "Sol": {
+            "wins": 2,
+            "losses": 0,
+            "appearances": 2,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 2,
+            "appearances": 2,
+            "win_rate": 0.0
+          }
+        },
+        "witch": {
+          "Sol": {
+            "wins": 1,
+            "losses": 1,
+            "appearances": 2,
+            "win_rate": 0.5
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 1,
+            "appearances": 2,
+            "win_rate": 0.5
+          }
+        },
+        "hunter": {
+          "Sol": {
+            "wins": 2,
+            "losses": 0,
+            "appearances": 2,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 1,
+            "appearances": 2,
+            "win_rate": 0.5
+          }
+        },
+        "idiot": {
+          "Sol": {
+            "wins": 0,
+            "losses": 1,
+            "appearances": 1,
+            "win_rate": 0.0
+          },
+          "Terra": {
+            "wins": 2,
+            "losses": 1,
+            "appearances": 3,
+            "win_rate": 0.666667
+          }
+        }
+      },
+      "12": {
+        "wolf": {
+          "Sol": {
+            "wins": 4,
+            "losses": 2,
+            "appearances": 6,
+            "win_rate": 0.666667
+          },
+          "Terra": {
+            "wins": 3,
+            "losses": 8,
+            "appearances": 11,
+            "win_rate": 0.272727
+          }
+        },
+        "villager": {
+          "Sol": {
+            "wins": 5,
+            "losses": 4,
+            "appearances": 9,
+            "win_rate": 0.555556
+          },
+          "Terra": {
+            "wins": 6,
+            "losses": 1,
+            "appearances": 7,
+            "win_rate": 0.857143
+          }
+        },
+        "seer": {
+          "Sol": {
+            "wins": 1,
+            "losses": 1,
+            "appearances": 2,
+            "win_rate": 0.5
+          },
+          "Terra": {
+            "wins": 2,
+            "losses": 0,
+            "appearances": 2,
+            "win_rate": 1.0
+          }
+        },
+        "witch": {
+          "Sol": {
+            "wins": 0,
+            "losses": 1,
+            "appearances": 1,
+            "win_rate": 0.0
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 0,
+            "appearances": 1,
+            "win_rate": 1.0
+          }
+        },
+        "hunter": {
+          "Sol": {
+            "wins": 2,
+            "losses": 0,
+            "appearances": 2,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 2,
+            "appearances": 2,
+            "win_rate": 0.0
+          }
+        },
+        "idiot": {
+          "Sol": {
+            "wins": 3,
+            "losses": 1,
+            "appearances": 4,
+            "win_rate": 0.75
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 4,
+            "appearances": 4,
+            "win_rate": 0.0
+          }
+        }
+      }
+    },
+    "definition": "Win means the seat faction won; counts are seat appearances, not independent games.",
+    "limitations": [
+      "Seat, role, fixed personality and same-game teammates may be associated; these are not causal seat effects.",
+      "Always show wins and appearances. A cell without observations has null win rate.",
+      "Historical thinking efforts differ in the pooled model-family view."
+    ]
+  },
+  "fixed_setting_win_rates": {
+    "valid_games": 16,
+    "models": [
+      "Sol",
+      "Terra"
+    ],
+    "overall": {
+      "Sol": {
+        "wins": 61,
+        "losses": 35,
+        "appearances": 96,
+        "win_rate": 0.635417
+      },
+      "Terra": {
+        "wins": 39,
+        "losses": 57,
+        "appearances": 96,
+        "win_rate": 0.40625
+      }
+    },
+    "by_seat": {
+      "1": {
+        "Sol": {
+          "wins": 6,
+          "losses": 2,
+          "appearances": 8,
+          "win_rate": 0.75
+        },
+        "Terra": {
+          "wins": 5,
+          "losses": 3,
+          "appearances": 8,
+          "win_rate": 0.625
+        }
+      },
+      "2": {
+        "Sol": {
+          "wins": 8,
+          "losses": 0,
+          "appearances": 8,
+          "win_rate": 1.0
+        },
+        "Terra": {
+          "wins": 3,
+          "losses": 5,
+          "appearances": 8,
+          "win_rate": 0.375
+        }
+      },
+      "3": {
+        "Sol": {
+          "wins": 4,
+          "losses": 5,
+          "appearances": 9,
+          "win_rate": 0.444444
+        },
+        "Terra": {
+          "wins": 5,
+          "losses": 2,
+          "appearances": 7,
+          "win_rate": 0.714286
+        }
+      },
+      "4": {
+        "Sol": {
+          "wins": 5,
+          "losses": 2,
+          "appearances": 7,
+          "win_rate": 0.714286
+        },
+        "Terra": {
+          "wins": 6,
+          "losses": 3,
+          "appearances": 9,
+          "win_rate": 0.666667
+        }
+      },
+      "5": {
+        "Sol": {
+          "wins": 6,
+          "losses": 2,
+          "appearances": 8,
+          "win_rate": 0.75
+        },
+        "Terra": {
+          "wins": 2,
+          "losses": 6,
+          "appearances": 8,
+          "win_rate": 0.25
+        }
+      },
+      "6": {
+        "Sol": {
+          "wins": 5,
+          "losses": 3,
+          "appearances": 8,
+          "win_rate": 0.625
+        },
+        "Terra": {
+          "wins": 1,
+          "losses": 7,
+          "appearances": 8,
+          "win_rate": 0.125
+        }
+      },
+      "7": {
+        "Sol": {
+          "wins": 4,
+          "losses": 4,
+          "appearances": 8,
+          "win_rate": 0.5
+        },
+        "Terra": {
+          "wins": 3,
+          "losses": 5,
+          "appearances": 8,
+          "win_rate": 0.375
+        }
+      },
+      "8": {
+        "Sol": {
+          "wins": 4,
+          "losses": 4,
+          "appearances": 8,
+          "win_rate": 0.5
+        },
+        "Terra": {
+          "wins": 2,
+          "losses": 6,
+          "appearances": 8,
+          "win_rate": 0.25
+        }
+      },
+      "9": {
+        "Sol": {
+          "wins": 4,
+          "losses": 4,
+          "appearances": 8,
+          "win_rate": 0.5
+        },
+        "Terra": {
+          "wins": 1,
+          "losses": 7,
+          "appearances": 8,
+          "win_rate": 0.125
+        }
+      },
+      "10": {
+        "Sol": {
+          "wins": 7,
+          "losses": 1,
+          "appearances": 8,
+          "win_rate": 0.875
+        },
+        "Terra": {
+          "wins": 4,
+          "losses": 4,
+          "appearances": 8,
+          "win_rate": 0.5
+        }
+      },
+      "11": {
+        "Sol": {
+          "wins": 4,
+          "losses": 4,
+          "appearances": 8,
+          "win_rate": 0.5
+        },
+        "Terra": {
+          "wins": 4,
+          "losses": 4,
+          "appearances": 8,
+          "win_rate": 0.5
+        }
+      },
+      "12": {
+        "Sol": {
+          "wins": 4,
+          "losses": 4,
+          "appearances": 8,
+          "win_rate": 0.5
+        },
+        "Terra": {
+          "wins": 3,
+          "losses": 5,
+          "appearances": 8,
+          "win_rate": 0.375
+        }
+      }
+    },
+    "by_role": {
+      "wolf": {
+        "Sol": {
+          "wins": 19,
+          "losses": 12,
+          "appearances": 31,
+          "win_rate": 0.612903
+        },
+        "Terra": {
+          "wins": 9,
+          "losses": 24,
+          "appearances": 33,
+          "win_rate": 0.272727
+        }
+      },
+      "villager": {
+        "Sol": {
+          "wins": 20,
+          "losses": 13,
+          "appearances": 33,
+          "win_rate": 0.606061
+        },
+        "Terra": {
+          "wins": 16,
+          "losses": 15,
+          "appearances": 31,
+          "win_rate": 0.516129
+        }
+      },
+      "seer": {
+        "Sol": {
+          "wins": 4,
+          "losses": 4,
+          "appearances": 8,
+          "win_rate": 0.5
+        },
+        "Terra": {
+          "wins": 5,
+          "losses": 3,
+          "appearances": 8,
+          "win_rate": 0.625
+        }
+      },
+      "witch": {
+        "Sol": {
+          "wins": 5,
+          "losses": 3,
+          "appearances": 8,
+          "win_rate": 0.625
+        },
+        "Terra": {
+          "wins": 4,
+          "losses": 4,
+          "appearances": 8,
+          "win_rate": 0.5
+        }
+      },
+      "hunter": {
+        "Sol": {
+          "wins": 8,
+          "losses": 1,
+          "appearances": 9,
+          "win_rate": 0.888889
+        },
+        "Terra": {
+          "wins": 1,
+          "losses": 6,
+          "appearances": 7,
+          "win_rate": 0.142857
+        }
+      },
+      "idiot": {
+        "Sol": {
+          "wins": 5,
+          "losses": 2,
+          "appearances": 7,
+          "win_rate": 0.714286
+        },
+        "Terra": {
+          "wins": 4,
+          "losses": 5,
+          "appearances": 9,
+          "win_rate": 0.444444
+        }
+      }
+    },
+    "by_seat_and_role": {
+      "1": {
+        "wolf": {
+          "Sol": {
+            "wins": 4,
+            "losses": 0,
+            "appearances": 4,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 3,
+            "appearances": 4,
+            "win_rate": 0.25
+          }
+        },
+        "villager": {
+          "Sol": {
+            "wins": 0,
+            "losses": 2,
+            "appearances": 2,
+            "win_rate": 0.0
+          },
+          "Terra": {
+            "wins": 2,
+            "losses": 0,
+            "appearances": 2,
+            "win_rate": 1.0
+          }
+        },
+        "seer": {
+          "Sol": {
+            "wins": 1,
+            "losses": 0,
+            "appearances": 1,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 0,
+            "appearances": 1,
+            "win_rate": 1.0
+          }
+        },
+        "witch": {
+          "Sol": {
+            "wins": 1,
+            "losses": 0,
+            "appearances": 1,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          }
+        },
+        "hunter": {
+          "Sol": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          }
+        },
+        "idiot": {
+          "Sol": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 0,
+            "appearances": 1,
+            "win_rate": 1.0
+          }
+        }
+      },
+      "2": {
+        "wolf": {
+          "Sol": {
+            "wins": 3,
+            "losses": 0,
+            "appearances": 3,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 2,
+            "appearances": 3,
+            "win_rate": 0.333333
+          }
+        },
+        "villager": {
+          "Sol": {
+            "wins": 4,
+            "losses": 0,
+            "appearances": 4,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 2,
+            "losses": 3,
+            "appearances": 5,
+            "win_rate": 0.4
+          }
+        },
+        "seer": {
+          "Sol": {
+            "wins": 1,
+            "losses": 0,
+            "appearances": 1,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          }
+        },
+        "witch": {
+          "Sol": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          }
+        },
+        "hunter": {
+          "Sol": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          }
+        },
+        "idiot": {
+          "Sol": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          }
+        }
+      },
+      "3": {
+        "wolf": {
+          "Sol": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          }
+        },
+        "villager": {
+          "Sol": {
+            "wins": 2,
+            "losses": 2,
+            "appearances": 4,
+            "win_rate": 0.5
+          },
+          "Terra": {
+            "wins": 2,
+            "losses": 0,
+            "appearances": 2,
+            "win_rate": 1.0
+          }
+        },
+        "seer": {
+          "Sol": {
+            "wins": 0,
+            "losses": 2,
+            "appearances": 2,
+            "win_rate": 0.0
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 1,
+            "appearances": 2,
+            "win_rate": 0.5
+          }
+        },
+        "witch": {
+          "Sol": {
+            "wins": 1,
+            "losses": 1,
+            "appearances": 2,
+            "win_rate": 0.5
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 1,
+            "appearances": 2,
+            "win_rate": 0.5
+          }
+        },
+        "hunter": {
+          "Sol": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          }
+        },
+        "idiot": {
+          "Sol": {
+            "wins": 1,
+            "losses": 0,
+            "appearances": 1,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 0,
+            "appearances": 1,
+            "win_rate": 1.0
+          }
+        }
+      },
+      "4": {
+        "wolf": {
+          "Sol": {
+            "wins": 1,
+            "losses": 1,
+            "appearances": 2,
+            "win_rate": 0.5
+          },
+          "Terra": {
+            "wins": 2,
+            "losses": 0,
+            "appearances": 2,
+            "win_rate": 1.0
+          }
+        },
+        "villager": {
+          "Sol": {
+            "wins": 2,
+            "losses": 1,
+            "appearances": 3,
+            "win_rate": 0.666667
+          },
+          "Terra": {
+            "wins": 3,
+            "losses": 1,
+            "appearances": 4,
+            "win_rate": 0.75
+          }
+        },
+        "seer": {
+          "Sol": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          }
+        },
+        "witch": {
+          "Sol": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 0,
+            "appearances": 1,
+            "win_rate": 1.0
+          }
+        },
+        "hunter": {
+          "Sol": {
+            "wins": 1,
+            "losses": 0,
+            "appearances": 1,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 1,
+            "appearances": 1,
+            "win_rate": 0.0
+          }
+        },
+        "idiot": {
+          "Sol": {
+            "wins": 1,
+            "losses": 0,
+            "appearances": 1,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 1,
+            "appearances": 1,
+            "win_rate": 0.0
+          }
+        }
+      },
+      "5": {
+        "wolf": {
+          "Sol": {
+            "wins": 1,
+            "losses": 0,
+            "appearances": 1,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 2,
+            "appearances": 2,
+            "win_rate": 0.0
+          }
+        },
+        "villager": {
+          "Sol": {
+            "wins": 2,
+            "losses": 1,
+            "appearances": 3,
+            "win_rate": 0.666667
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 1,
+            "appearances": 2,
+            "win_rate": 0.5
+          }
+        },
+        "seer": {
+          "Sol": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          }
+        },
+        "witch": {
+          "Sol": {
+            "wins": 2,
+            "losses": 0,
+            "appearances": 2,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 1,
+            "appearances": 2,
+            "win_rate": 0.5
+          }
+        },
+        "hunter": {
+          "Sol": {
+            "wins": 0,
+            "losses": 1,
+            "appearances": 1,
+            "win_rate": 0.0
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 1,
+            "appearances": 1,
+            "win_rate": 0.0
+          }
+        },
+        "idiot": {
+          "Sol": {
+            "wins": 1,
+            "losses": 0,
+            "appearances": 1,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 1,
+            "appearances": 1,
+            "win_rate": 0.0
+          }
+        }
+      },
+      "6": {
+        "wolf": {
+          "Sol": {
+            "wins": 0,
+            "losses": 1,
+            "appearances": 1,
+            "win_rate": 0.0
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 2,
+            "appearances": 2,
+            "win_rate": 0.0
+          }
+        },
+        "villager": {
+          "Sol": {
+            "wins": 2,
+            "losses": 0,
+            "appearances": 2,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 2,
+            "appearances": 2,
+            "win_rate": 0.0
+          }
+        },
+        "seer": {
+          "Sol": {
+            "wins": 1,
+            "losses": 0,
+            "appearances": 1,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 1,
+            "appearances": 1,
+            "win_rate": 0.0
+          }
+        },
+        "witch": {
+          "Sol": {
+            "wins": 0,
+            "losses": 2,
+            "appearances": 2,
+            "win_rate": 0.0
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 1,
+            "appearances": 2,
+            "win_rate": 0.5
+          }
+        },
+        "hunter": {
+          "Sol": {
+            "wins": 1,
+            "losses": 0,
+            "appearances": 1,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          }
+        },
+        "idiot": {
+          "Sol": {
+            "wins": 1,
+            "losses": 0,
+            "appearances": 1,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 1,
+            "appearances": 1,
+            "win_rate": 0.0
+          }
+        }
+      },
+      "7": {
+        "wolf": {
+          "Sol": {
+            "wins": 1,
+            "losses": 2,
+            "appearances": 3,
+            "win_rate": 0.333333
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 2,
+            "appearances": 3,
+            "win_rate": 0.333333
+          }
+        },
+        "villager": {
+          "Sol": {
+            "wins": 1,
+            "losses": 1,
+            "appearances": 2,
+            "win_rate": 0.5
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 2,
+            "appearances": 3,
+            "win_rate": 0.333333
+          }
+        },
+        "seer": {
+          "Sol": {
+            "wins": 0,
+            "losses": 1,
+            "appearances": 1,
+            "win_rate": 0.0
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 0,
+            "appearances": 1,
+            "win_rate": 1.0
+          }
+        },
+        "witch": {
+          "Sol": {
+            "wins": 1,
+            "losses": 0,
+            "appearances": 1,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 1,
+            "appearances": 1,
+            "win_rate": 0.0
+          }
+        },
+        "hunter": {
+          "Sol": {
+            "wins": 1,
+            "losses": 0,
+            "appearances": 1,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          }
+        },
+        "idiot": {
+          "Sol": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          }
+        }
+      },
+      "8": {
+        "wolf": {
+          "Sol": {
+            "wins": 1,
+            "losses": 2,
+            "appearances": 3,
+            "win_rate": 0.333333
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 3,
+            "appearances": 4,
+            "win_rate": 0.25
+          }
+        },
+        "villager": {
+          "Sol": {
+            "wins": 3,
+            "losses": 2,
+            "appearances": 5,
+            "win_rate": 0.6
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 3,
+            "appearances": 4,
+            "win_rate": 0.25
+          }
+        },
+        "seer": {
+          "Sol": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          }
+        },
+        "witch": {
+          "Sol": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          }
+        },
+        "hunter": {
+          "Sol": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          }
+        },
+        "idiot": {
+          "Sol": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          }
+        }
+      },
+      "9": {
+        "wolf": {
+          "Sol": {
+            "wins": 3,
+            "losses": 2,
+            "appearances": 5,
+            "win_rate": 0.6
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 5,
+            "appearances": 5,
+            "win_rate": 0.0
+          }
+        },
+        "villager": {
+          "Sol": {
+            "wins": 0,
+            "losses": 1,
+            "appearances": 1,
+            "win_rate": 0.0
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 1,
+            "appearances": 1,
+            "win_rate": 0.0
+          }
+        },
+        "seer": {
+          "Sol": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          }
+        },
+        "witch": {
+          "Sol": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          }
+        },
+        "hunter": {
+          "Sol": {
+            "wins": 1,
+            "losses": 0,
+            "appearances": 1,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 1,
+            "appearances": 1,
+            "win_rate": 0.0
+          }
+        },
+        "idiot": {
+          "Sol": {
+            "wins": 0,
+            "losses": 1,
+            "appearances": 1,
+            "win_rate": 0.0
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 0,
+            "appearances": 1,
+            "win_rate": 1.0
+          }
+        }
+      },
+      "10": {
+        "wolf": {
+          "Sol": {
+            "wins": 2,
+            "losses": 1,
+            "appearances": 3,
+            "win_rate": 0.666667
+          },
+          "Terra": {
+            "wins": 2,
+            "losses": 1,
+            "appearances": 3,
+            "win_rate": 0.666667
+          }
+        },
+        "villager": {
+          "Sol": {
+            "wins": 2,
+            "losses": 0,
+            "appearances": 2,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 0,
+            "appearances": 1,
+            "win_rate": 1.0
+          }
+        },
+        "seer": {
+          "Sol": {
+            "wins": 1,
+            "losses": 0,
+            "appearances": 1,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 1,
+            "appearances": 2,
+            "win_rate": 0.5
+          }
+        },
+        "witch": {
+          "Sol": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          }
+        },
+        "hunter": {
+          "Sol": {
+            "wins": 1,
+            "losses": 0,
+            "appearances": 1,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 1,
+            "appearances": 1,
+            "win_rate": 0.0
+          }
+        },
+        "idiot": {
+          "Sol": {
+            "wins": 1,
+            "losses": 0,
+            "appearances": 1,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 1,
+            "appearances": 1,
+            "win_rate": 0.0
+          }
+        }
+      },
+      "11": {
+        "wolf": {
+          "Sol": {
+            "wins": 2,
+            "losses": 2,
+            "appearances": 4,
+            "win_rate": 0.5
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 2,
+            "appearances": 3,
+            "win_rate": 0.333333
+          }
+        },
+        "villager": {
+          "Sol": {
+            "wins": 1,
+            "losses": 1,
+            "appearances": 2,
+            "win_rate": 0.5
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 1,
+            "appearances": 2,
+            "win_rate": 0.5
+          }
+        },
+        "seer": {
+          "Sol": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          }
+        },
+        "witch": {
+          "Sol": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          }
+        },
+        "hunter": {
+          "Sol": {
+            "wins": 1,
+            "losses": 0,
+            "appearances": 1,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 0,
+            "appearances": 1,
+            "win_rate": 1.0
+          }
+        },
+        "idiot": {
+          "Sol": {
+            "wins": 0,
+            "losses": 1,
+            "appearances": 1,
+            "win_rate": 0.0
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 1,
+            "appearances": 2,
+            "win_rate": 0.5
+          }
+        }
+      },
+      "12": {
+        "wolf": {
+          "Sol": {
+            "wins": 1,
+            "losses": 1,
+            "appearances": 2,
+            "win_rate": 0.5
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 2,
+            "appearances": 2,
+            "win_rate": 0.0
+          }
+        },
+        "villager": {
+          "Sol": {
+            "wins": 1,
+            "losses": 2,
+            "appearances": 3,
+            "win_rate": 0.333333
+          },
+          "Terra": {
+            "wins": 2,
+            "losses": 1,
+            "appearances": 3,
+            "win_rate": 0.666667
+          }
+        },
+        "seer": {
+          "Sol": {
+            "wins": 0,
+            "losses": 1,
+            "appearances": 1,
+            "win_rate": 0.0
+          },
+          "Terra": {
+            "wins": 1,
+            "losses": 0,
+            "appearances": 1,
+            "win_rate": 1.0
+          }
+        },
+        "witch": {
+          "Sol": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          }
+        },
+        "hunter": {
+          "Sol": {
+            "wins": 2,
+            "losses": 0,
+            "appearances": 2,
+            "win_rate": 1.0
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 2,
+            "appearances": 2,
+            "win_rate": 0.0
+          }
+        },
+        "idiot": {
+          "Sol": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          },
+          "Terra": {
+            "wins": 0,
+            "losses": 0,
+            "appearances": 0,
+            "win_rate": null
+          }
+        }
+      }
+    },
+    "definition": "Win means the seat faction won; counts are seat appearances, not independent games.",
+    "limitations": [
+      "Seat, role, fixed personality and same-game teammates may be associated; these are not causal seat effects.",
+      "Always show wins and appearances. A cell without observations has null win rate.",
+      "Historical thinking efforts differ in the pooled model-family view."
+    ]
+  },
   "tournament_points": {
     "Sol": {
       "seat_appearances": 306,

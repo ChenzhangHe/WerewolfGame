@@ -274,3 +274,24 @@ process ownership. No model or rule code changed for this campaign.
 Live status, results and cumulative two-entry ratings are under
 `artifacts/codex-sol-terra-more-v1/`. Per-game progress and archives are under
 `artifacts/codex-sol-terra-27000/` and `artifacts/codex-sol-terra-28000/`.
+
+## Seat and role statistics: twelve additional games
+
+The next campaign freezes the 51 valid historical games and adds seeds 29000 and
+30000, six games per cohort with at most six games running at once. Sol medium
+and Terra low remain fixed. Each model receives each numbered seat six times
+across the twelve new games, 24 wolf roles, 24 villager roles and six of each god
+role. Historical efforts remain disclosed in the pooled model-family ratings.
+
+```sh
+python3 scripts/run_sol_terra_batches.py --create-plan --seed 29000 --batches 2 --plan artifacts/codex-sol-terra-seats-v1/plan.private.json
+python3 scripts/run_sol_terra_batches.py --launch --plan artifacts/codex-sol-terra-seats-v1/plan.private.json
+```
+
+Campaign state and cumulative ratings are under `artifacts/codex-sol-terra-seats-v1/`.
+Ratings now also include `win_rates` and `fixed_setting_win_rates`, broken down
+by model, seat, role and seat × role. Wins mean faction victories; each cell
+shows wins and appearances, and missing samples have a null win rate. Seats in
+the same game are correlated and seat personalities are fixed, so these are
+descriptive outcomes rather than causal seat advantages. See the
+[51-game snapshot](position-win-rates.md) for both numbered seats and roles.

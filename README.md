@@ -29,6 +29,8 @@ Private game actions are preserved; model requests, notes and reasoning are excl
 
 [Current Sol/Terra scores](docs/sol-terra-scoring.md) · [Historical four-setting results](docs/codex-quartet-results-35.md) · [积分与评级共识（中文）](docs/scoring-agreement.md) · [Rating mathematics](docs/ratings.md)
 
+[按座位与角色的模型胜率](docs/position-win-rates.md) includes wins/appearances for each numbered seat and role, with pooled history and a separate Sol medium / Terra low subset. Live campaign ratings include the same breakdowns.
+
 ```sh
 python3 scripts/rate_replays.py --grouping model-family --output artifacts/model-family-ratings.json
 ```
