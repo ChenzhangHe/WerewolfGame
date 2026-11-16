@@ -8,11 +8,12 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from werewolf.replays import ReplayRunner
 from werewolf.ratings import fit_ratings
+from werewolf.win_rates import win_rates
 
 MODEL_FAMILIES = {'gpt-6.1-sol': 'Sol', 'gpt-6.1-terra': 'Terra'}
 
 
-def replay_inputs(root, *, grouping='configuration', comparison='all', filenames=None):
+def replay_inputs(root, *, grouping='configuration', comparison='all', filenames=None, fixed_game_ids=None):
     if grouping not in ('configuration', 'model-family') or comparison not in ('all', 'sol-terra'):
         raise ValueError('Unknown scoring comparison or grouping.')
     matches, reports = [], []
@@ -25,6 +26,9 @@ def replay_inputs(root, *, grouping='configuration', comparison='all', filenames
             continue
         replay = ReplayRunner(archive)
         configs = archive['configs']; entries = []
+        fixed = {'gpt-6.1-sol':'medium','gpt-6.1-terra':'low'}
+        if fixed_game_ids is not None and all(c['model'] in fixed and c['reasoning_effort']==fixed[c['model']] for c in configs):
+            fixed_game_ids.add(archive['id'])
         for c in configs:
             entry = MODEL_FAMILIES[c['model']] if grouping == 'model-family' else c['entry']
             entries.append(entry)
@@ -43,10 +47,13 @@ def replay_inputs(root, *, grouping='configuration', comparison='all', filenames
 
 
 def calculate(root, *, comparison='all', grouping='configuration', filenames=None):
-    matches, reports, points, exposures = replay_inputs(root, comparison=comparison, grouping=grouping, filenames=filenames)
+    fixed_ids=set()
+    matches, reports, points, exposures = replay_inputs(root, comparison=comparison, grouping=grouping, filenames=filenames, fixed_game_ids=fixed_ids)
     if not matches:
         raise ValueError('No completed replay games exist yet for the selected comparison.')
     result = fit_ratings(matches, reports)
+    result['win_rates']=win_rates(matches,reports)
+    result['fixed_setting_win_rates']=win_rates([m for m in matches if m['id'] in fixed_ids],[r for r in reports if r['match_id'] in fixed_ids])
     result.update(tournament_points=points, entry_grouping=grouping, thinking_effort_exposure=exposures,
                   evidence_scope='Referee-validated portable gameplay; original model requests and private notes are excluded.')
     if grouping == 'model-family':

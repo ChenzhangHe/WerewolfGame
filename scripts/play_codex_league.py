@@ -11,6 +11,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from werewolf.codex_league import ENTRIES, selected_entries, schedule, validate_schedule, configs_for
 from werewolf.ratings import POLICY, fit_ratings
+from werewolf.win_rates import win_rates
 from scripts.play_codex import play, save, audit_match
 from scripts.play_league import scheduled_games, source_fingerprint as core_fingerprint
 from scripts.run_logging import emit
@@ -24,7 +25,7 @@ DEFAULT_PLAN = Path('artifacts/codex-sol-medium-terra-low-v1/plan.private.json')
 def fingerprint():
     digest = hashlib.sha256(core_fingerprint().encode())
     root = Path(__file__).resolve().parents[1]
-    for name in ('werewolf/codex_league.py', 'scripts/play_codex_league.py', 'werewolf/ratings.py', 'scripts/rate_replays.py', 'werewolf/replays.py'):
+    for name in ('werewolf/codex_league.py', 'scripts/play_codex_league.py', 'werewolf/ratings.py', 'scripts/rate_replays.py', 'werewolf/replays.py', 'werewolf/win_rates.py'):
         digest.update(name.encode()+b'\0'+(root/name).read_bytes())
     return digest.hexdigest()
 
@@ -180,17 +181,33 @@ def historical_inputs(file_hashes):
     return matches, reports, exposures
 
 
+@lru_cache(maxsize=4)
+def historical_fixed_ids(file_hashes):
+    fixed = {'gpt-6.1-sol':'medium', 'gpt-6.1-terra':'low'}
+    ids = set()
+    for name, _ in file_hashes:
+        archive = json.loads((Path('replays')/name).read_text())
+        if all(c['model'] in fixed and c['reasoning_effort'] == fixed[c['model']] for c in archive['configs']):
+            ids.add(archive['id'])
+    return frozenset(ids)
+
+
 def write_results(plan, root, reports, halted):
     save(root/'results.json', {'protocol': plan['protocol'], 'reports': sorted(reports, key=lambda r: r['match_id']),
          'scheduler': {'halted_on_failure': halted, 'scheduled_games': len(plan['matches']),
                        'returned_games': len(reports),
                        'unattempted': [m['id'] for m in plan['matches'] if m['id'] not in {r['match_id'] for r in reports}]}})
     ratings = fit_ratings(plan['matches'], reports)
+    ratings['win_rates']=win_rates(plan['matches'],reports)
     if plan.get('profile') == 'sol-terra':
         save(root/'batch-ratings.json', ratings)
         old_matches, old_reports, exposures = historical_inputs(tuple(sorted(plan['historical_replays'].items())))
         current = [{**m, 'pair':str(plan['schedule_seed'])+':'+str(m['pair'])} for m in plan['matches']]
         ratings = fit_ratings(old_matches+current, old_reports+reports)
+        ratings['win_rates']=win_rates(old_matches+current,old_reports+reports)
+        fixed_ids=historical_fixed_ids(tuple(sorted(plan['historical_replays'].items())))
+        ratings['fixed_setting_win_rates']=win_rates([m for m in old_matches if m['id'] in fixed_ids]+current,
+                                                    [r for r in old_reports if r['match_id'] in fixed_ids]+reports)
         ratings.update(entry_grouping='model-family', historical_thinking_effort_exposure=exposures,
                        historical_reliability=plan['historical_reliability'],
                        scheduled_attempts=plan['historical_reliability']['attempts']+len(plan['matches']),
