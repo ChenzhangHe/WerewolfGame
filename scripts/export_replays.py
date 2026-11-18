@@ -18,15 +18,19 @@ def export(source, output):
         raise ValueError('Only fully audited, completed games may be published.')
     stem = source.name.removesuffix('.private.json')
     labels = None
+    layout_group = None
+    title = "四配置测试"
     plan_path = source.parent/'plan.private.json'
     if plan_path.exists():
         plan = json.loads(plan_path.read_text())
-        if plan.get('profile') == 'sol-terra':
+        if plan.get('profile') in ('sol-terra', 'sol-versions'):
             match = next(m for m in plan['matches'] if m['id'] == stem)
             original = [p['config'] for p in sorted(trial['players'], key=lambda p:p['config']['seat'])]
-            if plan['configs'][stem] != original or set(match['entries']) != {'Sol','Terra'}:
-                raise ValueError('Sol/Terra replay configurations differ from the declaration.')
+            if plan['configs'][stem] != original or set(match['entries']) != set(plan['entries']):
+                raise ValueError('Replay configurations differ from the declaration.')
             labels = match['entries']
+            layout_group = f"{plan['schedule_seed']}:{match['pair']}"
+            title = ' vs '.join(plan['entries'])
     configs = []
     for p in sorted(trial['players'], key=lambda p: p['config']['seat']):
         c = p['config']; family = c['model'].removeprefix('gpt-6.1-').removeprefix('gpt-6-')
@@ -39,10 +43,10 @@ def export(source, output):
                          'action': {k: v for k, v in batch['actions'][d['id']].items() if k in {'type','target','value','text'}}}
                         for d in batch['decisions']])
     stem = source.name.removesuffix('.private.json'); parts = stem.rsplit('-', 2); number = int(parts[-1]); cohort = parts[-2]
-    archive = {'format': FORMAT, 'ruleset': 'rules-v1', 'id': stem, 'title': f"{'Sol vs Terra' if labels else '四配置测试'} · {cohort} · 第{number}局",
+    archive = {'format': FORMAT, 'ruleset': 'rules-v1', 'id': stem, 'title': f"{title} · {cohort} · 第{number}局",
                'language': trial['language'], 'seed': trial['source_seed'],
                'roles': [p['role'] for p in sorted(trial['game']['players'], key=lambda p:p['seat'])],
-               'configs': configs, 'batches': batches, 'layout_group': f'{cohort}:{(number-1)//2+1}',
+               'configs': configs, 'batches': batches, 'layout_group': layout_group or f'{cohort}:{(number-1)//2+1}',
                'source_digest': hashlib.sha256(raw).hexdigest()}
     replay = ReplayRunner(archive)
     if canonical_game(replay.game.export()) != canonical_game(trial['game']):

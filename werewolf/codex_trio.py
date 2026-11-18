@@ -1,18 +1,25 @@
-"""Six-game Sol/medium, Terra/low and Luna/medium comparison schedule."""
+"""Balanced six-game schedules for three Codex configurations."""
 from collections import Counter
+from dataclasses import replace
 import random
 
-from werewolf.codex_league import ENTRIES as ALL_ENTRIES, configs_for
+from werewolf.codex_league import ENTRIES as ALL_ENTRIES, configs_for as league_configs_for
 from werewolf.engine import Game
 from werewolf.server import NAMES
 
 ENTRIES = {e: ALL_ENTRIES[e] for e in ('sol-medium', 'terra-low', 'luna-medium')}
+VERSION_ENTRIES = {
+    "Sol-6.1": ("gpt-6.1-sol", "medium"),
+    "Sol-6.2": ("gpt-6.2-sol", "medium"),
+    "Terra": ("gpt-6.1-terra", "low"),
+}
+PROFILES = {"legacy": ENTRIES, "sol-versions": VERSION_ENTRIES}
 ROLE_COUNTS = Counter(wolf=4, villager=4, seer=1, witch=1, hunter=1, idiot=1)
 
 
-def schedule(seed=17000):
+def schedule(seed=17000, profile="legacy"):
     rng = random.Random(seed)
-    entries = list(ENTRIES)
+    entries = list(PROFILES[profile])
     # Four seats per entry, with 3/1/0 and 2/1/1 Wolf compositions.
     # Every label occupies every seat once per three-game rotation block.
     templates = ([0, 0, 0, 1, 1, 1, 2, 2, 0, 1, 2, 2],
@@ -31,17 +38,18 @@ def schedule(seed=17000):
             matches.append({'id': f'codex-trio-{seed}-{n:02d}', 'pair': block,
                             'seed': seed+n, 'roles': roles[:],
                             'entries': [entries[(label+rotation)%3] for label in labels]})
-    validate_schedule(matches)
+    validate_schedule(matches, profile)
     return matches
 
 
-def validate_schedule(matches):
+def validate_schedule(matches, profile="legacy"):
+    entries = PROFILES[profile]
     if len(matches) != 6 or len({m['id'] for m in matches}) != 6:
         raise ValueError('Trio pilot requires six unique games.')
     for m in matches:
-        if Counter(m['roles']) != ROLE_COUNTS or Counter(m['entries']) != Counter({e: 4 for e in ENTRIES}):
+        if Counter(m['roles']) != ROLE_COUNTS or Counter(m['entries']) != Counter({e: 4 for e in entries}):
             raise ValueError('Trio game requires the twelve-player rules and four seats per entry.')
-    for entry in ENTRIES:
+    for entry in entries:
         roles = Counter(r for m in matches for e, r in zip(m['entries'], m['roles']) if e == entry)
         if roles != Counter(wolf=8, villager=8, seer=2, witch=2, hunter=2, idiot=2):
             raise ValueError('Trio role exposure changed.')
@@ -52,3 +60,14 @@ def validate_schedule(matches):
         group = [m for m in matches if m['pair'] == block]
         if len(group) != 3 or any(m['roles'] != group[0]['roles'] for m in group):
             raise ValueError('Rotation role layout changed.')
+
+
+def configs_for(match):
+    if set(match['entries']) == set(VERSION_ENTRIES):
+        # The original factory supplies the canonical seat names and personalities.
+        template = league_configs_for({**match, 'entries': ['sol-medium'] * 12})
+        return [
+            replace(config, model=VERSION_ENTRIES[entry][0], effort=VERSION_ENTRIES[entry][1])
+            for config, entry in zip(template, match['entries'])
+        ]
+    return league_configs_for(match)

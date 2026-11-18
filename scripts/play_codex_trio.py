@@ -2,15 +2,17 @@
 import argparse
 from dataclasses import asdict
 import fcntl
+import subprocess
 import hashlib
 import json
 from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from werewolf.codex_trio import ENTRIES, schedule, validate_schedule, configs_for
+from werewolf.codex_trio import PROFILES, schedule, validate_schedule, configs_for
 from werewolf.ratings import POLICY
 from scripts.play_codex import play, save
+from scripts.export_replays import export
 from scripts.play_codex_league import check_canaries, collect_existing, write_results, verify_trial
 from scripts.play_codex_league import fingerprint as base_fingerprint
 from scripts.play_league import scheduled_games
@@ -24,21 +26,23 @@ DEFAULT_PLAN = Path('artifacts/codex-trio-v1/plan.private.json')
 def fingerprint():
     digest = hashlib.sha256(base_fingerprint().encode())
     root = Path(__file__).resolve().parents[1]
-    for name in ('werewolf/codex_trio.py', 'scripts/play_codex_trio.py'):
+    for name in ('werewolf/codex_trio.py', 'scripts/play_codex_trio.py', 'scripts/export_replays.py'):
         digest.update(name.encode()+b'\0'+(root/name).read_bytes())
     return digest.hexdigest()
 
 
-def create_plan(path, seed):
+def create_plan(path, seed, profile="legacy"):
+    entries = PROFILES[profile]
+    gate, parallel = (0, 6) if profile == "sol-versions" else (1, 2)
     if path.exists():
         raise ValueError('Do not overwrite a frozen plan.')
-    matches = schedule(seed)
-    plan = {'protocol': VERSION, 'source_fingerprint': fingerprint(), 'schedule_seed': seed,
-            'matches': matches, 'entries': {e: {'model': m, 'effort': f} for e, (m, f) in ENTRIES.items()},
+    matches = schedule(seed, profile)
+    plan = {'protocol': VERSION, 'source_fingerprint': fingerprint(), 'schedule_seed': seed, 'profile': profile,
+            'matches': matches, 'entries': {e: {'model': m, 'effort': f} for e, (m, f) in entries.items()},
             'configs': {m['id']: [asdict(c) for c in configs_for(m)] for m in matches},
-            'canary_digests': check_canaries(path.parent, ENTRIES), 'rating_policy': POLICY,
+            'canary_digests': check_canaries(path.parent, entries), 'rating_policy': POLICY,
             'max_batches': 300, 'workers_per_game': 2, 'codex_turn_timeout_seconds': 600,
-            'initial_gate_games': 1, 'parallel_games_after_gate': 2,
+            'initial_gate_games': gate, 'parallel_games_after_gate': parallel,
             'failure_policy': 'Retain every attempt; halt new games on failure; no replacements, default actions or thread recreation.'}
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open('x') as stream:
@@ -47,19 +51,22 @@ def create_plan(path, seed):
          | {'scheduled_games': 6, 'seats_per_entry_per_game': 4, 'seats_per_entry': 24,
             'role_exposure_per_entry': {'wolf': 8, 'villager': 8, 'seer': 2, 'witch': 2, 'hunter': 2, 'idiot': 2},
             'schedule_digest': hashlib.sha256(json.dumps(matches, sort_keys=True).encode()).hexdigest(),
-            'comparison': 'Model-and-effort configurations; Sol/medium, Terra/low, Luna/medium. Not an equal-effort model-only evaluation.'})
+            'comparison': 'Separate ratings for each declared model and effort configuration.'})
     return plan
 
 
 def verify_plan(plan, execution=False):
+    profile = plan.get("profile", "legacy")
+    entries = PROFILES[profile]
+    gate, parallel = (0, 6) if profile == "sol-versions" else (1, 2)
     require(plan['protocol'] == VERSION, 'Wrong comparison protocol.')
-    require(plan['matches'] == schedule(plan['schedule_seed']), 'Frozen trio schedule changed.')
-    validate_schedule(plan['matches'])
-    require(plan['entries'] == {e: {'model': m, 'effort': f} for e, (m, f) in ENTRIES.items()}, 'Entries changed.')
+    require(plan['matches'] == schedule(plan['schedule_seed'], profile), 'Frozen trio schedule changed.')
+    validate_schedule(plan['matches'], profile)
+    require(plan['entries'] == {e: {'model': m, 'effort': f} for e, (m, f) in entries.items()}, 'Entries changed.')
     require(plan['configs'] == {m['id']: [asdict(c) for c in configs_for(m)] for m in plan['matches']}, 'Fixed seat settings changed.')
     require(plan['rating_policy'] == POLICY, 'Rating policy changed.')
     require((plan['max_batches'], plan['workers_per_game'], plan['codex_turn_timeout_seconds'],
-             plan['initial_gate_games'], plan['parallel_games_after_gate']) == (300, 2, 600, 1, 2), 'Execution settings changed.')
+             plan['initial_gate_games'], plan['parallel_games_after_gate']) == (300, 2, 600, gate, parallel), 'Execution settings changed.')
     if execution:
         require(plan['source_fingerprint'] == fingerprint(), 'Code changed since preregistration.')
 
@@ -85,20 +92,22 @@ def run_one(match, plan, root):
 
 def run_season(plan, root):
     verify_plan(plan, execution=True)
-    require(check_canaries(root, ENTRIES) == plan['canary_digests'], 'Canary evidence changed.')
+    require(check_canaries(root, PROFILES[plan.get('profile', 'legacy')]) == plan['canary_digests'], 'Canary evidence changed.')
     reports, remaining = collect_existing(plan, root)
     halted = any(not r.get('all_checks_passed') for r in reports)
     write_results(plan, root, reports, halted)
     if halted:
         return 1
-    if not reports and remaining:
+    if plan['initial_gate_games'] and not reports and remaining:
         gate = run_one(remaining.pop(0), plan, root)
         reports.append(gate); halted = not gate.get('all_checks_passed')
         write_results(plan, root, reports, halted)
         emit({'gate': gate['match_id'], 'passed': not halted})
     if not halted:
-        for report, halted in scheduled_games(remaining, lambda m: run_one(m, plan, root), parallel_games=2):
+        for report, halted in scheduled_games(remaining, lambda m: run_one(m, plan, root), parallel_games=plan['parallel_games_after_gate']):
             reports.append(report); write_results(plan, root, reports, halted)
+            if plan.get('profile') == 'sol-versions' and report['all_checks_passed']:
+                export(root/(report['match_id']+'.private.json'), root/'replays')
             emit({'match_id': report['match_id'], 'status': report['status'], 'winner': report.get('winner'),
                   'all_checks_passed': report.get('all_checks_passed'), 'scheduling_halted': halted})
     return int(halted)
@@ -108,16 +117,29 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--plan', type=Path, default=DEFAULT_PLAN)
     parser.add_argument('--seed', type=int, default=17000)
+    parser.add_argument('--profile', choices=PROFILES, default='legacy')
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--create-plan', action='store_true')
     group.add_argument('--run', action='store_true')
+    group.add_argument('--launch', action='store_true')
     group.add_argument('--rate', action='store_true')
     args = parser.parse_args()
     if args.create_plan:
-        plan = create_plan(args.plan, args.seed)
-        emit({'plan': str(args.plan), 'games': len(plan['matches']), 'entries': list(ENTRIES)})
+        plan = create_plan(args.plan, args.seed, args.profile)
+        emit({'plan': str(args.plan), 'games': len(plan['matches']), 'entries': list(plan["entries"])})
         return
     plan = json.loads(args.plan.read_text()); root = args.plan.parent
+    if args.launch:
+        verify_plan(plan, execution=True)
+        with (root/'verification.log').open('x') as log:
+            process = subprocess.Popen(
+                [sys.executable, '-u', str(Path(__file__).resolve()), '--plan', str(args.plan.resolve()), '--run'],
+                stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT, start_new_session=True,
+                cwd=Path(__file__).resolve().parents[1],
+            )
+        save(root/'verification-process.private.json', {'pid': process.pid})
+        emit({'pid': process.pid, 'games': len(plan['matches'])})
+        return
     if args.rate:
         verify_plan(plan)
         reports, _ = collect_existing(plan, root)
